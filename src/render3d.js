@@ -9,7 +9,10 @@ import { buildMall, WALL_H, neonSignTexture } from './mall3d.js';
 import { assets, Actor, cloneProp, MODEL_SCALE, HERO_SCALE } from './assets.js';
 import { glowTexture, glowSprite, buildBoss, buildExit, buildProjectile, buildMarker, buildItem, heroColor } from './models.js';
 
-const CAM_OFFSET = new THREE.Vector3(0, 380, 240);
+// 3/4 arcade angle (~40 deg down): low enough that vertical neon stall signs stay in frame,
+// high enough that the party, enemies and pickups stay readable.
+const CAM_OFFSET = new THREE.Vector3(0, 280, 330);
+const CAM_LOOK_Y = 42; // look a little above the floor so wall signs are framed
 const MAX_PARTICLES = 900;
 // Phones get fewer dynamic lights; each one costs on every pixel.
 const LOW_POWER = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
@@ -295,8 +298,8 @@ export class Renderer3D {
     root.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     this.blob(root, 110);
     for (const mat of root.userData.mats) { mat.userData.e0 = mat.emissive.clone(); mat.userData.ei0 = mat.emissiveIntensity; }
-    root.scale.setScalar(1.25);
-    return { kind: 'boss', root, proc: true };
+    root.scale.setScalar(root.userData.bossScale);
+    return { kind: 'boss', root, proc: true, baseScale: root.userData.bossScale };
   }
 
   // Spawners: a shattered storefront shutter, a busted vent or a barricaded escalator, glowing
@@ -407,7 +410,7 @@ export class Renderer3D {
     } else {
       if (this.cutPos) { this.cutPos = null; this.cutLook = null; this.cutFov = null; this.camera.fov = 42; this.camera.updateProjectionMatrix(); }
       this.camera.position.set(tx + CAM_OFFSET.x + sx, CAM_OFFSET.y, tz + CAM_OFFSET.z + sz);
-      this.camera.lookAt(tx + sx, 0, tz + sz - 10);
+      this.camera.lookAt(tx + sx, CAM_LOOK_Y, tz + sz - 10);
     }
     this.sun.position.set(tx - 200, 500, tz + 300);
     this.sun.target.position.set(tx, 0, tz);
@@ -583,7 +586,7 @@ export class Renderer3D {
     const air = act && act.type === 'leap' && since < 1.1 ? Math.sin((since / 1.1) * Math.PI) * 150 : 0;
     v.root.position.set(e.x, air, e.y);
     v.root.visible = !(act && act.type === 'teleport' && since < 0.85);
-    v.root.scale.setScalar(act && act.type === 'roar' && since < 1.6 ? 1 + Math.sin(since * 18) * 0.04 : 1);
+    v.root.scale.setScalar(v.baseScale * (act && act.type === 'roar' && since < 1.6 ? 1 + Math.sin(since * 18) * 0.04 : 1));
     this.bossExtras(v, e, t);
     const [p] = g.nearestPlayer(e);
     if (e.charging > 0) v.root.rotation.y = Math.atan2(e.cvx, e.cvy);
@@ -633,18 +636,18 @@ export class Renderer3D {
   // A shimmering ward while a guardian is shrugging off magic; circling stars while stunned.
   bossExtras(v, e, t) {
     if (!v.ward) {
-      v.ward = new THREE.Mesh(new THREE.SphereGeometry(62, 20, 14), new THREE.MeshBasicMaterial({ color: '#b080ff', transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
-      v.ward.position.y = 40;
+      v.ward = new THREE.Mesh(new THREE.SphereGeometry(80, 20, 14), new THREE.MeshBasicMaterial({ color: '#b080ff', transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+      v.ward.position.y = 60;
       v.stars = [0, 1, 2].map(() => glowSprite('#ffe060', 26, 0.95));
       v.root.parent.add(v.ward, ...v.stars);
     }
     const warded = e.ward > 0;
     v.ward.visible = warded && v.root.visible;
-    if (warded) { v.ward.position.set(e.x, 40 + v.root.position.y, e.y); v.ward.material.opacity = 0.12 + Math.sin(t * 5) * 0.06; v.ward.rotation.y = t; }
+    if (warded) { v.ward.position.set(e.x, 60 + v.root.position.y, e.y); v.ward.material.opacity = 0.12 + Math.sin(t * 5) * 0.06; v.ward.rotation.y = t; }
     v.stars.forEach((s, i) => {
       s.visible = e.stun > 0;
       const a = t * 5 + (i * Math.PI * 2) / 3;
-      s.position.set(e.x + Math.cos(a) * 34, 96, e.y + Math.sin(a) * 34);
+      s.position.set(e.x + Math.cos(a) * 50, 150, e.y + Math.sin(a) * 50);
     });
   }
 

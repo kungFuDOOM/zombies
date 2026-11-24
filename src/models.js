@@ -232,6 +232,10 @@ export function glowSprite(color, size, opacity = 0.9) {
 
 // ---------- bosses ----------
 
+// The Butcher stands ~115 units tall (about 2.5x a survivor); this is the on-field scale applied
+// on top of that. The renderer reads it from root.userData.bossScale and never resets it.
+export const BOSS_SCALE = 1.05;
+
 export function buildBoss(model, color, hornColor) {
   const mats = makeMats(false);
   const { m } = mats;
@@ -328,38 +332,71 @@ export function buildBoss(model, color, hornColor) {
     for (let i = 0; i < 6; i++) part(rig, G.sphere(3.5, 6), m('#c8e070', { emissive: '#90c020', emissiveIntensity: 0.6 }), Math.cos(i) * 18, 30 + Math.sin(i * 2) * 10, Math.sin(i) * 18);
     addWings(48, 30);
   } else if (model === 'butcher') {
-    // THE DEEP-FRY BUTCHER: a giant food-court mascot in a greasy apron, grinning, with a cleaver
-    const apron = m('#f4f0e4'), stain = m('#b83a1c'), steel = m('#d8dde8', { metalness: 0.8, roughness: 0.25 });
-    part(rig, G.sphere(19, 12), apron, 0, 34, 0).scale.set(1.15, 1.05, 1);
-    part(rig, G.sphere(14, 10), stain, 0, 30, 8).scale.set(1, 0.8, 0.5);
-    part(rig, G.box(26, 3, 3), m('#2a2a30'), 0, 40, 0);
-    legs(22, 10, 20, 10);
-    const hd = pivot(rig, 0, 62, 2);
-    part(hd, G.sphere(11, 12), skin, 0, 0, 0);
-    part(hd, G.cyl(9, 11, 12, 12), apron, 0, 13, 0);
-    part(hd, G.sphere(8, 10), apron, 0, 20, 0).scale.set(1.2, 0.8, 1.2);
-    for (const sx of [-1, 1]) part(hd, G.sphere(2.4, 6), m('#ffffff', { emissive: '#fff070', emissiveIntensity: 1.6 }), sx * 4.2, 2.5, 9.2, false);
-    const jaw = pivot(hd, 0, -3, 0);
-    part(jaw, G.box(13, 3, 8), m('#2a0a0a'), 0, -1, 5);
-    for (let i = -3; i <= 3; i++) part(jaw, G.box(1.4, 3, 1), m('#f8f4e0'), i * 1.8, 1, 9);
+    // THE DEEP-FRY BUTCHER: ONE hulking food-court mascot. Cream greasy apron, charcoal
+    // trousers, pig-mascot head under a paper hat, steel cleaver and a bubbling fry basket.
+    // Deliberately NOT red: the minions are red, he must read as a different, bigger thing.
+    const apron = m('#f6f0dc'), stain = m('#c8a050'), steel = m('#e4e8f0', { metalness: 0.8, roughness: 0.25 });
+    const cloth = m('#2c3038'), hide = m('#e6a8a0'), dark = m('#241c18');
+    const glow = m('#ffa020', { emissive: '#ff8010', emissiveIntensity: 1.8 });
+    // legs: two thick trousered pillars with boots
+    r.legs = [];
+    for (const sx of [-1, 1]) {
+      const lg = pivot(rig, sx * 11, 30, 0);
+      part(lg, G.box(15, 30, 16), cloth, 0, -15, 0);
+      part(lg, G.box(17, 7, 24), dark, 0, -29, 4);
+      r.legs.push(lg);
+    }
+    // huge barrel torso + apron
+    part(rig, G.box(52, 36, 34), cloth, 0, 48, 0);
+    part(rig, G.box(44, 46, 6), apron, 0, 44, 17);
+    part(rig, G.box(44, 5, 36), apron, 0, 66, 0).scale.x = 1.05;
+    part(rig, G.box(10, 8, 1.5), stain, -10, 52, 20.5);
+    part(rig, G.box(14, 6, 1.5), stain, 8, 36, 20.5);
+    part(rig, G.box(6, 14, 1.5), stain, 14, 54, 20.5);
+    part(rig, G.box(50, 3, 3), dark, 0, 56, 0);
+    part(rig, G.cyl(14, 14, 20, 10), cloth, 0, 70, -6).scale.set(1.4, 1, 0.9);
+    // hulking shoulders
+    for (const sx of [-1, 1]) part(rig, G.sphere(11, 10), cloth, sx * 30, 64, 0);
+    // pig-mascot head, grinning, under a paper hat
+    const hd = pivot(rig, 0, 82, 3);
+    part(hd, G.sphere(15, 12), hide, 0, 0, 0).scale.set(1.15, 1, 1.05);
+    part(hd, G.cyl(6.5, 7.5, 7, 10), hide, 0, -3, 15).rotation.x = Math.PI / 2;
+    for (const sx of [-1, 1]) {
+      part(hd, G.sphere(1.3, 6), dark, sx * 2.6, -3, 19, false);
+      part(hd, G.cone(5, 11, 4), hide, sx * 12, 12, -2).rotation.z = -sx * 0.6; // ears
+      part(hd, G.sphere(3.4, 8), m('#ffffff', { emissive: '#fff070', emissiveIntensity: 1.6 }), sx * 6.5, 5, 12, false);
+      part(hd, G.sphere(1.4, 6), dark, sx * 6.5, 5, 14.6, false);
+      part(hd, G.cone(1.8, 6, 5), m('#f8f4e0'), sx * 7, -8, 13, false).rotation.x = Math.PI; // tusks
+    }
+    part(hd, G.cyl(10, 12, 14, 12), apron, 0, 19, 0);                       // paper hat
+    part(hd, G.sphere(11, 10), apron, 0, 28, 0).scale.set(1.15, 0.8, 1.15);
+    const jaw = pivot(hd, 0, -8, 0);
+    part(jaw, G.box(20, 3.5, 11), m('#2a0a0a'), 0, -1, 7);
+    for (let i = -4; i <= 4; i++) part(jaw, G.box(1.8, 3.5, 1.2), m('#f8f4e0'), i * 2.3, 1.5, 13);
     hd.userData.jaw = jaw;
     r.heads.push(hd);
     // the cleaver arm swings from the shoulder
-    const arm = pivot(rig, 22, 46, 0);
-    part(arm, G.cyl(4, 4.5, 20, 8), skin, 0, -10, 6).rotation.x = -0.5;
-    const cl = pivot(arm, 0, -20, 14);
-    part(cl, G.box(3, 5, 22), m('#3a2a1a'), 0, 0, 0);
-    part(cl, G.box(2, 18, 12), steel, 0, 11, 6);
+    const arm = pivot(rig, 34, 66, 4);
+    part(arm, G.cyl(6, 7, 28, 8), cloth, 0, -14, 6).rotation.x = -0.5;
+    part(arm, G.sphere(6.5, 8), hide, 0, -28, 16);
+    const cl = pivot(arm, 0, -28, 18);
+    part(cl, G.box(4, 4, 24), dark, 0, 0, 0);
+    part(cl, G.box(3, 30, 20), steel, 0, 18, 8);
+    part(cl, G.box(3.4, 2.5, 20), m('#9aa2b4', { metalness: 0.8 }), 0, 33, 8);
     r.arm = arm; r.cleaver = cl;
-    // the other hand carries a bubbling fry basket
-    const bk = pivot(rig, -22, 38, 6);
-    part(bk, G.cyl(3.5, 3.5, 18, 8), skin, 0, -6, 4).rotation.x = -0.5;
-    part(bk, G.cyl(7, 5, 9, 10), m('#2a2a30', { metalness: 0.6 }), 0, -16, 12);
-    part(bk, G.cyl(6, 6, 1, 10), m('#ffb020', { emissive: '#ff8010', emissiveIntensity: 1.6 }), 0, -11.4, 12, false);
-    // neon-orange grease drips
-    for (let i = 0; i < 5; i++) part(rig, G.sphere(2, 5), m('#ffb020', { emissive: '#ff8010', emissiveIntensity: 1.2 }), -14 + i * 7, 50 - (i % 2) * 9, 17, false);
+    // the other hand carries a big bubbling fry basket
+    const bk = pivot(rig, -34, 62, 6);
+    part(bk, G.cyl(5.5, 6.5, 24, 8), cloth, 0, -12, 6).rotation.x = -0.5;
+    part(bk, G.sphere(6, 8), hide, 0, -24, 14);
+    part(bk, G.cyl(13, 10, 14, 12), m('#2a2a34', { metalness: 0.6 }), 0, -28, 18);
+    part(bk, G.cyl(12, 12, 1.5, 12), glow, 0, -21, 18, false);
+    part(bk, G.box(3, 3, 22), dark, 0, -22, 34);
+    for (let i = 0; i < 4; i++) part(bk, G.sphere(2.5, 6), glow, -6 + i * 4, -19 + (i % 2) * 2, 18 + (i % 3 - 1) * 4, false);
+    // dripping grease down the apron
+    for (let i = 0; i < 5; i++) part(rig, G.sphere(2.2, 5), glow, -16 + i * 8, 62 - (i % 2) * 12, 21, false);
   }
   root.userData.rig = r;
+  root.userData.bossScale = BOSS_SCALE;
   return finish(root, mats, { kind: 'boss', model });
 }
 

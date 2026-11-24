@@ -7,7 +7,7 @@ import {
 import { T, generateLevel, generateHub, generateTutorial, bfs, walkable, enemyWeights, FOOD_COURT, HUB_DIRECTORY, HUB_SHOP } from './level.js';
 import { foodCourtModifiers, crisisModifiers, bossModifiers, hubRayPresent, CHOICES } from './story.js';
 import { sfx, say } from './audio.js';
-import { initBoss, updateBoss as bossBrain, bossDamage, BOSS_HP_MAGIC_CAP, BOSS_WARD } from './bosses.js';
+import { initBoss, updateBoss as bossBrain, bossDamage, THRALL, BOSS_HP_MAGIC_CAP, BOSS_WARD } from './bosses.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -1038,6 +1038,14 @@ export class Game {
           const ux = dx / d, uy = dy / d;
           if (a.type !== 'boss') this.move(a, -ux * push, -uy * push);
           if (b.type !== 'boss') this.move(b, ux * push, uy * push);
+        }
+      }
+      // summoned thralls stay off the boss's footprint (and slide round it) so he reads as one big shape
+      if (a.thrall && this.boss && this.boss.hp > 0) {
+        const bx = a.x - this.boss.x, by = a.y - this.boss.y, bd = Math.hypot(bx, by) || 0.01;
+        if (bd < THRALL.keepOut) {
+          const k = THRALL.keepOut - bd, tx = -by / bd, ty = bx / bd; // push out + a little orbit
+          this.move(a, (bx / bd) * k + tx * 3, (by / bd) * k + ty * 3);
         }
       }
       // keep enemies from overlapping players

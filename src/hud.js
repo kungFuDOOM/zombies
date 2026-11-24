@@ -85,7 +85,7 @@ export function drawGameOverlay(ctx, g, r3d, opts) {
   if (g.level.hub) drawHubLabels(ctx, g, r3d, opts.hubPrompt !== false);
   drawBarks(ctx, g);
   if (opts.tutorial) drawTutorial(ctx, g, opts.tutorial);
-  else drawBanner(ctx, g);
+  else if (!g.level.hub) drawBanner(ctx, g); // (in the Security Room it would sit on the 3D SECURITY ROOM sign)
   for (let s = 0; s < MAX_PLAYERS; s++) drawPanel(ctx, g, s);
   if (opts.controls) drawControlsBar(ctx, g.players[2] || g.players[3] ? 440 : 680);
   if (opts.minimap || g.anyBuff('xray')) drawMinimap(ctx, g, g.anyBuff('xray'));
@@ -516,12 +516,22 @@ const BTN = (name, source) => btn(name, source).toUpperCase();
 
 const SEL_W = 220, SEL_GAP = 12, SEL_X0 = (VIEW_W - (SEL_W * 4 + SEL_GAP * 3)) / 2, SEL_Y = 110, SEL_H = 470;
 
+// The full roster is always on screen: a joined column shows that player's pick, and every empty
+// column shows one of the survivors nobody has picked yet (so a solo player still sees all four).
+function rosterPreview(slots) {
+  const taken = new Set(slots.filter(Boolean).map((sl) => sl.cls));
+  const spare = CLASS_ORDER.filter((c) => !taken.has(c));
+  let n = 0;
+  return Array.from({ length: MAX_PLAYERS }, (_, s) => (slots[s] ? null : spare[n++ % Math.max(1, spare.length)] || CLASS_ORDER[s % CLASS_ORDER.length]));
+}
+
 export function selectShowcase(slots, time) {
   const out = [];
+  const prev = rosterPreview(slots);
   for (let s = 0; s < MAX_PLAYERS; s++) {
     const slot = slots[s];
-    if (!slot) continue;
-    out.push({ cls: slot.cls, sx: SEL_X0 + s * (SEL_W + SEL_GAP) + SEL_W / 2, sy: SEL_Y + 262, scale: 1.75, turn: time * 0.9 + s, walk: false, cheer: slot.ready });
+    const cls = slot ? slot.cls : prev[s];
+    out.push({ cls, sx: SEL_X0 + s * (SEL_W + SEL_GAP) + SEL_W / 2, sy: SEL_Y + 262, scale: slot ? 1.75 : 1.55, turn: time * (slot ? 0.9 : 0.6) + s, walk: false, cheer: !!(slot && slot.ready) });
   }
   return out;
 }
@@ -575,27 +585,34 @@ export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
     : `Left/Right or click ◀ ▶: choose · ${btn('attack')}: ready · ${btn('back')}: back`;
   outlined(ctx, help, VIEW_W / 2, 92, '#e0d4b8', '#000', 3);
 
+  const prev = rosterPreview(slots);
   for (let s = 0; s < MAX_PLAYERS; s++) {
     const x = SEL_X0 + s * (SEL_W + SEL_GAP), y = SEL_Y;
     const slot = slots[s];
     const def = slot ? CLASSES[slot.cls] : null;
     roundRect(ctx, x, y, SEL_W, SEL_H, 10);
-    ctx.fillStyle = 'rgba(10,8,6,0.35)';
+    ctx.fillStyle = slot ? 'rgba(30,22,16,0.55)' : 'rgba(10,8,6,0.3)';
     ctx.fill();
-    ctx.lineWidth = slot && slot.ready ? 4 : 2;
+    ctx.lineWidth = slot ? (slot.ready ? 5 : 4) : 2;
+    if (slot) { ctx.shadowColor = def.color; ctx.shadowBlur = 14; }
     ctx.strokeStyle = def ? def.color : 'rgba(160,130,80,0.5)';
     ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.lineWidth = 1;
     ctx.font = `bold 15px ${SANS}`;
     outlined(ctx, `PLAYER ${s + 1}`, x + SEL_W / 2, y + 24, '#f0e0b0', '#000', 3);
     if (!slot) {
-      if (Math.floor(time * 2) % 2) outlined(ctx, 'PRESS A', x + SEL_W / 2, y + 230, '#c8b890', '#000', 3);
+      // an open seat: the survivor on show is a preview, with the join hint underneath
+      const pd = CLASSES[prev[s]];
+      ctx.font = `bold 22px ${SERIF}`;
+      outlined(ctx, pd.name.toUpperCase(), x + SEL_W / 2, y + 306, pd.color, '#000', 5);
       ctx.font = `12px ${SANS}`;
-      outlined(ctx, 'on a gamepad to join,', x + SEL_W / 2, y + 256, '#a89878', '#000', 2);
-      if (!document.body.classList.contains('touching')) {
-        outlined(ctx, 'or press 2 to share the keyboard', x + SEL_W / 2, y + 274, '#a89878', '#000', 2);
-        ctx.font = `bold 15px ${SANS}`;
-      }
+      wrap(ctx, pd.blurb, SEL_W - 24).slice(0, 2).forEach((ln, li) => outlined(ctx, ln, x + SEL_W / 2, y + 326 + li * 14, '#c8b890', '#000', 3));
+      ctx.font = `bold 15px ${SANS}`;
+      if (Math.floor(time * 2) % 2) outlined(ctx, 'PRESS A TO JOIN', x + SEL_W / 2, y + 360, '#e8d8a8', '#000', 3);
+      ctx.font = `12px ${SANS}`;
+      outlined(ctx, 'on a gamepad,', x + SEL_W / 2, y + 384, '#a89878', '#000', 2);
+      if (!document.body.classList.contains('touching')) outlined(ctx, 'or press 2 to share the keyboard', x + SEL_W / 2, y + 402, '#a89878', '#000', 2);
       continue;
     }
     ctx.font = `11px ${SANS}`;
@@ -608,7 +625,7 @@ export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
     ctx.font = `bold 26px ${SERIF}`;
     outlined(ctx, def.name.toUpperCase(), x + SEL_W / 2, y + 306, def.color, '#000', 5);
     ctx.font = `12px ${SANS}`;
-    outlined(ctx, def.blurb, x + SEL_W / 2, y + 326, '#e0d4b8', '#000', 3);
+    wrap(ctx, def.blurb, SEL_W - 24).slice(0, 2).forEach((ln, li) => outlined(ctx, ln, x + SEL_W / 2, y + 326 + li * 14, '#e0d4b8', '#000', 3));
     const stats = [
       ['Health', def.hp / 1100], ['Strength', def.strength / 30], ['Armor', def.armor / 0.25],
       ['Blast', def.magic / 1.6], ['Speed', def.speed / 160],
@@ -764,9 +781,10 @@ export function drawRealmPick(ctx, time, progress, pick) {
 function drawHubLabels(ctx, g, r3d, prompt = true) {
   ctx.textAlign = 'center';
   const L = g.level;
-  const dp = r3d.toScreen((L.directory.x + 0.5) * TILE, (L.directory.y + 0.5) * TILE, 70);
-  ctx.font = `bold 15px ${SERIF}`;
-  outlined(ctx, 'MALL DIRECTORY', dp.x, dp.y, '#2ee6ff', '#000', 4);
+  // low on the kiosk, clear of the big 3D SECURITY ROOM / MALL DIRECTORY neon overhead
+  const dp = r3d.toScreen((L.directory.x + 0.5) * TILE, (L.directory.y + 0.5) * TILE, 6);
+  ctx.font = `bold 12px ${SERIF}`;
+  outlined(ctx, 'MALL DIRECTORY', dp.x, dp.y + 18, '#2ee6ff', '#000', 3);
   const sp = r3d.toScreen((L.shop.x + 1.5) * TILE, (L.shop.y + 0.5) * TILE, 80);
   outlined(ctx, 'CASH UPGRADE COUNTER', sp.x, sp.y, '#ffd860', '#000', 4);
   const rp = r3d.toScreen((HUB_RAY.x + 0.5) * TILE, (HUB_RAY.y + 0.5) * TILE, 64);
@@ -1285,13 +1303,22 @@ function drawChoiceBar(ctx, v, time) {
   ctx.fill();
   outlined(ctx, v.prompt, VIEW_W / 2, 466, '#f6f0ff', '#000', 3);
   if (v.hint) { ctx.font = `italic bold 13px ${SANS}`; outlined(ctx, v.hint, VIEW_W / 2, 490 - 14, '#ffcc33', '#000', 3); }
-  // the timer line: thin, and it drains
-  const tx = CH.x, tw = 4 * CH.w + 3 * CH.gap, ty = CH.y - 10;
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(tx, ty, tw, 3);
-  const hot = v.timerFrac < 0.3;
-  ctx.fillStyle = hot ? (Math.floor(time * 8) % 2 ? '#ff3a4a' : '#ff8a8a') : '#2ee6ff';
-  ctx.fillRect(tx, ty, tw * v.timerFrac, 3);
+  // the timer bar: thick, neon, full width above the four choices, and it drains
+  const tx = CH.x, tw = 4 * CH.w + 3 * CH.gap, TH = 10, ty = CH.y - TH - 6;
+  const frac = Math.max(0, Math.min(1, v.timerFrac));
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(tx - 2, ty - 2, tw + 4, TH + 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.fillRect(tx, ty, tw, TH);
+  const hot = frac < 0.3;
+  const barCol = hot ? (Math.floor(time * 8) % 2 ? '#ff2e8a' : '#ffd040') : frac < 0.6 ? '#ffd040' : '#2ee6ff';
+  ctx.save();
+  ctx.shadowColor = barCol; ctx.shadowBlur = hot ? 14 : 8;
+  ctx.fillStyle = barCol;
+  ctx.fillRect(tx, ty, tw * frac, TH);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; // a highlight strip so it reads as a lit tube
+  ctx.fillRect(tx, ty, tw * frac, 2);
   v.choices.forEach((c, i) => {
     const r = choiceRect(i);
     roundRect(ctx, r.x, r.y, r.w, r.h, 6);

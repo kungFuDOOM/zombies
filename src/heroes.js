@@ -551,13 +551,25 @@ function dagger(hand) { return sword(hand, 0.28, '#e8e8f0'); }
 // ---------- weapons for the survivors ----------
 
 function chainsaw(hand) {
+  // Chunky on purpose: a fat orange engine block, a front grab handle, and a SHORT wide bar ringed
+  // with big teeth on every face, so on the title/select showcase it can't be mistaken for a rifle.
   const g = new THREE.Group();
-  const orange = mat('#ff6a1a', { roughness: 0.5 }), steel = metal('#cfd4de'), dark = mat('#17171c');
-  add(g, roundedBox(0.3), orange, [0, 0.1, 0.0], [0, 0, 0], [0.11, 0.24, 0.1]); // engine
-  add(g, box(), dark, [0, 0.02, 0.0], [0, 0, 0], [0.04, 0.08, 0.12]); // rear handle
-  add(g, box(), steel, [0, 0.52, 0.0], [0, 0, 0], [0.034, 0.58, 0.07]); // the bar
-  for (let i = 0; i < 12; i++) add(g, box(), dark, [(i % 2 ? 1 : -1) * 0.024, 0.26 + i * 0.047, 0], [0, 0, 0], [0.016, 0.022, 0.05]); // teeth
-  add(g, cylinder(1, 1), steel, [0, 0.82, 0], [Math.PI / 2, 0, Math.PI / 2], [0.035, 0.035, 0.035]);
+  const orange = mat('#ff6a1a', { roughness: 0.45, emissive: '#a02800', emissiveIntensity: 0.35 });
+  const steel = metal('#d8dde8'), dark = mat('#17171c'), tooth = metal('#f2f4f8');
+  add(g, roundedBox(0.3), orange, [0, 0.1, 0], [0, 0, 0], [0.2, 0.3, 0.22]);        // engine housing
+  add(g, box(), dark, [0, 0.1, 0.116], [0, 0, 0], [0.12, 0.12, 0.02]);               // intake grille
+  add(g, box(), mat('#ffd040'), [0, 0.2, 0.116], [0, 0, 0], [0.12, 0.03, 0.022]);    // yellow stripe
+  add(g, torus(0.07, 0.016), dark, [0, 0.31, 0], [0, Math.PI / 2, 0]);               // top handle loop
+  add(g, torus(0.065, 0.016), dark, [0, -0.1, 0], [0, Math.PI / 2, 0]);              // rear handle
+  add(g, box(), dark, [0, 0.22, 0.13], [0, 0, 0], [0.03, 0.18, 0.03]);               // front guard
+  add(g, box(), steel, [0, 0.44, 0], [0, 0, 0], [0.05, 0.4, 0.13]);                  // the bar
+  add(g, cylinder(1, 1), steel, [0, 0.64, 0], [0, 0, Math.PI / 2], [0.065, 0.065, 0.05]); // bar tip
+  for (let i = 0; i < 8; i++) {
+    const y = 0.26 + i * 0.05;
+    for (const sz of [-1, 1]) add(g, box(), tooth, [0, y, sz * 0.078], [0, 0, 0], [0.04, 0.026, 0.03]); // teeth, both long edges
+    add(g, box(), tooth, [(i % 2 ? 1 : -1) * 0.034, y, 0], [0, 0, 0], [0.026, 0.026, 0.1]);
+  }
+  g.rotation.x = -0.35; // cocked up off the forearm so the saw shows its side
   hand.add(g);
   return g;
 }

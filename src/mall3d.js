@@ -410,16 +410,16 @@ function buildSecurityRoom(r, g, group, addSign) {
   }
   // the Mall Directory kiosk
   const dir = L.directory;
-  const kioskBack = new THREE.Mesh(new THREE.BoxGeometry(76, 92, 8), new THREE.MeshStandardMaterial({ color: '#1a1030', roughness: 0.5 }));
-  kioskBack.position.set((dir.x + 0.5) * S, 46, (dir.y + 0.5) * S);
+  const kioskBack = new THREE.Mesh(new THREE.BoxGeometry(56, 48, 8), new THREE.MeshStandardMaterial({ color: '#1a1030', roughness: 0.5 }));
+  kioskBack.position.set((dir.x + 0.5) * S, 24, (dir.y + 0.5) * S);
   group.add(kioskBack);
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(68, 84), new THREE.MeshBasicMaterial({ map: directoryTexture(), toneMapped: false }));
-  board.position.set((dir.x + 0.5) * S, 46, (dir.y + 0.5) * S + 4.2);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(50, 42), new THREE.MeshBasicMaterial({ map: directoryTexture(), toneMapped: false }));
+  board.position.set((dir.x + 0.5) * S, 25, (dir.y + 0.5) * S + 4.2);
   group.add(board);
-  const dh = glowSprite('#2ee6ff', 130, 0.3);
-  dh.position.set((dir.x + 0.5) * S, 46, (dir.y + 0.5) * S + 12);
+  const dh = glowSprite('#2ee6ff', 80, 0.3);
+  dh.position.set((dir.x + 0.5) * S, 25, (dir.y + 0.5) * S + 12);
   group.add(dh);
-  r.torches.push({ x: (dir.x + 0.5) * S, z: (dir.y + 3) * S, y: 50, color: '#2ee6ff', power: 160 });
+  r.torches.push({ x: (dir.x + 0.5) * S, z: (dir.y + 3) * S, y: 40, color: '#2ee6ff', power: 160 });
   // the cash upgrade counter and its clerk
   const sh = L.shop;
   const counter = new THREE.Mesh(new THREE.BoxGeometry(34, 24, 3 * S), new THREE.MeshStandardMaterial({ color: '#ff4fb8', roughness: 0.4, emissive: '#7a1a5a', emissiveIntensity: 0.4 }));

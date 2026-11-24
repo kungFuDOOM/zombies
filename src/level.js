@@ -284,7 +284,7 @@ function generateFoodCourt(n, seed, info) {
 
 // ---------- the Security Room hub ----------
 
-export const HUB_DIRECTORY = { x: 14, y: 4 };   // the Mall Directory kiosk
+export const HUB_DIRECTORY = { x: 20, y: 4 };   // the Mall Directory kiosk
 export const HUB_SHOP = { x: 5, y: 8 };          // the cash upgrade counter
 export const HUB_RAY = { x: 22, y: 8 };          // where Ray hangs around, if he lived
 

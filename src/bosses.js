@@ -102,13 +102,14 @@ function ring(g, e, n, kind, dmgN, speed, off = Math.random()) {
 }
 // Summoned thralls are weaker than the realm's own monsters, and only so many at once:
 // they're there to split the heroes' attention, not to be the fight.
-export const THRALL = { hp: 0.5, dmg: 0.6, max: 3 }; // max: alive at once, plus the phase
+export const THRALL = { hp: 0.5, dmg: 0.6, max: 3, spawnMin: 180, spawnMax: 260, keepOut: 96 }; // max: alive at once, plus the phase
 function summon(g, e, n) {
   const kinds = enemyWeights(g.levelNum).map(([k]) => k);
   const room = THRALL.max + e.bphase - g.enemies.filter((m) => m.thrall && m.hp > 0).length;
   for (let i = 0; i < Math.min(n, room); i++) {
-    const a = Math.random() * Math.PI * 2;
-    const x = e.x + Math.cos(a) * 70, y = e.y + Math.sin(a) * 70;
+    // well out of the Butcher's footprint, so he stays one readable shape, never a pile
+    const a = Math.random() * Math.PI * 2, r = rand(THRALL.spawnMin, THRALL.spawnMax);
+    const x = e.x + Math.cos(a) * r, y = e.y + Math.sin(a) * r;
     if (g.collides(x, y, 12)) continue;
     const m = g.spawnEnemy(kinds[Math.floor(Math.random() * kinds.length)], x, y);
     m.fromGen = true; m.thrall = true;
