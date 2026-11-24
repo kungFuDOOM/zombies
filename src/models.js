@@ -2,6 +2,7 @@
 // pickups, projectiles, the exit portal, plus shared glow/swirl textures.
 
 import * as THREE from 'three';
+import { buildBossRig } from './bossModels.js';
 
 // ---------- shared helpers ----------
 
@@ -237,6 +238,17 @@ export function glowSprite(color, size, opacity = 0.9) {
 export const BOSS_SCALE = 1.05;
 
 export function buildBoss(model, color, hornColor) {
+  // the skinned, lofted bosses (bossModels.js); the old primitive builds below remain as a fallback
+  try {
+    const built = buildBossRig(model);
+    if (built) {
+      built.root.userData.mats = built.mats;
+      built.root.userData.bossScale = BOSS_SCALE;
+      built.root.userData.kind = 'boss';
+      built.root.userData.model = model;
+      return built.root;
+    }
+  } catch (err) { console.error('boss model failed, using fallback', err); }
   const mats = makeMats(false);
   const { m } = mats;
   const root = new THREE.Group();

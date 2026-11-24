@@ -14,6 +14,7 @@ import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanG
 import { Lobby } from './lobby.js';
 import { Renderer3D } from './render3d.js';
 import { loadAssets } from './assets.js';
+import { startLineup, renderLineup, lineupActive } from './lineup.js';
 import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
 import { unlockedClasses, loadSave, writeSave, newSave, hasProgress, isUnlocked, levelNumber, nextStage, completeLevel, SHOP, buy, STORY, wingOpen, REALMS } from './campaign.js';
 import { levelInfo, WINGS } from './level.js';
@@ -71,7 +72,7 @@ let game = null;
 let state = 'loading';
 let loadProgress = 0;
 let loadError = null;
-loadAssets((p) => (loadProgress = p)).then(() => setState('title')).catch((err) => { loadError = err; console.error(err); });
+loadAssets((p) => (loadProgress = p)).then(() => { setState('title'); const q = new URLSearchParams(location.search); if (q.has('lineup')) startLineup(r3d, q.get('lineup') || 'all'); }).catch((err) => { loadError = err; console.error(err); });
 let stateT = 0;
 let slots = [];       // character select: { source, cls, ready }
 let countdown = null;
@@ -884,6 +885,7 @@ function musicIntensity() {
 
 function render() {
   ctx.textBaseline = 'alphabetic';
+  if (lineupActive() && state !== 'loading') { ctx.clearRect(0, 0, VIEW_W, VIEW_H); renderLineup(r3d, 1 / 60); return; }
   // an online guest shows the host's quest
   const guest = net && net.role === 'guest';
   const progress = guest ? net.ui.prog || save.progress : save.progress;
@@ -1060,7 +1062,7 @@ function loop(now) {
 }
 
 // Debug/test hook (used by automated smoke tests).
-window.__motd = { get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
+window.__motd = { lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
 
 // Scale canvas to fit window while keeping aspect ratio.
 function fit() {

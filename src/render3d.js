@@ -35,12 +35,12 @@ const HERO_STYLE = {
 };
 
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
-const ENEMY_STYLE = {
+export const ENEMY_STYLE = {
   // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
-  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.38, head: 0.35, reach: 1.45, bend: 0.2, sway: 0.14, hitch: 0.3, rate: 0.9 } },
-  sprinter: { model: 'm_sprinter', walk: 'Running_C', walkSpeed: 1.5, idleSpeed: 0.4, scale: 0.95, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.5, head: 0.4, reach: 1.3, bend: 0.5, sway: 0.24, hitch: 0.35, rate: 2.0, uneven: 0.6 } },
-  brute: { model: 'm_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.28, head: 0.25, reach: 1.15, bend: 0.25, sway: 0.2, hitch: 0.22, rate: 0.7 } },
-  spitter: { model: 'm_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.34, head: 0.32, reach: 1.2, bend: 0.5, sway: 0.16, hitch: 0.4, rate: 1.2 } },
+  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.32, head: 0.26, reach: 1.45, bend: 0.2, sway: 0.14, hitch: 0.3, rate: 0.9 } },
+  sprinter: { model: 'm_sprinter', walk: 'Running_C', walkSpeed: 1.5, idleSpeed: 0.4, scale: 0.95, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.3, head: 0.2, reach: 1.1, bend: 0.5, sway: 0.2, hitch: 0.3, rate: 2.0, uneven: 0.6 } },
+  brute: { model: 'm_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.28, head: 0.25, reach: 1.15, bend: 0.25, sway: 0.2, hitch: 0.22, rate: 0.7, stomp: 0.045, drag: 0.4 } },
+  spitter: { model: 'm_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.34, head: 0.32, reach: 1.2, bend: 0.5, sway: 0.16, hitch: 0.4, rate: 1.2, retch: 0.5 } },
   death: { model: 'skeleton_mage', weapon: 'weapon_staff', tint: '#3a3440', eyes: '#ff1010', walk: 'Walking_A', walkSpeed: 1.2, scale: 1.25 },
 };
 
@@ -719,6 +719,10 @@ export class Renderer3D {
       if (h.userData.jaw) h.userData.jaw.rotation.x = open ? 0.65 : Math.max(0, Math.sin(t * 3)) * 0.15;
     });
     if (rig.tail) rig.tail.rotation.y = Math.sin(t * 2) * 0.4;
+    // optional pivots on the skinned bosses (bossModels.js); absent on the old builds
+    if (rig.belly) rig.belly.rotation.x = Math.sin(t * (moving ? 8 : 2)) * 0.035;
+    if (rig.basket) rig.basket.rotation.x = Math.sin(t * 3) * 0.12 + (act && act.type === 'cast' && since < 0.6 ? -since * 2 : 0);
+    if (rig.reels) rig.reels.forEach((rl, i) => (rl.rotation.x = t * 3 * (i ? -1 : 1)));
     rig.rig.rotation.x = e.charging > 0 ? 0.25 : 0;
     const winding = act && (act.type === 'windup' || act.type === 'roar') && since < 0.8;
     const on = e.hurt > 0 || winding;

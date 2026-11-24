@@ -6,6 +6,7 @@ import { T, WINGS, HUB_RAY } from './level.js';
 import { hubRayLabel } from './story.js';
 import { Input } from './input.js';
 import { SHOP, priceOf, maxed } from './campaign.js';
+import { BOSS_ROSTER } from './bossRoster.js';
 
 const SERIF = '"Arial Black", Impact, "Trebuchet MS", sans-serif'; // arcade display type
 const SANS = '"Trebuchet MS", Verdana, sans-serif';
@@ -732,7 +733,8 @@ export function drawStory(ctx, story, time) {
 // ---------- the Mall Directory ----------
 // Six wings. Wing 1 is playable; the rest are on the board but locked.
 const WING_COLORS = ['#ff2ea6', '#40ff90', '#ff3040', '#ff8a30', '#ff3040', '#ffa020'];
-const WING_STAGES = ['Food Court Plaza, then The Deep-Fry Butcher', 'Coming soon', 'Coming soon', 'Coming soon', 'Coming soon', 'Coming soon (then the Rooftop Helipad)'];
+const WING_STAGES = ['Food Court Plaza, then The Deep-Fry Butcher', ...[2, 3, 4, 5, 6].map((wing) =>
+  `Coming soon: ${BOSS_ROSTER.find((b) => b.wing === wing).name}${wing === 6 ? ' (then the Rooftop Helipad)' : ''}`)];
 const MD_X = 150, MD_Y = 80, MD_W = VIEW_W - 300, MD_ROW = 62;
 const wingRow = (k) => ({ x: MD_X + 14, y: MD_Y + 62 + k * (MD_ROW + 6), w: MD_W - 28, h: MD_ROW });
 

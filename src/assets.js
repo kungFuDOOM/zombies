@@ -202,17 +202,28 @@ function undeadClip(u, sign) {
   const hit = u.hitch || 0.3;
   const hitch = (ph) => Math.max(0, Math.sin(ph * 2)) ** 3 * hit; // a wet catch in the stride: the spine folds
   const lurch = (ph) => Math.sin(ph) * u.sway * 1.8 + Math.sin(ph * 2 + 1.3) * u.sway * 0.9;
-  track('hips', (ph) => [0.08 + hitch(ph) * 0.3, lurch(ph) * 0.3, lurch(ph) * 0.45]);
-  track('spine', (ph) => [u.lean * 0.7 + hitch(ph) * 0.7, 0, lurch(ph) * 0.55]);
-  track('chest', (ph) => [u.lean * 0.8 + hitch(ph) * 1.2, lurch(ph) * 0.6, lurch(ph) * 0.7]);
-  track('head', (ph) => [u.head + 0.12 + hitch(ph) * 0.5 + Math.sin(ph * 2) * 0.1, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
+  track('hips', (ph) => [0.03 + hitch(ph) * 0.12, lurch(ph) * 0.3, lurch(ph) * 0.45]);
+  track('spine', (ph) => [u.lean * 0.4 + hitch(ph) * 0.25, 0, lurch(ph) * 0.55]);
+  track('chest', (ph) => [u.lean * 0.45 + hitch(ph) * 0.4, lurch(ph) * 0.6, lurch(ph) * 0.7]);
+  track('head', (ph) => [u.head * 0.6 + 0.03 + hitch(ph) * 0.15 + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
   const un = u.uneven || 0.85;
   track('upperarml', (ph) => [-(u.reach + Math.sin(ph) * 0.2), 0.1, -0.05]);
   track('upperarmr', (ph) => [-(u.reach * un + Math.sin(ph + 2) * 0.25 + hitch(ph) * 0.3), -0.1, 0.05]);
   track('lowerarml', (ph) => [-u.bend - Math.max(0, Math.sin(ph * 2)) * 0.25, 0, 0]);
   track('lowerarmr', (ph) => [-u.bend * 1.4 - Math.max(0, Math.sin(ph * 2 + 1)) * 0.3, 0, 0]);
-  track('upperlegr', (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.18, 0, 0.06]); // a dragging leg
-  track('lowerlegr', (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.22, 0, 0]);
+  const dl = sign > 0 ? 'r' : 'l'; // which leg drags is random per zombie (the head tilts the other way)
+  track(`upperleg${dl}`, (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.18 * (u.drag ?? 1), 0, 0.06 * (u.drag ?? 1)]);
+  track(`lowerleg${dl}`, (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.22 * (u.drag ?? 1), 0, 0]);
+  if (u.retch) { // spitters: a wet heave, head and chest pitching forward
+    const pulse = (ph) => Math.max(0, Math.sin(ph * 1.0 + 0.4)) ** 8 * u.retch;
+    track('chest', (ph) => [pulse(ph) * 0.4, 0, 0]);
+    track('head', (ph) => [pulse(ph) * 0.4, 0, 0]);
+  }
+  if (u.stomp) { // brutes: the whole body drops on each footfall (additive hips position)
+    const vals = [];
+    for (let i = 0; i <= N; i++) { const ph = (i / N) * Math.PI * 2; vals.push(0, -Math.abs(Math.sin(ph * 2)) * u.stomp, 0); }
+    tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, vals));
+  }
   const clip = new THREE.AnimationClip(`undead:${key}`, dur, tracks, THREE.AdditiveAnimationBlendMode);
   undeadClips.set(key, clip);
   return clip;

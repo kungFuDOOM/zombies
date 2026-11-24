@@ -6,6 +6,9 @@
 // grid, "rooms" (open spaces used for placing things), spawners and a start/exit pair.
 
 import { POWERUP_ORDER } from './config.js';
+import { BOSS_ROSTER } from './bossRoster.js';
+
+const rosterName = (wing) => BOSS_ROSTER.find((b) => b.wing === wing).name;
 
 export const T = { WALL: 0, FLOOR: 1, DOOR: 2, EXIT: 3, SEALED: 4, LAVA: 5, VOID: 6, BRIDGE: 7, CRACKED: 8, SPIKES: 9 };
 export const GROUND = { DEFAULT: 0, GRASS: 1 };
@@ -13,11 +16,11 @@ export const GROUND = { DEFAULT: 0, GRASS: 1 };
 // The six wings of the mall. Only the Food Court is playable in this slice.
 export const WINGS = [
   { id: 'food', name: 'Food Court', long: 'Wing 1: Food Court', boss: 'The Deep-Fry Butcher', open: true, tag: 'BLACK FRIDAY OUTBREAK' },
-  { id: 'arcade', name: 'Arcade, Bowling & Batting Cages', long: 'Wing 2: Arcade, Bowling & Batting Cages', boss: null, open: false },
-  { id: 'theater', name: 'Movie Theater', long: 'Wing 3: Movie Theater', boss: null, open: false },
-  { id: 'gym', name: 'Fitness Center', long: 'Wing 4: Fitness Center / Gym', boss: null, open: false },
-  { id: 'toys', name: 'Toy Store & Holiday Atrium', long: 'Wing 5: Toy Store & Holiday Atrium', boss: null, open: false },
-  { id: 'hardware', name: 'Hardware & Garden Center', long: 'Wing 6: Hardware & Garden Center, then the Rooftop Helipad', boss: null, open: false },
+  { id: 'arcade', name: 'Arcade, Bowling & Batting Cages', long: 'Wing 2: Arcade, Bowling & Batting Cages', boss: rosterName(2), open: false },
+  { id: 'theater', name: 'Movie Theater', long: 'Wing 3: Movie Theater', boss: rosterName(3), open: false },
+  { id: 'gym', name: 'Fitness Center', long: 'Wing 4: Fitness Center / Gym', boss: rosterName(4), open: false },
+  { id: 'toys', name: 'Toy Store & Holiday Atrium', long: 'Wing 5: Toy Store & Holiday Atrium', boss: rosterName(5), open: false },
+  { id: 'hardware', name: 'Hardware & Garden Center', long: 'Wing 6: Hardware & Garden Center, then the Rooftop Helipad', boss: rosterName(6), open: false },
 ];
 
 export const THEMES = [

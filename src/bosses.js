@@ -8,6 +8,7 @@
 import { BLAST } from './config.js';
 import { enemyWeights } from './level.js';
 import { sfx } from './audio.js';
+import { BOSS_ROSTER, MOVE_ALIAS } from './bossRoster.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -16,9 +17,7 @@ export const BOSS_HP_MAGIC_CAP = 0.06; // most of its health a potion can take
 export const BOSS_WARD = 8;            // seconds a guardian shrugs off magic after a potion
 
 // moves per phase; the last phase adds the deadliest versions
-const MOVESETS = {
-  butcher: [['sweep', 'slam', 'grease'], ['sweep', 'slam', 'grease', 'summon', 'charge'], ['sweep2', 'slam2', 'grease', 'summon', 'charge2']],
-};
+const MOVESETS = Object.fromEntries(BOSS_ROSTER.map((b) => [b.id, b.moves]));
 const GAP = [1.5, 1.1, 0.75]; // rest between moves, per phase
 
 export function phaseOf(e) { return e.hp > e.maxHp * 0.66 ? 1 : e.hp > e.maxHp * 0.33 ? 2 : 3; }
@@ -50,7 +49,7 @@ export function updateBoss(g, e, p, d, dt, contact) {
   }
   if (e.move) {
     e.move.t += dt;
-    if (MOVES[e.move.name](g, e, p, e.move, dt)) { e.move = null; e.rest = GAP[e.bphase - 1] * rand(0.8, 1.2); }
+    if ((MOVES[e.move.name] || MOVES[MOVE_ALIAS[e.move.name]])(g, e, p, e.move, dt)) { e.move = null; e.rest = GAP[e.bphase - 1] * rand(0.8, 1.2); }
     return;
   }
   // between moves: close in and swipe at anyone in reach

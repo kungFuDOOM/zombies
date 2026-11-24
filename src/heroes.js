@@ -4,6 +4,7 @@
 // The rig's bones are re-positioned to adult lengths; bone-local Y always runs along a bone.
 
 import * as THREE from 'three';
+import { skinCtx, loft, addSurfaces } from './mesh.js';
 
 // ---------- rig proportions (metres) ----------
 
@@ -497,13 +498,25 @@ function body(rig, B, o) {
   const hips = bone('hips'), spine = bone('spine'), chest = bone('chest'), head = bone('head');
   const R = o.rig;
 
-  // pelvis and abdomen (spine bone, local Y up, front +Z)
+  // abdomen and chest: one continuous skinned torso from the pelvis to the base of the neck
   const abs = z('abs', o.bare ? mat('#ffffff', { map: torsoTex(o.skin), roughness: 0.55 }) : skin);
-  add(spine, lathe([[B.hip * 0.7, -R.spine - 0.06], [B.hip, -R.spine + 0.01], [B.hip * 0.98, -0.04], [B.waist, 0.04], [B.waist * 1.04, R.chest * 0.6], [B.chest * 0.92, R.chest + 0.01]]), abs, [0, 0, 0], [0, Math.PI, 0], [1, 1, B.chestD + 0.06]);
-  // chest
   const chestMat = z('chest', o.bare ? mat('#ffffff', { map: chestTex(o.skin), roughness: 0.55 }) : skin);
-  add(chest, lathe([[B.chest * 0.92, -0.02], [B.chest, 0.07], [B.chest * 1.02, 0.15], [B.chest * 0.82, R.shoulderY + 0.02], [B.neck * 1.3, R.neck * 0.92], [B.neck, R.neck + 0.01]]), chestMat, [0, 0, 0], [0, Math.PI, 0], [1, 1, B.chestD]);
-  if (B.bust) for (const s of [-1, 1]) add(chest, sphere(), chestMat, [s * 0.052, 0.1, B.chest * B.chestD * 0.78], [0, 0, 0], [0.058, 0.055, 0.05]);
+  const S = skinCtx(rig);
+  const surf = (list) => addSurfaces(S, list, { merge: !!o.merge });
+  const hS = R.spine, hC = R.spine + R.chest, hH = hC + R.neck, Da = B.chestD + 0.06, D = B.chestD, E = 0.06; // heights above the hips; E = extension below them
+  const bust = B.bust ? 0.02 : 0;
+  surf(loft(S, {
+    pts: ['hips', 'spine', 'chest', 'head'].map((n) => S.pos(n)), bones: ['hips', 'spine', 'chest'], ext0: E, seg: 14, step: 0.045, blend: 0.55,
+    profile: [
+      [0, B.hip * 0.72, B.hip * 0.72 * Da], [E, B.hip * 1.02, B.hip * 1.02 * Da], [E + hS + 0.04, B.waist, B.waist * Da],
+      [E + hS + R.chest * 0.6, B.waist * 1.05, B.waist * 1.05 * Da], [E + hC, B.chest * 0.93, B.chest * 0.93 * D],
+      [E + hC + 0.08, B.chest, B.chest * D, bust], [E + hC + 0.16, B.chest * 1.05, B.chest * 1.04 * D, bust * 0.5],
+      [E + hC + R.shoulderY - 0.03, Math.max(B.chest * 1.04, R.shoulder * 0.8), B.chest * D * 0.82],
+      [E + hC + R.shoulderY + 0.03, R.shoulder * 0.6, B.chest * D * 0.6], [E + hC + R.neck * 0.82, B.neck * 1.7, B.neck * 1.6],
+      [E + hH, B.neck * 1.05, B.neck * 1.05],
+    ],
+    zones: [{ from: 0, to: E + hC, mat: abs }, { from: E + hC, to: E + hH, mat: chestMat }],
+  }));
   // shoulders
   for (const side of ['l', 'r']) {
     const ua = bone(`upperarm${side}`);
@@ -520,24 +533,40 @@ function body(rig, B, o) {
     if (o.face && o.face.beard) add(head, roundedBox(0.6), mat(o.face.beard, { roughness: 0.95, map: strands(o.face.beard) }), [0, 0.07 * hs, 0.055], [0.25, 0, 0], [0.12 * hs, 0.09 * hs, 0.09 * hs]); // beard bulk
     for (const s of [-1, 1]) add(head, sphere(8), skin, [s * 0.086 * hs, 0.15 * hs, -0.005], [0, 0, 0], [0.014, 0.028, 0.02]); // ears
   }
-  // arms
+  // arms and legs: continuous tubes skinned across the elbow / knee, with fists and feet on the end bones
+  const upperMat = z('upperArm', skin), foreMat = z('foreArm', skin);
   for (const side of ['l', 'r']) {
-    add(bone(`upperarm${side}`), limb(R.arm, B.arm * 0.95, B.arm * 1.12, B.arm * 0.8, 0.45), z('upperArm', skin));
-    if (o.stump === side) { // a forearm torn off at the elbow: bone and gore
-      add(bone(`lowerarm${side}`), limb(R.fore * 0.45, B.fore * 1.05, B.fore * 1.1, B.fore * 0.9, 0.25), z('foreArm', skin));
+    const wrist = S.pos(`wrist${side}`), elbow = S.pos(`lowerarm${side}`);
+    const stump = o.stump === side;
+    const end = stump ? elbow.clone().lerp(wrist, 0.45) : wrist;
+    const A = B.arm, F = B.fore, L1 = R.arm, L2 = R.fore * (stump ? 0.45 : 1);
+    surf(loft(S, {
+      pts: [S.pos(`upperarm${side}`), elbow, end], bones: [`upperarm${side}`, `lowerarm${side}`], ext0: 0.03, ext1: stump ? 0 : 0.07, seg: 10, step: 0.045, blend: 0.9,
+      profile: [
+        [0, A * 1.05], [0.03 + L1 * 0.35, A * 1.16], [0.03 + L1 * 0.8, A * 0.98], [0.03 + L1, A * 0.9], [0.03 + L1 + L2 * 0.28, F * 1.22], [0.03 + L1 + L2, F * (stump ? 1.05 : 0.74)], [0.03 + L1 + L2 + 0.07, F * 0.72],
+      ].map(([d, r]) => [d, r, r * 0.96]),
+      zones: [{ from: 0, to: 0.03 + L1, mat: upperMat, inflate: upperMat === skin ? 1 : 1.05 }, { from: 0.03 + L1, to: 9, mat: foreMat, inflate: foreMat === skin ? 1 : 1.05 }],
+    }));
+    if (stump) { // a forearm torn off at the elbow: bone and gore
       add(bone(`lowerarm${side}`), cone(5), mat('#d8d0b8'), [0, R.fore * 0.5, 0], [0, 0, 0], [B.fore * 0.5, 0.07, B.fore * 0.5]);
       add(bone(`lowerarm${side}`), sphere(8), mat('#5a0808'), [0, R.fore * 0.44, 0], [0, 0, 0], [B.fore * 1.05, 0.018, B.fore * 1.05]);
       continue;
     }
-    add(bone(`lowerarm${side}`), limb(R.fore, B.fore * 1.05, B.fore * 1.1, B.fore * 0.72, 0.25), z('foreArm', skin));
     const hand = z('hands', skin);
     add(bone(`hand${side}`), roundedBox(0.5), hand, [0, o.face && o.face.undead ? 0.01 : 0.035, 0], [0, 0, 0], [0.058 * B.head, 0.08 * B.head, 0.042 * B.head]); // fist (zombies' hang lower so the wrist joins)
     add(bone(`hand${side}`), roundedBox(0.5), hand, [side === 'l' ? -0.024 : 0.024, 0.02, 0.014], [0, 0, side === 'l' ? 0.4 : -0.4], [0.018, 0.042, 0.018]); // thumb
   }
-  // legs
+  const thighMat = z('thigh', skin), calfMat = z('calf', skin);
   for (const side of ['l', 'r']) {
-    add(bone(`upperleg${side}`), limb(R.leg, B.thigh * 1.08, B.thigh * 1.06, B.calf * 0.92, 0.2), z('thigh', skin));
-    add(bone(`lowerleg${side}`), limb(R.shin, B.calf * 0.85, B.calf * 1.08, B.calf * 0.62, 0.3), z('calf', skin));
+    const T = B.thigh, C = B.calf, L1 = R.leg, L2 = R.shin;
+    surf(loft(S, {
+      pts: [S.pos(`upperleg${side}`), S.pos(`lowerleg${side}`), S.pos(`foot${side}`)], bones: [`upperleg${side}`, `lowerleg${side}`], ext0: 0.03, seg: 10, step: 0.05, blend: 0.8,
+      profile: [
+        [0, T * 1.1, T * 1.1], [0.03 + L1 * 0.25, T * 1.14, T * 1.14], [0.03 + L1 * 0.8, T * 0.98, T * 0.98], [0.03 + L1, C * 1.0, C * 1.02],
+        [0.03 + L1 + L2 * 0.3, C * 1.14, C * 1.2, -C * 0.12], [0.03 + L1 + L2 * 0.8, C * 0.74, C * 0.74], [0.03 + L1 + L2, C * 0.62, C * 0.62],
+      ],
+      zones: [{ from: 0, to: 0.03 + L1, mat: thighMat, inflate: thighMat === skin ? 1 : 1.04 }, { from: 0.03 + L1, to: 9, mat: calfMat, inflate: calfMat === skin ? 1 : 1.04 }],
+    }));
     // foot: an elongated wedge pointing along the foot bone toward the toes
     add(bone(`foot${side}`), roundedBox(0.4), z('feet', skin), [0, 0.06, -0.012], [0.15, 0, 0], [0.085 * B.head, 0.2, 0.07]);
   }

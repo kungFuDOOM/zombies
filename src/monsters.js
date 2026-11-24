@@ -15,7 +15,7 @@ const ragTex = (c, seed, o) => rawRag(shade(c, -0.08), seed, o);
 const MRIGS = { ...RIGS };
 const MBODIES = {
   ...BODIES,
-  scrawny: { chest: 0.12, chestD: 0.72, waist: 0.095, hip: 0.105, arm: 0.034, fore: 0.031, thigh: 0.052, calf: 0.038, neck: 0.036, delt: 0.042, head: 1.25 },
+  scrawny: { chest: 0.12, chestD: 0.72, waist: 0.095, hip: 0.105, arm: 0.034, fore: 0.031, thigh: 0.052, calf: 0.038, neck: 0.036, delt: 0.042, head: 1.08 },
   gaunt: { chest: 0.15, chestD: 0.62, waist: 0.11, hip: 0.12, arm: 0.04, fore: 0.035, thigh: 0.07, calf: 0.048, neck: 0.042, delt: 0.048, head: 1 },
   bloat: { chest: 0.19, chestD: 0.9, waist: 0.17, hip: 0.16, arm: 0.052, fore: 0.044, thigh: 0.082, calf: 0.056, neck: 0.05, delt: 0.06, head: 0.95 },
 };
@@ -83,7 +83,7 @@ function zombie(rig, { R, B, skin, seed, shirt, sleeves = true, pants, shorts = 
   const flesh = mat('#ffffff', { map: rotTex(skin, seed), roughness: 0.8 });
   const b = body(rig, B, {
     rig: R, skin, chest: shirt, abs: shirt, upperArm: sleeves ? shirt : flesh, foreArm: flesh, hands: flesh, thigh: pants, calf: shorts ? flesh : pants,
-    feet: shoes, neckMat: flesh, stump,
+    feet: shoes, neckMat: flesh, stump, merge: true,
     face: { undead: true, seed, brows: '#2a2e1c', ...face },
   });
   // exaggerated gore that reads from afar: a gaping chest wound, a blood-soaked belly, a bloody maw
@@ -258,6 +258,7 @@ function mergeParts(rig) {
     let b = m.parent;
     while (b && !b.isBone) b = b.parent;
     const bi = Math.max(0, bones.indexOf(b));
+    const pre = !!m.geometry.attributes.skinIndex;
     let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
     g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(toRig, m.matrixWorld));
     // flipped parts (negative scale) would turn inside out
@@ -271,11 +272,13 @@ function mergeParts(rig) {
     const n = g.attributes.position.count;
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
     if (!g.attributes.color) g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
-    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k);
-    const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
-    for (let i = 0; i < n; i++) { si[i * 4] = bi; sw[i * 4] = 1; }
-    g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
-    g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].includes(k)) g.deleteAttribute(k);
+    if (!pre) { // rigid part: every vertex fully weighted to its parent bone (lofted bodies bring their own blended weights)
+      const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) { si[i * 4] = bi; sw[i * 4] = 1; }
+      g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+      g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+    }
     const { look, bake } = same(m.material);
     if (bake) { // the part's own colour, into its vertex colours
       const c = g.attributes.color, col = m.material.color;
