@@ -27,19 +27,20 @@ function hash(x, y) {
 
 // How each survivor is animated.
 const HERO_STYLE = {
-  biker: { idle: '2H_Melee_Idle', melee: '2H_Melee_Attack_Chop', shoot: 'Throw', turbo: '2H_Melee_Attack_Spinning', meleeSpeed: 2.2, shootSpeed: 2.4 },
-  mallCop: { idle: 'Idle', melee: '1H_Melee_Attack_Stab', shoot: '2H_Ranged_Shoot', turbo: '2H_Ranged_Shoot', meleeSpeed: 2.3, shootSpeed: 3 },
-  skater: { idle: 'Idle', melee: '1H_Melee_Attack_Slice_Diagonal', shoot: 'Throw', turbo: 'Dodge_Forward', meleeSpeed: 2.6, shootSpeed: 3.2 },
-  mallGoth: { idle: 'Idle', melee: '1H_Melee_Attack_Stab', shoot: 'Spellcast_Shoot', turbo: 'Spellcast_Long', meleeSpeed: 2.2, shootSpeed: 2.8 },
+  biker: { run: 'Running_C', idle: '2H_Melee_Idle', melee: '2H_Melee_Attack_Chop', shoot: 'Throw', turbo: '2H_Melee_Attack_Spinning', meleeSpeed: 2.2, shootSpeed: 2.4 },
+  mallCop: { run: 'Running_C', idle: '2H_Melee_Idle', melee: '1H_Melee_Attack_Stab', shoot: '2H_Ranged_Shoot', turbo: '2H_Ranged_Shoot', meleeSpeed: 2.3, shootSpeed: 3 },
+  skater: { run: 'Running_A', idle: '2H_Melee_Idle', melee: '1H_Melee_Attack_Slice_Diagonal', shoot: 'Throw', turbo: 'Dodge_Forward', meleeSpeed: 2.6, shootSpeed: 3.2 },
+  mallGoth: { run: 'Running_C', idle: 'Idle', melee: '1H_Melee_Attack_Stab', shoot: 'Spellcast_Shoot', turbo: 'Spellcast_Long', meleeSpeed: 2.2, shootSpeed: 2.8 },
   ray: { idle: 'Idle', melee: '1H_Melee_Attack_Stab', shoot: 'Throw', turbo: 'Throw', meleeSpeed: 2, shootSpeed: 2.4 },
 };
 
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
 const ENEMY_STYLE = {
-  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 1.05, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A' },
-  sprinter: { model: 'm_sprinter', walk: 'Running_A', walkSpeed: 1.8, scale: 1, melee: '1H_Melee_Attack_Stab' },
-  brute: { model: 'm_brute', walk: 'Walking_A', walkSpeed: 1.1, scale: 1.15, melee: '1H_Melee_Attack_Slice_Diagonal' },
-  spitter: { model: 'm_spitter', walk: 'Walking_A', walkSpeed: 1.3, scale: 1.05 },
+  // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
+  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.3, head: 0.3, reach: 1.25, bend: 0.1, sway: 0.1, rate: 1 } },
+  sprinter: { model: 'm_sprinter', walk: 'Running_C', walkSpeed: 1.5, idleSpeed: 0.4, scale: 0.95, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.5, head: 0.4, reach: 0.9, bend: 0.5, sway: 0.2, rate: 2.2, uneven: 0.5 } },
+  brute: { model: 'm_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.16, head: 0.12, reach: 0.65, bend: 0.2, sway: 0.2, rate: 0.7 } },
+  spitter: { model: 'm_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.2, head: 0.25, reach: 0.8, bend: 0.5, sway: 0.12, hitch: 0.28, rate: 1.4 } },
   death: { model: 'skeleton_mage', weapon: 'weapon_staff', tint: '#3a3440', eyes: '#ff1010', walk: 'Walking_A', walkSpeed: 1.2, scale: 1.25 },
 };
 
@@ -51,7 +52,7 @@ export class Renderer3D {
     this.canvas = canvas;
     this.setPixelation(1);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.0; // a touch grimier than the first pass
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(42, VIEW_W / VIEW_H, 10, 3000);
@@ -100,6 +101,8 @@ export class Renderer3D {
 
     this.views = new Map();
     this.corpses = [];
+    this.gibs = [];
+    this.decals = [];
     this.markers = new Map();
     this.levelGroup = null;
     this.level = null;
@@ -187,6 +190,25 @@ export class Renderer3D {
     this.level = g.level;
     this.scene.add(group);
     buildMall(this, g, group);
+    this.addBloodSmears(g, group);
+  }
+
+  // Old blood on the terrazzo: a handful of flat smears and pools on random floor tiles, in one
+  // instanced draw. Seeded from the level so every client sees the same mess.
+  addBloodSmears(g, group) {
+    if (g.theme.name === 'Safe room') return;
+    const list = [];
+    let seed = (g.w * 131 + g.h * 17 + 7) | 0;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) | 0) >>> 0) / 4294967296;
+    for (let i = 0; i < 160 && list.length < 26; i++) {
+      const x = Math.floor(rnd() * g.w), y = Math.floor(rnd() * g.h);
+      if (g.tile(x, y) !== T.FLOOR) continue;
+      const k = rnd();
+      list.push({ x: x * TILE + rnd() * TILE, y: 0.35, z: y * TILE + rnd() * TILE, ry: rnd() * 6.28, sx: 8 + k * 16, sz: 5 + rnd() * 10, sy: 1, color: k < 0.5 ? '#4a0808' : '#6a0e0e' });
+    }
+    const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.62, depthWrite: false });
+    const inst = this.instancedPrim(group, new THREE.CircleGeometry(1, 12).rotateX(-Math.PI / 2), mat, list);
+    if (inst) inst.renderOrder = 1;
   }
 
   // The exit portal, flanked by neon posts.
@@ -263,11 +285,14 @@ export class Renderer3D {
 
   makeEnemy(e) {
     const st = ENEMY_STYLE[e.type] || ENEMY_STYLE.walker;
-    const a = new Actor(st.model, { tint: st.tint, ghost: st.ghost, emissiveEyes: st.eyes });
-    a.model.scale.setScalar((a.adult ? HERO_SCALE : S) * st.scale);
+    // zombies come in three variants and slightly different sizes, picked from their phase
+    const vi = st.undead ? Math.floor(e.phase * 1000) % 3 : 0;
+    const vr = st.undead ? ((Math.floor(e.phase * 7919) % 100) / 100 - 0.5) * 0.18 : 0;
+    const a = new Actor(vi ? `${st.model}${vi}` : st.model, { tint: st.tint, ghost: st.ghost, emissiveEyes: st.eyes, undead: st.undead ? { ...st.undead } : null });
+    a.model.scale.setScalar((a.adult ? HERO_SCALE : S) * st.scale * (1 + vr));
     if (st.weapon) a.attach(st.weapon, 'handslot.r');
     if (!st.float) this.blob(a.root, 30 * st.scale);
-    a.base('Idle');
+    a.base(st.undead ? st.walk : 'Idle', st.undead ? st.idleSpeed : 1);
     if (e.fromGen && !st.float) a.play('Spawn_Ground', { timeScale: 2.2 });
     return { kind: 'enemy', root: a.root, actor: a, style: st };
   }
@@ -300,6 +325,63 @@ export class Renderer3D {
     for (const mat of root.userData.mats) { mat.userData.e0 = mat.emissive.clone(); mat.userData.ei0 = mat.emissiveIntensity; }
     root.scale.setScalar(root.userData.bossScale);
     return { kind: 'boss', root, proc: true, baseScale: root.userData.bossScale };
+  }
+
+  // Kill burst: flesh chunks, bone and a tumbling limb or two, plus a blood pool on the floor.
+  // Pooled and capped so a horde dying at once stays cheap.
+  spawnGibs(x, z, scale = 1, type = 'walker') {
+    if (!this.gibMats) {
+      const m = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, flatShading: true, ...o });
+      this.gibMats = [m('#7a1010'), m('#4a0808'), m('#6a7a58'), m('#a05050'), m('#d8d0b4')];
+      this.gibBox = new THREE.BoxGeometry(1, 1, 1);
+      this.gibLimb = new THREE.CylinderGeometry(0.5, 0.38, 1, 6);
+      this.decalGeo = new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2);
+      this.decalMats = ['#5a0808', '#3a0606'].map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.75, depthWrite: false }));
+    }
+    const big = type === 'brute' ? 1.5 : 1;
+    const n = Math.round((7 + Math.random() * 4) * big);
+    for (let i = 0; i < n; i++) {
+      const limb = i < 2 + (big > 1 ? 1 : 0);
+      const mat = limb ? this.gibMats[2 + (i % 2) * 2] : this.gibMats[(Math.random() * 3) | 0];
+      const mesh = new THREE.Mesh(limb ? this.gibLimb : this.gibBox, mat);
+      const sz = (limb ? 4 : 1.8 + Math.random() * 2.4) * scale;
+      mesh.scale.set(sz * (limb ? 1.5 : 1), limb ? 10 * scale : sz * 0.8, sz * (limb ? 1.5 : 1));
+      mesh.position.set(x + (Math.random() - 0.5) * 8, 18 + Math.random() * 14, z + (Math.random() - 0.5) * 8);
+      const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 90;
+      this.scene.add(mesh);
+      this.gibs.push({ mesh, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 70 + Math.random() * 110, sx: (Math.random() - 0.5) * 14, sz: (Math.random() - 0.5) * 14, t: 0, life: limb ? 2.6 : 1.8 });
+    }
+    while (this.gibs.length > 160) this.scene.remove(this.gibs.shift().mesh);
+    const d = new THREE.Mesh(this.decalGeo, this.decalMats[(Math.random() * 2) | 0]);
+    d.position.set(x, 0.6 + this.decals.length * 0.002, z);
+    d.scale.set((11 + Math.random() * 8) * big, 1, (8 + Math.random() * 7) * big);
+    d.rotation.y = Math.random() * 3;
+    d.renderOrder = 1;
+    this.scene.add(d);
+    this.decals.push({ d, t: 0 });
+    while (this.decals.length > 36) this.scene.remove(this.decals.shift().d);
+  }
+
+  updateGibs(dt) {
+    for (let i = this.gibs.length - 1; i >= 0; i--) {
+      const gb = this.gibs[i], m = gb.mesh;
+      gb.t += dt;
+      if (m.position.y > 1.2) {
+        gb.vy -= 520 * dt;
+        m.position.x += gb.vx * dt; m.position.z += gb.vz * dt; m.position.y += gb.vy * dt;
+        m.rotation.x += gb.sx * dt; m.rotation.z += gb.sz * dt;
+        if (m.position.y <= 1.2) { m.position.y = 1.2; gb.vx = gb.vz = 0; }
+      }
+      if (gb.t > gb.life) {
+        m.position.y -= dt * 20;
+        if (gb.t > gb.life + 0.5) { this.scene.remove(m); this.gibs.splice(i, 1); }
+      }
+    }
+    for (let i = this.decals.length - 1; i >= 0; i--) {
+      const dc = this.decals[i];
+      dc.t += dt;
+      if (dc.t > 10) { dc.d.material = dc.d.material.clone(); dc.d.material.opacity -= dt * 0.4; if (dc.d.material.opacity <= 0) { this.scene.remove(dc.d); this.decals.splice(i, 1); } }
+    }
   }
 
   // Spawners: a shattered storefront shutter, a busted vent or a barricaded escalator, glowing
@@ -438,11 +520,13 @@ export class Renderer3D {
       } else if ((v.kind === 'enemy' || v.kind === 'boss') && v.actor && !obj.vanish && v.root.visible) {
         v.actor.flash(0);
         v.actor.die(v.kind === 'boss' ? 'Death_B' : 'Death_A');
+        if (v.style && v.style.undead) this.spawnGibs(v.root.position.x, v.root.position.z, v.style.scale, obj.type);
         this.corpses.push({ ...v, t: 0 });
         if (this.corpses.length > 40) this.scene.remove(this.corpses.shift().root); // bounded, whatever happens
       } else this.scene.remove(v.root);
       if (v.ward) this.scene.remove(v.ward, ...v.stars);
     }
+    this.updateGibs(dt);
     this.corpses = this.corpses.filter((c) => {
       c.t += dt;
       if (c.creature) c.creature.rotation.z = Math.min(Math.PI / 2, c.t * 6) * (c.root.id % 2 ? 1 : -1);
@@ -504,7 +588,7 @@ export class Renderer3D {
     const moving = moved > 0.2 || !!p.dash;
     v.root.position.set(p.x, 0, p.y);
     v.root.rotation.y = lerpAngle(v.root.rotation.y, Math.atan2(p.fx, p.fy), 0.3);
-    a.base(moving ? 'Running_A' : st.idle, moving ? Math.max(0.8, (moved / Math.max(dt, 0.001)) / 150) : 1);
+    a.base(moving ? st.run || 'Running_A' : st.idle, moving ? Math.max(0.8, (moved / Math.max(dt, 0.001)) / 150) : 1);
     if (p.act && p.act !== v.lastAct) {
       v.lastAct = p.act;
       if (p.act.type === 'melee') a.play(st.melee, { upper: moving, timeScale: st.meleeSpeed });
@@ -566,7 +650,8 @@ export class Renderer3D {
       }
       return;
     }
-    a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : 1);
+    if (st.undead) a.base(st.walk, moving ? st.walkSpeed : st.idleSpeed); // the dead never stand at ease
+    else a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : 1);
     if (e.act && e.act !== v.lastAct) {
       v.lastAct = e.act;
       const clip = e.act.type === 'throw' ? 'Throw' : e.act.type === 'cast' ? st.shoot || 'Spellcast_Shoot' : st.melee || '1H_Melee_Attack_Chop';

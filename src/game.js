@@ -21,6 +21,8 @@ function newFoes(L) {
   return ` · Beware: ${enemyWeights(n).map(([k]) => ENEMIES[k].name).join(', ')}`;
 }
 
+const UNDEAD_TYPES = new Set(['walker', 'sprinter', 'brute', 'spitter']);
+
 export class Game {
   constructor() {
     this.players = [];
@@ -816,7 +818,11 @@ export class Game {
 
   onEnemyKilled(e, p) {
     e.hp = 0;
-    this.burst(e.x, e.y, e.def.color || '#888', e.type === 'boss' ? 80 : 12, e.type === 'boss' ? 300 : 140);
+    if (UNDEAD_TYPES.has(e.type)) { // gore, not confetti: dark blood and rotten flesh
+      this.burst(e.x, e.y, '#9a1010', 16, 170);
+      this.burst(e.x, e.y, '#4a0a0a', 10, 110);
+      this.burst(e.x, e.y, '#7a8a5a', 6, 150);
+    } else this.burst(e.x, e.y, e.def.color || '#888', e.type === 'boss' ? 80 : 12, e.type === 'boss' ? 300 : 140);
     if (p) { this.addScore(p, e.def.score); this.gainXp(p, Math.round(e.def.xp * this.diff.xp)); p.kills++; this.stat(p, 'kills', 1, e.type); }
     if (e.type === 'death') this.text(e.x, e.y - 20, 'DEATH DEFEATED! +1000', '#ffe070', 2);
     if (e.type === 'boss') this.onBossKilled(e);

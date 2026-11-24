@@ -168,10 +168,43 @@ function clipVariant(name, part, adult = 0) {
   return clip;
 }
 
+const undeadClips = new Map();
+// Additive shamble clip: `u` = { lean, head, reach, bend, sway, hitch, uneven }; sign = head tilt side.
+function undeadClip(u, sign) {
+  const key = JSON.stringify(u) + sign;
+  if (undeadClips.has(key)) return undeadClips.get(key);
+  const N = 8, dur = 2, times = [], E = new THREE.Euler(), Q = new THREE.Quaternion();
+  const tracks = [];
+  const track = (bone, f) => {
+    const vals = [];
+    for (let i = 0; i <= N; i++) {
+      const ph = (i / N) * Math.PI * 2;
+      const [x, y, z] = f(ph, i);
+      Q.setFromEuler(E.set(x, y, z));
+      vals.push(Q.x, Q.y, Q.z, Q.w);
+    }
+    tracks.push(new THREE.QuaternionKeyframeTrack(`${bone}.quaternion`, times, vals));
+  };
+  for (let i = 0; i <= N; i++) times.push((i / N) * dur);
+  const hitch = (ph) => (u.hitch ? Math.max(0, Math.sin(ph * 2)) ** 3 * u.hitch : 0); // a wet catch in the stride
+  const lurch = (ph) => Math.sin(ph) * u.sway + Math.sin(ph * 2 + 1.3) * u.sway * 0.5;
+  track('spine', (ph) => [u.lean * 0.55 + hitch(ph) * 0.5, 0, lurch(ph) * 0.4]);
+  track('chest', (ph) => [u.lean * 0.6 + hitch(ph), lurch(ph) * 0.4, lurch(ph) * 0.5]);
+  track('head', (ph) => [u.head + Math.sin(ph * 2) * 0.06, lurch(ph) * 0.5, sign * 0.22 + lurch(ph) * 0.5]);
+  track('upperarml', (ph) => [-(u.reach + Math.sin(ph) * 0.12), 0, 0]);
+  track('upperarmr', (ph) => [-(u.reach * (u.uneven || 1) + Math.sin(ph + 2) * 0.12), 0, 0]);
+  track('lowerarml', () => [-u.bend, 0, 0]);
+  track('lowerarmr', () => [-u.bend * 1.4, 0, 0]);
+  const clip = new THREE.AnimationClip(`undead:${key}`, dur, tracks, THREE.AdditiveAnimationBlendMode);
+  undeadClips.set(key, clip);
+  return clip;
+}
+
 // A character instance: a full-body base loop (idle / run) plus one-shot actions that
 // either take over the whole body or just the upper body (so heroes can attack on the run).
 export class Actor {
-  constructor(charName, { tint = null, ghost = false, emissiveEyes = null } = {}) {
+  constructor(charName, { tint = null, ghost = false, emissiveEyes = null, undead = null } = {}) {
+    this.undead = undead; // a shamble overlay (see startUndead)
     this.root = new THREE.Group();
     this.model = SkeletonUtils.clone(assets.chars[charName]);
     this.adult = assets.chars[charName].userData.adult || 0;
@@ -207,6 +240,7 @@ export class Actor {
       if (emissiveEyes && /Eyes/i.test(o.name)) { m.emissive.set(emissiveEyes); m.emissiveIntensity = 2; m.userData.e0 = m.emissive.clone(); m.userData.ei0 = 2; }
     });
     this.mixer = new THREE.AnimationMixer(this.model);
+    if (this.undead) this.startUndead();
     this.baseName = null;
     this.baseAction = null;
     this.baseMode = 'full';
@@ -299,6 +333,20 @@ export class Actor {
     if (this.baseAction && !this.oneShot && this.baseAction.getEffectiveWeight() < 0.5) this.baseAction.setEffectiveWeight(1);
     this.mixer.update(dt);
     if (this.adult) this.adultPose();
+    if (this.undead) this.undeadAct.setEffectiveWeight(this.locked ? 0 : this.oneShot ? 0.35 : 1); // attacks keep their swing
+  }
+
+  // Undead overlay: a looping ADDITIVE clip (collapsed spine, drooping head, arms reaching out,
+  // a lurching sway) layered over the walk by the mixer. Built from deltas, so it never piles up.
+  startUndead() {
+    const u = this.undead;
+    this.tiltDir = Math.random() < 0.5 ? 1 : -1;
+    const clip = undeadClip(u, this.tiltDir);
+    const act = this.mixer.clipAction(clip);
+    act.setLoop(THREE.LoopRepeat, Infinity).play();
+    act.time = Math.random() * clip.duration;
+    act.timeScale = u.rate || 1;
+    this.undeadAct = act;
   }
 
   // The shared animations hold the arms well out from a chibi's wide body; bring them in

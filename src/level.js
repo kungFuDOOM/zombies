@@ -24,7 +24,7 @@ export const THEMES = [
   { // Food Court: bright checkerboard tiles under magenta, cyan and gold neon
     name: 'Food Court', style: 'mall', stages: ['Food Court Plaza'],
     floorA: '#f4ecd8', floorB: '#3fd6c8', wallTop: '#ff4fb8', wallSide: '#7a4cc8', rock: '#a07ad8', dark: 0.1, accent: '#ffcc33',
-    void: '#120a24', sky: '#1a0f33', fog: '#2a1850', light: '#fff0f8', ambient: 1.05, neonA: '#ff2ea6', neonB: '#2ee6ff', neonC: '#ffcc33',
+    void: '#120a24', sky: '#1a0f33', fog: '#2a1850', light: '#f2eaee', ambient: 0.96, neonA: '#ff2ea6', neonB: '#2ee6ff', neonC: '#ffcc33',
   },
   { name: 'Arcade, Bowling & Batting Cages', style: 'mall', stages: ['Arcade'], floorA: '#2a2050', floorB: '#3a2a70', wallTop: '#5a3aa0', wallSide: '#2a1a60', rock: '#5a3aa0', dark: 0.3, accent: '#40ff90', void: '#08041a', sky: '#0a0620', fog: '#150a35', light: '#c0a0ff', ambient: 0.8, neonA: '#40ff90', neonB: '#ff40a0', neonC: '#40c0ff' },
   { name: 'Movie Theater', style: 'mall', stages: ['Theater'], floorA: '#5a1a20', floorB: '#6a2228', wallTop: '#a03040', wallSide: '#401018', rock: '#6a2228', dark: 0.4, accent: '#ffcc33', void: '#0a0406', sky: '#0a0406', fog: '#200a0e', light: '#ffd0c0', ambient: 0.7, neonA: '#ff3040', neonB: '#ffcc33', neonC: '#ffffff' },

@@ -230,6 +230,124 @@ function faceTex(f) {
       for (let i = 0; i < 5; i++) { const y = 80 + i * 13; ctx.beginPath(); ctx.moveTo(cx + 30 + i * 3, y); ctx.lineTo(cx + 40 + i * 3, y - 3); ctx.stroke(); }
       soft(cx - 30, 80, 18, 12, shade(f.skin, -0.25), 0.5);
     }
+    if (f.undead) undeadFace(ctx, w, h, cx, f, soft);
+  });
+}
+
+// Zombie overlay for the painted face: sunken cheeks, veins, dead eyes, grey lips, wounds.
+function undeadFace(ctx, w, h, cx, f, soft) {
+  const rnd = seeded(f.seed || 1);
+  const dark = shade(f.skin, -0.3);
+  // blotchy rot over the whole face, bruise-purple and jaundice
+  for (let i = 0; i < 26; i++) soft(rnd() * w, 60 + rnd() * 150, 8 + rnd() * 18, 6 + rnd() * 12, rnd() < 0.5 ? '#5a4a6a' : '#a8a050', 0.12 + rnd() * 0.12);
+  for (const s of [-1, 1]) {
+    soft(cx + s * 38, 156, 18, 24, '#10140c', 0.38); // sunken cheeks
+    soft(cx + s * 28, 116, 27, 17, '#050308', 0.92); // black sockets
+  }
+  // veins creeping out from the eyes and temple
+  ctx.strokeStyle = 'rgba(70,40,90,0.7)'; ctx.lineWidth = 1.3;
+  for (let i = 0; i < 9; i++) {
+    const s = i % 2 ? 1 : -1, x0 = cx + s * (22 + rnd() * 10), y0 = 112 + rnd() * 8;
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    let x = x0, y = y0;
+    for (let k = 0; k < 4; k++) { x += s * (4 + rnd() * 8); y += -6 + rnd() * 22; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+  // dead eyes: milky, black or sickly glowing
+  const dead = f.deadEyes || '#d8dcc0';
+  for (const s of [-1, 1]) {
+    const ex = cx + s * 28, ey = 116;
+    ctx.fillStyle = dead;
+    ctx.beginPath(); ctx.ellipse(ex, ey, 12, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+    if (f.deadEyes === '#06060a') { /* hollow */ } else {
+      ctx.fillStyle = 'rgba(40,40,30,0.45)'; ctx.beginPath(); ctx.arc(ex, ey + 1, 3.4 + rnd() * 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(110,10,10,0.95)'; ctx.lineWidth = 2.2; // bloodshot rim
+    ctx.beginPath(); ctx.ellipse(ex, ey, 11.5, 7, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  // bloodless mouth: grey lips, open and dark, ragged teeth
+  ctx.fillStyle = '#0e0606';
+  ctx.beginPath(); ctx.ellipse(cx, 164, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d8d0b0';
+  for (let i = -3; i <= 3; i++) if (i !== 1) { const th = 3 + (i & 1) * 2; ctx.fillRect(cx + i * 4 - 1.5, 158, 3, th); if (i !== -2) ctx.fillRect(cx + i * 4 - 1.5, 168 - th, 3, th); }
+  ctx.strokeStyle = '#3a1818'; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.ellipse(cx, 164, 16, 9, 0, 0, Math.PI * 2); ctx.stroke();
+  // blood down the chin
+  const blood = ctx.createLinearGradient(0, 168, 0, 230);
+  blood.addColorStop(0, 'rgba(170,16,16,1)'); blood.addColorStop(1, 'rgba(60,4,4,0)');
+  ctx.fillStyle = blood;
+  ctx.beginPath(); ctx.moveTo(cx - 12, 166); ctx.quadraticCurveTo(cx - 20, 205, cx - 6, 232); ctx.lineTo(cx + 4, 226); ctx.quadraticCurveTo(cx + 6, 200, cx + 12, 166); ctx.fill();
+  const wound = (x, y, rx, ry) => { // torn flesh: dark-red crater, pink rim, bone fleck
+    ctx.fillStyle = '#e08a84'; ctx.beginPath(); ctx.ellipse(x, y, rx + 4, ry + 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a0303'; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2, r = i % 2 ? 0.7 : 1; ctx.lineTo(x + Math.cos(a) * rx * r, y + Math.sin(a) * ry * r); }
+    ctx.fill();
+    ctx.fillStyle = '#f0e8d0'; ctx.fillRect(x - 3, y - 1, 7, 3);
+  };
+  if (f.wound === 'cheek') wound(cx + 36, 150, 13, 11);
+  if (f.wound === 'cheek2') wound(cx - 36, 144, 11, 10);
+  if (f.wound === 'brow') wound(cx + 14, 92, 10, 8);
+  if (f.wound === 'jaw') { // the lower jaw is simply gone
+    ctx.fillStyle = '#1a0606'; ctx.beginPath(); ctx.moveTo(cx - 34, 170); ctx.quadraticCurveTo(cx, 250, cx + 34, 170); ctx.fill();
+    ctx.fillStyle = '#a01818'; ctx.beginPath(); ctx.ellipse(cx, 196, 9, 16, 0, 0, Math.PI * 2); ctx.fill(); // tongue
+    ctx.fillStyle = '#c8c0a0'; for (let i = -3; i <= 3; i++) ctx.fillRect(cx + i * 4 - 1.5, 158, 3, 7);
+  }
+}
+
+function seeded(n) { let x = n * 9301 + 49297; return () => { x = (x * 9301 + 49297) % 233280; return x / 233280; }; }
+
+// Rotting skin for arms, legs and torsos: gray-green mottling, bruising, veins, blood, sores.
+function rotTex(skin, seed = 1, opts = {}) {
+  return canvasTex(`rot:${skin}:${seed}:${JSON.stringify(opts)}`, 128, 128, (ctx, w, h) => {
+    const rnd = seeded(seed);
+    ctx.fillStyle = skin; ctx.fillRect(0, 0, w, h);
+    const blot = (n, colors, a0, a1, r0, r1) => {
+      for (let i = 0; i < n; i++) {
+        ctx.save(); ctx.globalAlpha = a0 + rnd() * (a1 - a0); ctx.fillStyle = colors[(rnd() * colors.length) | 0];
+        ctx.beginPath(); ctx.ellipse(rnd() * w, rnd() * h, r0 + rnd() * r1, r0 + rnd() * r1 * 0.8, rnd() * 3, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+    };
+    blot(30, ['#4a3a5a', '#2a3a2a', '#9a9a50', '#6a7a5a'], 0.16, 0.34, 4, 14);
+    ctx.strokeStyle = 'rgba(60,40,90,0.65)'; ctx.lineWidth = 1.2; // veins
+    for (let i = 0; i < 7; i++) {
+      let x = rnd() * w, y = rnd() * h;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let k = 0; k < 5; k++) { x += -8 + rnd() * 16; y += 4 + rnd() * 10; ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    for (let i = 0; i < (opts.sores ?? 3); i++) { // open sores: pink rim, red-black centre
+      const x = rnd() * w, y = rnd() * h, r = 4 + rnd() * 6;
+      ctx.fillStyle = '#b07a70'; ctx.beginPath(); ctx.ellipse(x, y, r + 2, r * 0.8 + 2, 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a0303'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, 0.4, 0, Math.PI * 2); ctx.fill();
+    }
+    blot(opts.blood ?? 5, ['#8a0e0e', '#5a0808', '#c01818'], 0.65, 0.95, 3, 9);
+    for (let i = 0; i < 90; i++) { ctx.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,230,0.08)'; ctx.fillRect(rnd() * w, rnd() * h, 2, 2); }
+  });
+}
+
+// Torn, filthy cloth: the base colour with stains, blood and ragged holes onto rotten flesh.
+function ragTex(color, seed = 1, opts = {}) {
+  return canvasTex(`rag:${color}:${seed}:${JSON.stringify(opts)}`, 128, 128, (ctx, w, h) => {
+    const rnd = seeded(seed);
+    ctx.fillStyle = color; ctx.fillRect(0, 0, w, h);
+    if (opts.stripes) { ctx.fillStyle = opts.stripes; for (let x = 0; x < w; x += 16) ctx.fillRect(x, 0, 7, h); }
+    for (let i = 0; i < 24; i++) { // grime
+      ctx.save(); ctx.globalAlpha = 0.14 + rnd() * 0.18; ctx.fillStyle = rnd() < 0.7 ? '#1a140c' : '#4a5a2a';
+      ctx.beginPath(); ctx.ellipse(rnd() * w, rnd() * h, 5 + rnd() * 14, 4 + rnd() * 10, rnd() * 3, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+    for (let i = 0; i < (opts.blood ?? 5); i++) { // blood stains with runs
+      const x = rnd() * w, y = rnd() * h * 0.8;
+      ctx.save(); ctx.globalAlpha = 0.8; ctx.fillStyle = rnd() < 0.5 ? '#6a0a0a' : '#8a1212';
+      ctx.beginPath(); ctx.ellipse(x, y, 4 + rnd() * 9, 3 + rnd() * 7, rnd() * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(x - 1, y, 2.5, 8 + rnd() * 20); ctx.restore();
+    }
+    for (let i = 0; i < (opts.holes ?? 4); i++) { // ragged holes onto grey flesh
+      const x = 10 + rnd() * (w - 20), y = 10 + rnd() * (h - 20), r = 5 + rnd() * 8;
+      ctx.fillStyle = '#7a8068'; ctx.beginPath();
+      for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2, rr = r * (0.6 + rnd() * 0.6); ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.8); }
+      ctx.fill();
+      ctx.fillStyle = '#3a0808'; ctx.beginPath(); ctx.ellipse(x + 1, y + 1, r * 0.5, r * 0.35, 0.5, 0, Math.PI * 2); ctx.fill();
+    }
   });
 }
 
@@ -405,9 +523,15 @@ function body(rig, B, o) {
   // arms
   for (const side of ['l', 'r']) {
     add(bone(`upperarm${side}`), limb(R.arm, B.arm * 0.95, B.arm * 1.12, B.arm * 0.8, 0.45), z('upperArm', skin));
+    if (o.stump === side) { // a forearm torn off at the elbow: bone and gore
+      add(bone(`lowerarm${side}`), limb(R.fore * 0.45, B.fore * 1.05, B.fore * 1.1, B.fore * 0.9, 0.25), z('foreArm', skin));
+      add(bone(`lowerarm${side}`), cone(5), mat('#d8d0b8'), [0, R.fore * 0.5, 0], [0, 0, 0], [B.fore * 0.5, 0.07, B.fore * 0.5]);
+      add(bone(`lowerarm${side}`), sphere(8), mat('#5a0808'), [0, R.fore * 0.44, 0], [0, 0, 0], [B.fore * 1.05, 0.018, B.fore * 1.05]);
+      continue;
+    }
     add(bone(`lowerarm${side}`), limb(R.fore, B.fore * 1.05, B.fore * 1.1, B.fore * 0.72, 0.25), z('foreArm', skin));
     const hand = z('hands', skin);
-    add(bone(`hand${side}`), roundedBox(0.5), hand, [0, 0.035, 0], [0, 0, 0], [0.058 * B.head, 0.08 * B.head, 0.042 * B.head]); // fist
+    add(bone(`hand${side}`), roundedBox(0.5), hand, [0, o.face && o.face.undead ? 0.01 : 0.035, 0], [0, 0, 0], [0.058 * B.head, 0.08 * B.head, 0.042 * B.head]); // fist (zombies' hang lower so the wrist joins)
     add(bone(`hand${side}`), roundedBox(0.5), hand, [side === 'l' ? -0.024 : 0.024, 0.02, 0.014], [0, 0, side === 'l' ? 0.4 : -0.4], [0.018, 0.042, 0.018]); // thumb
   }
   // legs
@@ -575,39 +699,61 @@ function chainsaw(hand) {
 }
 
 function shotgun(hand) {
+  // A pump-action: blued barrel over a magazine tube, a fat wooden pump grip, the receiver and a
+  // long wooden stock. Scaled up so it reads as a shotgun at a glance, never a stick.
   const g = new THREE.Group();
-  const gun = metal('#2a2a32'), wood = mat('#7a4a22');
-  add(g, cylinder(0.016, 0.016), gun, [0, 0.44, 0], [0, 0, 0], [1, 0.8, 1]);       // barrel
-  add(g, cylinder(0.013, 0.013), gun, [0, 0.36, 0.034], [0, 0, 0], [1, 0.56, 1]);   // magazine tube
-  add(g, roundedBox(0.4), wood, [0, 0.3, 0.02], [0, 0, 0], [0.05, 0.14, 0.06]);     // the pump
-  add(g, box(), gun, [0, 0.06, 0], [0, 0, 0], [0.04, 0.14, 0.05]);
-  add(g, roundedBox(0.4), wood, [0, -0.1, -0.02], [-0.25, 0, 0], [0.045, 0.28, 0.06]); // stock
+  const gun = metal('#2e3440', { roughness: 0.32 }), wood = mat('#8a5226'), brass = metal('#d8b040');
+  add(g, cylinder(0.022, 0.022), gun, [0, 0.5, 0], [0, 0, 0], [1, 0.78, 1]);          // barrel
+  add(g, cylinder(0.015, 0.015), gun, [0, 0.46, 0.04], [0, 0, 0], [1, 0.62, 1]);       // magazine tube
+  add(g, cylinder(0.028, 0.02), gun, [0, 0.9, 0], [0, 0, 0], [1, 0.01, 1]);            // muzzle
+  add(g, roundedBox(0.4), wood, [0, 0.4, 0.034], [0, 0, 0], [0.075, 0.22, 0.075]);     // the pump
+  for (let i = 0; i < 4; i++) add(g, box(), mat('#4a2a10'), [0, 0.33 + i * 0.05, 0.075], [0, 0, 0], [0.07, 0.01, 0.01]); // grip grooves
+  add(g, roundedBox(0.3), gun, [0, 0.12, 0.01], [0, 0, 0], [0.07, 0.24, 0.075]);       // receiver
+  add(g, box(), brass, [0.04, 0.16, 0.01], [0, 0, 0], [0.01, 0.07, 0.05]);              // ejection port
+  add(g, torus(0.04, 0.007, Math.PI), gun, [0, 0.04, 0.04], [0, 0, Math.PI]);            // trigger guard
+  add(g, roundedBox(0.4), wood, [0, -0.17, -0.03], [-0.3, 0, 0], [0.07, 0.4, 0.085]);  // stock
+  add(g, box(), mat('#17171c'), [0, -0.35, -0.115], [-0.3, 0, 0], [0.07, 0.07, 0.03]); // butt pad
+  add(g, cone(4), brass, [0, 0.93, 0], [0, 0, 0], [0.012, 0.03, 0.012]);               // front bead
+  g.scale.setScalar(1.15);
   hand.add(g);
   return g;
 }
 
 function spikedBat(hand) {
+  // A wooden slugger studded with big steel nails: a fat barrel, taped grip and a knob, so it can
+  // only be a bat. Bright nail heads and a smear of blood make it a menacing one.
   const g = new THREE.Group();
-  const alu = metal('#c8ccd6', { metalness: 0.9, roughness: 0.28 });
-  add(g, cylinder(0.034, 0.016), alu, [0, 0.4, 0], [0, 0, 0], [1, 0.74, 1]);
-  add(g, cylinder(0.014, 0.014), mat('#141418'), [0, 0.04, 0], [0, 0, 0], [1, 0.2, 1]);
-  add(g, sphere(), alu, [0, -0.02, 0], [0, 0, 0], [0.024, 0.024, 0.024]);
-  for (let i = 0; i < 12; i++) {
-    const a = i * 2.1, y = 0.5 + (i % 4) * 0.07;
-    add(g, cone(5), metal('#e8ecf4'), [Math.cos(a) * 0.036, y, Math.sin(a) * 0.036], [Math.sin(a) * 1.5, 0, -Math.cos(a) * 1.5], [0.013, 0.07, 0.013]);
+  const wood = mat('#c8924a', { roughness: 0.7 }), nail = metal('#eef0f6', { metalness: 0.9, roughness: 0.2 });
+  add(g, cylinder(0.052, 0.022), wood, [0, 0.46, 0], [0, 0, 0], [1, 0.62, 1]);        // the fat barrel
+  add(g, cylinder(0.022, 0.02), wood, [0, 0.12, 0], [0, 0, 0], [1, 0.34, 1]);          // handle
+  add(g, cylinder(0.024, 0.024), mat('#141418'), [0, 0.08, 0], [0, 0, 0], [1, 0.26, 1]); // taped grip
+  add(g, sphere(8), wood, [0, -0.06, 0], [0, 0, 0], [0.034, 0.03, 0.034]);               // knob
+  add(g, cylinder(0.054, 0.054), mat('#7a1010'), [0, 0.68, 0], [0, 0, 0], [1, 0.04, 1]);  // blood
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.4, y = 0.4 + (i % 5) * 0.075, r = 0.04 + (y - 0.4) * 0.05;
+    add(g, cone(5), nail, [Math.cos(a) * (r + 0.02), y, Math.sin(a) * (r + 0.02)], [Math.sin(a) * 1.5, 0, -Math.cos(a) * 1.5], [0.013, 0.085, 0.013]);
+    add(g, cylinder(1, 1, 6), nail, [Math.cos(a) * (r - 0.004), y, Math.sin(a) * (r - 0.004)], [Math.sin(a) * 1.5, 0, -Math.cos(a) * 1.5], [0.02, 0.01, 0.02]);
   }
+  g.scale.setScalar(1.2);
   hand.add(g);
   return g;
 }
 
 function hairspray(hand) {
+  // A giant pink can of hairspray with a nozzle that blasts a cone of fire.
   const g = new THREE.Group();
-  add(g, cylinder(0.034, 0.034), metal('#e8d8f4'), [0, 0.12, 0], [0, 0, 0], [1, 0.22, 1]);
-  add(g, cylinder(0.035, 0.035), mat('#ff4fb8', { emissive: '#ff2ea6', emissiveIntensity: 0.5 }), [0, 0.12, 0], [0, 0, 0], [1, 0.07, 1]);
-  add(g, cylinder(0.022, 0.034), metal('#40e0ff'), [0, 0.26, 0], [0, 0, 0], [1, 0.05, 1]);
-  add(g, cylinder(0.01, 0.01), mat('#111'), [0, 0.3, 0], [0, 0, 0], [1, 0.05, 1]);
-  const flame = add(g, cone(8), mat('#ffb030', { emissive: '#ff6a10', emissiveIntensity: 2.2 }), [0, 0.38, 0], [0, 0, 0], [0.04, 0.14, 0.04]);
-  flame.userData.glow = true;
+  const can = metal('#f0e4fa'), pink = mat('#ff4fb8', { emissive: '#ff2ea6', emissiveIntensity: 0.55 });
+  add(g, cylinder(0.05, 0.05), can, [0, 0.16, 0], [0, 0, 0], [1, 0.3, 1]);              // can body
+  add(g, cylinder(0.052, 0.052), pink, [0, 0.14, 0], [0, 0, 0], [1, 0.12, 1]);           // label band
+  add(g, cylinder(0.03, 0.05), metal('#40e0ff'), [0, 0.34, 0], [0, 0, 0], [1, 0.07, 1]); // shoulder
+  add(g, cylinder(0.024, 0.026), mat('#111'), [0, 0.4, 0], [0, 0, 0], [1, 0.07, 1]);      // cap
+  add(g, box(), mat('#ff2ea6'), [0, 0.45, 0.02], [0, 0, 0], [0.026, 0.03, 0.05]);          // nozzle
+  // Slim jet along the can axis: tip points away from the nozzle, base thin at the nozzle. Modest emissive so it never blooms into a disc.
+  const fl = mat('#ff7a10', { emissive: '#ff4a00', emissiveIntensity: 0.9 }), fl2 = mat('#ffd040', { emissive: '#ffa010', emissiveIntensity: 1.0 });
+  const flame = add(g, cone(6), fl, [0, 0.64, 0.02], [0, 0, 0], [0.04, 0.34, 0.04]);
+  add(g, cone(5), fl2, [0, 0.6, 0.02], [0, 0, 0], [0.022, 0.24, 0.022]);
+  flame.userData.flame = true;
+  g.scale.setScalar(1.3);
   hand.add(g);
   return g;
 }
@@ -621,13 +767,17 @@ function spatula(hand) {
 }
 
 function boombox(chest, B) {
+  // A chrome-and-black 90s ghetto blaster strapped across her back: twin cyan speakers, handle, tape deck.
   const g = new THREE.Group();
-  add(g, roundedBox(0.2), mat('#1a1a22'), [0, 0, 0], [0, 0, 0], [0.22, 0.1, 0.08]);
+  add(g, roundedBox(0.2), mat('#1a1a22'), [0, 0, 0], [0, 0, 0], [0.3, 0.15, 0.1]);
   for (const s of [-1, 1]) {
-    add(g, cylinder(1, 1), mat('#2ee6ff', { emissive: '#18a8d8', emissiveIntensity: 1.2 }), [s * 0.06, 0, 0.042], [Math.PI / 2, 0, 0], [0.032, 0.012, 0.032]);
+    add(g, cylinder(1, 1), mat('#2ee6ff', { emissive: '#18a8d8', emissiveIntensity: 1.3 }), [s * 0.085, 0, -0.054], [Math.PI / 2, 0, 0], [0.05, 0.012, 0.05]);
+    add(g, cylinder(1, 1), mat('#0c0c12'), [s * 0.085, 0, -0.062], [Math.PI / 2, 0, 0], [0.022, 0.012, 0.022]);
   }
-  add(g, box(), metal('#ff2ea6'), [0, 0.058, 0], [0, 0, 0], [0.12, 0.012, 0.012]);
-  g.position.set(0, 0.1, -B.chest * B.chestD - 0.06);
+  add(g, box(), metal('#ff2ea6'), [0, 0.1, 0], [0, 0, 0], [0.16, 0.016, 0.016]);        // handle
+  add(g, box(), metal('#d0d4de'), [0, 0.02, -0.054], [0, 0, 0], [0.06, 0.05, 0.01]);   // tape deck
+  add(g, cylinder(0.006, 0.006, 5), metal('#d0d4de'), [0.12, 0.2, 0], [0, 0, -0.35], [1, 0.3, 1]); // antenna
+  g.position.set(0, 0.1, -B.chest * B.chestD - 0.085);
   g.rotation.x = 0.1;
   chest.add(g);
   return g;
@@ -656,6 +806,10 @@ const HEROES = {
     for (const s of ['l', 'r']) bracer(b.bone(`lowerarm${s}`), R.fore, B.fore * 1.4, leather, 0.35);
     boots(rig, R, B, mat('#0c0c10'), chrome, 0.5);
     for (const s of [-1, 1]) add(b.chest, sphere(), leather, [s * 0.15, R.shoulderY - 0.02, 0], [0, 0, 0], [0.09, 0.05, 0.09]); // pauldrons
+    add(b.chest, cylinder(1, 1, 14), mat('#3a3a44'), [0, 0.06, -B.chest * B.chestD - 0.012], [Math.PI / 2, 0, 0], [0.11, 0.012, 0.11]); // back patch
+    add(b.chest, sphere(8), mat('#e8e4d8'), [0, 0.08, -B.chest * B.chestD - 0.024], [0, 0, 0], [0.04, 0.045, 0.012]); // a skull
+    for (const s of ['l', 'r']) for (let i = 0; i < 3; i++) add(b.bone(`lowerarm${s}`), sphere(5), gold, [Math.cos(i * 2.1) * B.fore * 1.5, R.fore * 0.5, Math.sin(i * 2.1) * B.fore * 1.5], [0, 0, 0], [0.011, 0.011, 0.011]); // studded cuffs
+    add(b.head, box(), mat('#c01818'), [0.0, 0.2, -0.12], [0.3, 0, 0], [0.04, 0.1, 0.01]); // bandana knot
     chainsaw(b.bone('handslotr'));
   },
   // MALL COP: blue uniform, cap, badge, pump shotgun.
@@ -676,6 +830,12 @@ const HEROES = {
     add(b.spine, box(), mat('#18181e'), [0.12, -R.spine, 0.02], [0, 0, 0], [0.03, 0.07, 0.04]); // holster
     for (const s of ['l', 'r']) bracer(b.bone(`lowerarm${s}`), R.fore, B.fore * 1.2, shirt, 0.5);
     boots(rig, R, B, mat('#0c0c10'), null, 0.35);
+    for (const s of [-1, 1]) add(b.chest, box(), gold, [s * 0.15, R.shoulderY + 0.005, 0], [0, 0, 0], [0.07, 0.014, 0.1]); // shoulder epaulets
+    add(b.chest, box(), mat('#ffffff'), [-0.075, 0.07, B.chest * B.chestD + 0.016], [0, 0, 0], [0.05, 0.016, 0.006]);   // name tag
+    add(b.spine, cylinder(1, 1, 8), mat('#17171c'), [-0.13, -R.spine, 0.02], [0, 0, 0], [0.018, 0.1, 0.018]);         // flashlight
+    add(b.spine, box(), mat('#17171c'), [0.0, -R.spine - 0.015, B.hip * 1.02], [0, 0, 0], [0.05, 0.05, 0.03]);       // cuffs
+    add(b.head, box(), mat('#07070a', { roughness: 0.2, metalness: 0.4 }), [0, 0.158, 0.1], [0, 0, 0], [0.15, 0.028, 0.02]); // shades
+    add(b.head, cone(5), gold, [0, 0.215, 0.115], [Math.PI / 2, 0, 0], [0.032, 0.012, 0.032]); // big cap badge
     shotgun(b.bone('handslotr'));
   },
   // SKATER: baggy tee and shorts, backwards cap, high-tops, a spiked aluminum bat.
@@ -701,6 +861,17 @@ const HEROES = {
     // a deck on the back
     add(b.chest, roundedBox(0.4), pink, [0.02, 0.08, -B.chest * B.chestD - 0.04], [0.05, 0, 0.1], [0.08, 0.34, 0.012]);
     for (const wy of [-0.11, 0.25]) for (const sx of [-0.026, 0.026]) add(b.chest, cylinder(1, 1), mat('#f4f4f8'), [0.02 + sx * 0.7, 0.08 + wy * 0.9, -B.chest * B.chestD - 0.058], [0, 0, Math.PI / 2], [0.014, 0.01, 0.014]);
+    // elbow and knee pads, a hood bunched at the neck, wristbands
+    const padM = mat('#1a1a22', { roughness: 0.6 });
+    for (const s of ['l', 'r']) {
+      add(rig.getObjectByName(`lowerarm${s}`), sphere(10), padM, [0, 0.015, 0], [0, 0, 0], [B.fore * 1.7, 0.05, B.fore * 1.7]);
+      add(rig.getObjectByName(`lowerleg${s}`), sphere(10), padM, [0, R.shin * 0.97, 0.012], [0, 0, 0], [B.calf * 1.45, 0.06, B.calf * 1.5]);
+      add(rig.getObjectByName(`hand${s}`), cylinder(1, 1), mat('#ffffff'), [0, 0.0, 0], [0, 0, 0], [0.03, 0.025, 0.03]);
+    }
+    add(b.chest, sphere(10), mat('#2a9a58'), [0, R.neck * 0.85, -0.05], [0, 0, 0], [0.09, 0.05, 0.05]);
+    add(b.chest, box(), mat('#ffffff'), [0, 0.08, B.chest * B.chestD + 0.012], [0, 0, 0], [0.1, 0.018, 0.006]); // tee graphic
+    add(b.chest, box(), pink, [0, 0.12, B.chest * B.chestD + 0.012], [0, 0, 0], [0.08, 0.012, 0.006]);
+    add(b.head, cone(5), hairM, [0.02, 0.24, 0.0], [0.2, 0, -0.5], [0.03, 0.06, 0.03]); // hair spikes out of the cap
     spikedBat(b.bone('handslotr'));
   },
   // MALL GOTH: black everything, purple hair, platform boots, a boombox and a can of hairspray.
@@ -725,6 +896,14 @@ const HEROES = {
       const fa = b.bone(`lowerarm${s}`);
       for (let i = 0; i < 4; i++) add(fa, cone(5), silver, [Math.cos(i * 1.6) * B.fore * 1.3, R.fore * 0.8, Math.sin(i * 1.6) * B.fore * 1.3], [0, 0, 0], [0.01, 0.03, 0.01]); // spiked bracelets
     }
+    // crossed belts, a spiked collar, fishnet-ish arm warmers and a long coat tail
+    for (const s of [-1, 1]) add(b.chest, box(), mat('#2a2a34'), [0, 0.1, B.chest * B.chestD + 0.012], [0, 0, s * 0.7], [0.2, 0.018, 0.012]);
+    add(b.chest, cylinder(1, 1, 10), metal('#d0d4de'), [0, 0.02, B.chest * B.chestD + 0.016], [Math.PI / 2, 0, 0], [0.02, 0.01, 0.02]);
+    for (let i = 0; i < 6; i++) add(b.head, cone(5), silver, [Math.sin(i * 1.05 - 2.6) * 0.04, 0.0, Math.cos(i * 1.05 - 2.6) * 0.04], [Math.cos(i * 1.05 - 2.6) * 1.5, 0, -Math.sin(i * 1.05 - 2.6) * 1.5], [0.008, 0.028, 0.008]);
+    for (const s of ['l', 'r']) add(b.bone(`lowerarm${s}`), cylinder(1, 1), mat('#14101c'), [0, R.fore * 0.55, 0], [0, 0, 0], [B.fore * 1.2, R.fore * 0.5, B.fore * 1.2]);
+    add(b.spine, lathe([[B.hip * 1.05, -R.spine + 0.02], [B.hip * 1.7, -R.spine - 0.42]], 16), mat('#0c0a12'), [0, 0, 0], [0, Math.PI, 0], [1, 1, 0.5]); // coat tails behind
+    add(b.head, cone(5), purple, [0.0, 0.26, 0.0], [-0.1, 0, 0], [0.03, 0.12, 0.03]); // a tall sweep of hair
+    for (const s of [-1, 1]) add(b.head, cone(5), mat('#241034'), [s * 0.1, 0.1, -0.02], [0, 0, s * 0.3], [0.03, 0.22, 0.02]); // pigtails
     boombox(b.chest, B);
     hairspray(b.bone('handslotr'));
   },
@@ -767,7 +946,7 @@ export function buildHero(cls, rig) {
 
 // The building blocks, for the monsters (monsters.js) built the same way.
 export const kit = {
-  RIGS, BODIES, applyRig, hipsHeight, BASE_HIPS, mat, metal, shade, stripes, strands, canvasTex, cached, add, lathe, limb,
+  RIGS, BODIES, applyRig, hipsHeight, BASE_HIPS, mat, metal, shade, stripes, strands, canvasTex, rotTex, ragTex, seeded, cached, add, lathe, limb,
   sphere, box, cap, CAP_TILT, cylinder, cone, torus, shapeGeo, roundedBox, body, hairLong, bracer, flap, belt, boots, horns,
   greatAxe, sword, shield, bow, staff, hammer, dagger,
 };

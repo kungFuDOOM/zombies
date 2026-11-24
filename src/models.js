@@ -335,7 +335,7 @@ export function buildBoss(model, color, hornColor) {
     // THE DEEP-FRY BUTCHER: ONE hulking food-court mascot. Cream greasy apron, charcoal
     // trousers, pig-mascot head under a paper hat, steel cleaver and a bubbling fry basket.
     // Deliberately NOT red: the minions are red, he must read as a different, bigger thing.
-    const apron = m('#f6f0dc'), stain = m('#c8a050'), steel = m('#e4e8f0', { metalness: 0.8, roughness: 0.25 });
+    const apron = m('#f6f0dc'), stain = m('#c8a050'), steel = m('#dfe5f2', { metalness: 0.35, roughness: 0.3, emissive: '#404858', emissiveIntensity: 0.55 });
     const cloth = m('#2c3038'), hide = m('#e6a8a0'), dark = m('#241c18');
     const glow = m('#ffa020', { emissive: '#ff8010', emissiveIntensity: 1.8 });
     // legs: two thick trousered pillars with boots
@@ -375,14 +375,60 @@ export function buildBoss(model, color, hornColor) {
     for (let i = -4; i <= 4; i++) part(jaw, G.box(1.8, 3.5, 1.2), m('#f8f4e0'), i * 2.3, 1.5, 13);
     hd.userData.jaw = jaw;
     r.heads.push(hd);
+    // gore: rotting patches and a torn-open cheek on the pig face, stitches and a bad eye
+    const rot = m('#7a8a62'), wound = m('#5a0c0c', { roughness: 0.35 }), bone2 = m('#e8e0c8'), stitch = m('#1a1410');
+    part(hd, G.sphere(7, 8), rot, -9, 4, 10).scale.set(1, 0.9, 0.5);
+    part(hd, G.sphere(6, 8), rot, 10, 9, 8).scale.set(1, 0.9, 0.5);
+    part(hd, G.sphere(6, 8), wound, 11, -3, 12.5).scale.set(1, 0.9, 0.45);       // chunk bitten out of the cheek
+    part(hd, G.cone(1.2, 5, 4), bone2, 12, -4, 17).rotation.x = Math.PI / 2;     // jaw bone showing
+    part(hd, G.box(1.2, 20, 1.2), stitch, -3, 8, 15.5).rotation.z = 0.35;        // stitched seam across the face
+    for (let i = 0; i < 5; i++) part(hd, G.box(4, 1, 1), stitch, -3 + (i - 2) * 1.9, 8 + (i - 2) * 3.5, 15.8).rotation.z = 0.6;
+    part(hd, G.sphere(3.6, 8), m('#c8c8a8'), -6.5, 5, 12.4, false);             // a dead, clouded left eye
+    part(hd, G.sphere(4.2, 6), wound, 3, 12, 11).scale.set(1.4, 0.4, 0.8);       // scalp torn open under the hat
+    // blood smeared down the snout and chin
+    part(hd, G.box(10, 6, 1.5), m('#7a1210'), 0, -8, 21);
+    // the apron: soaked in old blood, handprints, a torn-open flank and strung viscera
+    const dried = m('#6a2418'), fresh = m('#8a1410', { roughness: 0.3 });
+    part(rig, G.box(22, 14, 1.5), dried, -6, 46, 20.6).rotation.z = 0.2;
+    part(rig, G.box(14, 24, 1.5), dried, 12, 38, 20.7);
+    part(rig, G.box(8, 4, 1.5), fresh, -14, 36, 20.9);
+    for (let i = 0; i < 4; i++) part(rig, G.box(2.4, 8 + i * 3, 1.5), fresh, -12 + i * 6, 56 - i * 2, 21);   // blood runs
+    part(rig, G.box(14, 14, 3), wound, 24, 40, 12);                              // a torn-open flank...
+    for (let i = 0; i < 3; i++) part(rig, G.box(1.6, 10, 1.4), bone2, 24, 40, 13.8).position.y = 35 + i * 5;   // ...ribs
+    for (let i = 0; i < 3; i++) part(rig, G.cyl(1.5, 1.5, 12, 5), m('#c07070'), 22 + i * 2, 28 - i * 2, 15).rotation.z = 0.2;
+    part(rig, G.box(6, 3, 1.4), bone2, 14, 56, 20.8);                              // a stuck tooth
+    for (let i = 0; i < 6; i++) part(rig, G.box(1.1, 8, 1.1), stitch, -22 + i * 1.8, 40 - i * 0.5, 20.8).rotation.z = 0.5;       // stitched belly seam
+    // meat hooks on chains off his belt, a slab swinging from one
+    for (const hx of [-12, 8]) {
+      part(rig, G.cyl(0.6, 0.6, 14, 4), m('#6a6e78', { metalness: 0.7 }), hx, 28, 19, false);
+      part(rig, G.cone(2, 5, 5), m('#c8ccd8', { metalness: 0.8 }), hx, 20, 19, false).rotation.x = Math.PI;
+    }
+    part(rig, G.box(8, 11, 4), m('#a83a3a'), -12, 14, 19, false);
+    part(rig, G.box(8, 3, 4.2), m('#e8d8c0'), -12, 18, 19, false);
     // the cleaver arm swings from the shoulder
     const arm = pivot(rig, 34, 66, 4);
     part(arm, G.cyl(6, 7, 28, 8), cloth, 0, -14, 6).rotation.x = -0.5;
     part(arm, G.sphere(6.5, 8), hide, 0, -28, 16);
     const cl = pivot(arm, 0, -28, 18);
-    part(cl, G.box(4, 4, 24), dark, 0, 0, 0);
-    part(cl, G.box(3, 30, 20), steel, 0, 18, 8);
-    part(cl, G.box(3.4, 2.5, 20), m('#9aa2b4', { metalness: 0.8 }), 0, 33, 8);
+    // a hefty cleaver, blade turned broadside to the camera (it was edge-on and easy to miss):
+    // thick steel slab, dark spine, blood run down the edge, nicks and a hook through the handle.
+    cl.rotation.z = -0.35;
+    const blood = m('#7a1210', { roughness: 0.3 }), rust = m('#6a4a2a');
+    part(cl, G.box(5, 5, 26), dark, 0, 0, 4);                       // handle (points forward)
+    part(cl, G.box(6, 6, 4), m('#8a8e9a', { metalness: 0.7 }), 0, 0, 16);   // pommel
+    part(cl, G.box(30, 38, 4.5), steel, 2, 22, 8);                  // the blade
+    part(cl, G.box(30, 4, 6), m('#9aa2b4', { metalness: 0.8 }), 2, 41.5, 8); // top spine
+    part(cl, G.box(3, 38, 6), m('#9aa2b4', { metalness: 0.8 }), -12.5, 22, 8);    // spine edge
+    part(cl, G.box(31, 3, 5.2), m('#ffffff', { metalness: 0.9, roughness: 0.15 }), 2, 3, 8); // the bright cutting edge
+    part(cl, G.box(22, 10, 5), blood, 4, 12, 8);                    // blood on the blade
+    part(cl, G.box(5, 18, 5), blood, 8, 7, 8);
+    part(cl, G.box(4, 10, 5), blood, -4, 4, 8);
+    for (let i = 0; i < 3; i++) part(cl, G.sphere(2, 5), blood, 4 + i * 6, -2 - i * 2, 8, false); // drips
+    part(cl, G.box(7, 7, 6), dark, -6, 30, 8.5);                    // hang hole
+    part(cl, G.box(4, 4, 6.5), m('#241c18'), -6, 30, 8.6);
+    part(cl, G.box(3, 3, 5), rust, 14, 38, 8);
+    // blood up the arm
+    part(arm, G.cyl(6.4, 7.4, 8, 8), blood, 0, -20, 6).rotation.x = -0.5;
     r.arm = arm; r.cleaver = cl;
     // the other hand carries a big bubbling fry basket
     const bk = pivot(rig, -34, 62, 6);
@@ -392,6 +438,13 @@ export function buildBoss(model, color, hornColor) {
     part(bk, G.cyl(12, 12, 1.5, 12), glow, 0, -21, 18, false);
     part(bk, G.box(3, 3, 22), dark, 0, -22, 34);
     for (let i = 0; i < 4; i++) part(bk, G.sphere(2.5, 6), glow, -6 + i * 4, -19 + (i % 2) * 2, 18 + (i % 3 - 1) * 4, false);
+    // what's frying in it: meat chunks, a bone, a rib, dangling gut and a drip of fat
+    const meat = m('#b04a4a'), meat2 = m('#6a1818'), bone = m('#e8e0c8');
+    for (let i = 0; i < 6; i++) part(bk, G.box(4.5, 3.5, 4.5), i % 2 ? meat : meat2, -7 + (i % 3) * 7, -19 + (i % 2) * 2.5, 13 + (i % 2) * 8, false).rotation.set(i, i * 2, i * 0.5);
+    part(bk, G.cyl(1.2, 1.4, 14, 5), bone, 4, -17, 20, false).rotation.set(0.3, 0, 0.7);
+    part(bk, G.sphere(2.4, 6), bone, 10, -12, 22, false);
+    for (let i = 0; i < 3; i++) part(bk, G.cyl(1.4, 1.4, 12 - i * 2, 5), m('#c07070'), -8 + i * 3, -34 - i, 24 + i * 3, false); // gut strands hanging over the rim
+    for (let i = 0; i < 3; i++) part(bk, G.sphere(1.6, 5), m('#7a1210'), -4 + i * 4, -40, 26, false);
     // dripping grease down the apron
     for (let i = 0; i < 5; i++) part(rig, G.sphere(2.2, 5), glow, -16 + i * 8, 62 - (i % 2) * 12, 21, false);
   }
