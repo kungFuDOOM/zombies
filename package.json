@@ -1,0 +1,18 @@
+{
+  "name": "mall-of-the-dead",
+  "version": "0.1.0",
+  "description": "Mall of the Dead: a retro 90s co-op mall zombie arcade game with Telltale-style timed choices",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "build-assets": "node tools/build-assets.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.0.0",
+    "@gltf-transform/extensions": "^4.0.0",
+    "@gltf-transform/functions": "^4.0.0",
+    "meshoptimizer": "^0.22.0"
+  }
+}
