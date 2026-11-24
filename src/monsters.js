@@ -7,8 +7,10 @@ import { kit } from './heroes.js';
 
 const {
   RIGS, BODIES, applyRig, hipsHeight, BASE_HIPS, mat, metal, add, sphere, box, cap, CAP_TILT, cylinder, cone, torus,
-  body, flap, belt, boots, rotTex, ragTex,
+  body, flap, belt, boots, rotTex, ragTex: rawRag, shade,
 } = kit;
+// Zombie clothes are dark, filthy rags: the bright green/grey skin pops against them at distance.
+const ragTex = (c, seed, o) => rawRag(shade(c, -0.08), seed, o);
 
 const MRIGS = { ...RIGS };
 const MBODIES = {
@@ -25,13 +27,13 @@ const BONE = '#d8d0b4';
 
 // Glowing pinpoints in the dead sockets (the painted face carries the milky/black eyes).
 function eyes(head, color, hs = 1, { y = 0.16, z = 0.098, spread = 0.032, size = 0.009 } = {}) {
-  const m = glow(color, 3.4);
-  for (const s of [-1, 1]) add(head, sphere(6), m, [s * spread * hs, y * hs, z * hs], [0, 0, 0], [size * 1.25 * hs, size * hs, size * 0.5 * hs]);
+  const m = glow(color, 6);
+  for (const s of [-1, 1]) add(head, sphere(6), m, [s * spread * hs, y * hs, (z + 0.008) * hs], [0, 0, 0], [size * 2.3 * hs, size * 1.8 * hs, size * 0.9 * hs]); // bigger than life: reads from across the plaza
 }
 
 // A wet red-black gore patch stuck to a bone.
-function gore(parent, pos, size = 0.03, flat = 0.4, color = '#8a0c0c') {
-  return add(parent, sphere(6), mat(color, { roughness: 0.35 }), pos, [0, 0, 0], [size, size * flat, size]);
+function gore(parent, pos, size = 0.03, flat = 0.4, color = '#a80c0c') {
+  return add(parent, sphere(6), mat(color, { roughness: 0.35 }), pos, [0, 0, 0], [size * 1.6, size * Math.max(flat, 0.55), size * 1.6]);
 }
 
 // Ribs and a ruined belly: dark cavity, bone arcs, a hanging string of gut.
@@ -84,6 +86,12 @@ function zombie(rig, { R, B, skin, seed, shirt, sleeves = true, pants, shorts = 
     feet: shoes, neckMat: flesh, stump,
     face: { undead: true, seed, brows: '#2a2e1c', ...face },
   });
+  // exaggerated gore that reads from afar: a gaping chest wound, a blood-soaked belly, a bloody maw
+  const cf = B.chest * B.chestD;
+  add(b.chest, sphere(7), mat('#b00e0e', { roughness: 0.3 }), [-0.04, 0.05, cf + 0.005], [0, 0, 0.3], [B.chest * 0.75, B.chest * 0.55, 0.03]);
+  add(b.chest, sphere(6), mat('#1a0204'), [-0.04, 0.05, cf + 0.025], [0, 0, 0.3], [B.chest * 0.38, B.chest * 0.28, 0.02]);
+  add(b.spine, sphere(7), mat('#8a0a0a', { roughness: 0.3 }), [0.03, 0.0, B.hip * B.chestD + 0.01], [0, 0, -0.2], [B.hip * 0.8, B.hip * 0.9, 0.03]);
+  add(b.head, sphere(6), mat('#a80c0c', { roughness: 0.3 }), [0, 0.07 * hs, 0.1 * hs], [0, 0, 0], [0.05 * hs, 0.06 * hs, 0.018 * hs]);
   return { b, hs, flesh };
 }
 
@@ -94,7 +102,7 @@ const MONSTERS = {
   // MALL WALKER: a shopper (or a worker) who never went home. Torn clothes, slack face.
   walker(rig, v = 0) {
     const R = RIGS.male, B = MBODIES.gaunt;
-    const skin = hash3(v, '#7d8a68', '#8d8f6c', '#72806e');
+    const skin = hash3(v, '#74b04c', '#88b866', '#62a870');
     const shirt = mat('#ffffff', { map: hash3(v, ragTex('#e8e4d0', 11, { stripes: '#2ec8b8', holes: 5 }), ragTex('#d8b830', 12, { holes: 5 }), ragTex('#c8d4e8', 13, { holes: 4 })), roughness: 0.95 });
     const pants = mat('#ffffff', { map: hash3(v, ragTex('#b8a070', 21, { holes: 4 }), ragTex('#3a4a78', 22, { holes: 6 }), ragTex('#2a2a34', 23, { holes: 4 })), roughness: 0.95 });
     const { b, hs, flesh } = zombie(rig, {
@@ -120,7 +128,7 @@ const MONSTERS = {
   // FOOD-COURT SPRINTER: a fast-food worker, emaciated, hungry, jaundiced.
   sprinter(rig, v = 0) {
     const R = RIGS.male, B = MBODIES.scrawny;
-    const skin = hash3(v, '#98985c', '#a09a6c', '#8c9468');
+    const skin = hash3(v, '#b4c040', '#c0b848', '#a8c058');
     const col = hash3(v, '#e8412a', '#2a6ad8', '#f0ece0');
     const shirt = mat('#ffffff', { map: ragTex(col, 40 + v, { holes: 6, blood: 7 }), roughness: 0.95 });
     const pants = mat('#ffffff', { map: ragTex('#26262e', 50 + v, { holes: 5 }), roughness: 0.95 });
@@ -150,7 +158,7 @@ const MONSTERS = {
   // SECURITY BRUTE: a dead mall guard. Uniform hanging off a bulk of grey meat.
   brute(rig, v = 0) {
     const R = RIGS.big, B = MBODIES.huge;
-    const skin = hash3(v, '#6f7a78', '#7a7e70', '#657270');
+    const skin = hash3(v, '#8a9ca2', '#98a496', '#7c9098');
     const shirt = mat('#ffffff', { map: ragTex('#16254a', 80 + v, { holes: 5, blood: 8 }), roughness: 0.95 });
     const vest = mat('#ffffff', { map: ragTex('#2a3a6a', 90 + v, { holes: 3, blood: 6 }), roughness: 0.7 });
     const { b, hs } = zombie(rig, {
@@ -179,7 +187,7 @@ const MONSTERS = {
   // TOXIC SPILL SPITTER: bloated by the fryer vats, leaking green, wet and hitching.
   spitter(rig, v = 0) {
     const R = RIGS.male, B = MBODIES.bloat;
-    const skin = hash3(v, '#86a850', '#9ab058', '#7a9c58');
+    const skin = hash3(v, '#6cd038', '#84d848', '#58c850');
     const goo = mat('#80ff30', { emissive: '#40c010', emissiveIntensity: 1.6 });
     const smock = mat('#ffffff', { map: ragTex(hash3(v, '#e8dca0', '#c8e0b0', '#e8c8a0'), 110 + v, { holes: 5, blood: 4 }), roughness: 0.95 });
     const pants = mat('#ffffff', { map: ragTex('#3a3a2a', 120 + v, { holes: 4 }), roughness: 0.95 });

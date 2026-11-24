@@ -168,33 +168,51 @@ function clipVariant(name, part, adult = 0) {
   return clip;
 }
 
+// Zombies only: a faint sickly-green self-glow plus a thin green fresnel rim, so the dead pop off
+// the floor at gameplay distance. One shared program (same cache key) for every zombie material.
+function zombieMaterial(m) {
+  if (m.emissiveIntensity === 0 || m.emissive.getHex() === 0) { m.emissive = new THREE.Color('#1a3a10'); m.emissiveIntensity = 0.2; }
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+      `float zr = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
+       outgoingLight += vec3(0.28, 0.85, 0.12) * pow(zr, 3.0) * 0.5;
+       #include <opaque_fragment>`);
+  };
+  m.customProgramCacheKey = () => 'zombieRim';
+}
+
 const undeadClips = new Map();
 // Additive shamble clip: `u` = { lean, head, reach, bend, sway, hitch, uneven }; sign = head tilt side.
 function undeadClip(u, sign) {
   const key = JSON.stringify(u) + sign;
   if (undeadClips.has(key)) return undeadClips.get(key);
-  const N = 8, dur = 2, times = [], E = new THREE.Euler(), Q = new THREE.Quaternion();
+  const N = 16, dur = 2.4, times = [], E = new THREE.Euler(), Q = new THREE.Quaternion();
   const tracks = [];
   const track = (bone, f) => {
     const vals = [];
     for (let i = 0; i <= N; i++) {
       const ph = (i / N) * Math.PI * 2;
-      const [x, y, z] = f(ph, i);
+      const [x, y, z] = f(ph + Math.sin(ph) * 0.55 + Math.sin(ph * 3) * 0.2, i); // warped phase: an irregular, stop-start rhythm
       Q.setFromEuler(E.set(x, y, z));
       vals.push(Q.x, Q.y, Q.z, Q.w);
     }
     tracks.push(new THREE.QuaternionKeyframeTrack(`${bone}.quaternion`, times, vals));
   };
   for (let i = 0; i <= N; i++) times.push((i / N) * dur);
-  const hitch = (ph) => (u.hitch ? Math.max(0, Math.sin(ph * 2)) ** 3 * u.hitch : 0); // a wet catch in the stride
-  const lurch = (ph) => Math.sin(ph) * u.sway + Math.sin(ph * 2 + 1.3) * u.sway * 0.5;
-  track('spine', (ph) => [u.lean * 0.55 + hitch(ph) * 0.5, 0, lurch(ph) * 0.4]);
-  track('chest', (ph) => [u.lean * 0.6 + hitch(ph), lurch(ph) * 0.4, lurch(ph) * 0.5]);
-  track('head', (ph) => [u.head + Math.sin(ph * 2) * 0.06, lurch(ph) * 0.5, sign * 0.22 + lurch(ph) * 0.5]);
-  track('upperarml', (ph) => [-(u.reach + Math.sin(ph) * 0.12), 0, 0]);
-  track('upperarmr', (ph) => [-(u.reach * (u.uneven || 1) + Math.sin(ph + 2) * 0.12), 0, 0]);
-  track('lowerarml', () => [-u.bend, 0, 0]);
-  track('lowerarmr', () => [-u.bend * 1.4, 0, 0]);
+  const hit = u.hitch || 0.3;
+  const hitch = (ph) => Math.max(0, Math.sin(ph * 2)) ** 3 * hit; // a wet catch in the stride: the spine folds
+  const lurch = (ph) => Math.sin(ph) * u.sway * 1.8 + Math.sin(ph * 2 + 1.3) * u.sway * 0.9;
+  track('hips', (ph) => [0.08 + hitch(ph) * 0.3, lurch(ph) * 0.3, lurch(ph) * 0.45]);
+  track('spine', (ph) => [u.lean * 0.7 + hitch(ph) * 0.7, 0, lurch(ph) * 0.55]);
+  track('chest', (ph) => [u.lean * 0.8 + hitch(ph) * 1.2, lurch(ph) * 0.6, lurch(ph) * 0.7]);
+  track('head', (ph) => [u.head + 0.12 + hitch(ph) * 0.5 + Math.sin(ph * 2) * 0.1, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
+  const un = u.uneven || 0.85;
+  track('upperarml', (ph) => [-(u.reach + Math.sin(ph) * 0.2), 0.1, -0.05]);
+  track('upperarmr', (ph) => [-(u.reach * un + Math.sin(ph + 2) * 0.25 + hitch(ph) * 0.3), -0.1, 0.05]);
+  track('lowerarml', (ph) => [-u.bend - Math.max(0, Math.sin(ph * 2)) * 0.25, 0, 0]);
+  track('lowerarmr', (ph) => [-u.bend * 1.4 - Math.max(0, Math.sin(ph * 2 + 1)) * 0.3, 0, 0]);
+  track('upperlegr', (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.18, 0, 0.06]); // a dragging leg
+  track('lowerlegr', (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.22, 0, 0]);
   const clip = new THREE.AnimationClip(`undead:${key}`, dur, tracks, THREE.AdditiveAnimationBlendMode);
   undeadClips.set(key, clip);
   return clip;
@@ -229,6 +247,7 @@ export class Actor {
           m.emissive = new THREE.Color(typeof ghost === 'string' ? ghost : '#6080ff'); m.emissiveIntensity = 0.6;
           m.color.set(m.emissive).lerp(new THREE.Color('#ffffff'), 0.8);
         }
+        if (undead) zombieMaterial(m);
         m.userData.e0 = m.emissive.clone();
         m.userData.ei0 = m.emissiveIntensity;
         m.userData.o0 = m.opacity;

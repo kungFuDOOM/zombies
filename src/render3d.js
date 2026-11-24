@@ -37,10 +37,10 @@ const HERO_STYLE = {
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
 const ENEMY_STYLE = {
   // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
-  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.3, head: 0.3, reach: 1.25, bend: 0.1, sway: 0.1, rate: 1 } },
-  sprinter: { model: 'm_sprinter', walk: 'Running_C', walkSpeed: 1.5, idleSpeed: 0.4, scale: 0.95, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.5, head: 0.4, reach: 0.9, bend: 0.5, sway: 0.2, rate: 2.2, uneven: 0.5 } },
-  brute: { model: 'm_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.16, head: 0.12, reach: 0.65, bend: 0.2, sway: 0.2, rate: 0.7 } },
-  spitter: { model: 'm_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.2, head: 0.25, reach: 0.8, bend: 0.5, sway: 0.12, hitch: 0.28, rate: 1.4 } },
+  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.38, head: 0.35, reach: 1.45, bend: 0.2, sway: 0.14, hitch: 0.3, rate: 0.9 } },
+  sprinter: { model: 'm_sprinter', walk: 'Running_C', walkSpeed: 1.5, idleSpeed: 0.4, scale: 0.95, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.5, head: 0.4, reach: 1.3, bend: 0.5, sway: 0.24, hitch: 0.35, rate: 2.0, uneven: 0.6 } },
+  brute: { model: 'm_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.28, head: 0.25, reach: 1.15, bend: 0.25, sway: 0.2, hitch: 0.22, rate: 0.7 } },
+  spitter: { model: 'm_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.34, head: 0.32, reach: 1.2, bend: 0.5, sway: 0.16, hitch: 0.4, rate: 1.2 } },
   death: { model: 'skeleton_mage', weapon: 'weapon_staff', tint: '#3a3440', eyes: '#ff1010', walk: 'Walking_A', walkSpeed: 1.2, scale: 1.25 },
 };
 
@@ -52,7 +52,7 @@ export class Renderer3D {
     this.canvas = canvas;
     this.setPixelation(1);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0; // a touch grimier than the first pass
+    this.renderer.toneMappingExposure = 0.86; // dim, grimy mall
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera = new THREE.PerspectiveCamera(42, VIEW_W / VIEW_H, 10, 3000);
@@ -336,7 +336,7 @@ export class Renderer3D {
       this.gibBox = new THREE.BoxGeometry(1, 1, 1);
       this.gibLimb = new THREE.CylinderGeometry(0.5, 0.38, 1, 6);
       this.decalGeo = new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2);
-      this.decalMats = ['#5a0808', '#3a0606'].map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.75, depthWrite: false }));
+      this.decalMats = ['#7a0a0a', '#4a0606'].map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, depthWrite: false }));
     }
     const big = type === 'brute' ? 1.5 : 1;
     const n = Math.round((7 + Math.random() * 4) * big);
@@ -354,7 +354,7 @@ export class Renderer3D {
     while (this.gibs.length > 160) this.scene.remove(this.gibs.shift().mesh);
     const d = new THREE.Mesh(this.decalGeo, this.decalMats[(Math.random() * 2) | 0]);
     d.position.set(x, 0.6 + this.decals.length * 0.002, z);
-    d.scale.set((11 + Math.random() * 8) * big, 1, (8 + Math.random() * 7) * big);
+    d.scale.set((14 + Math.random() * 10) * big, 1, (10 + Math.random() * 9) * big);
     d.rotation.y = Math.random() * 3;
     d.renderOrder = 1;
     this.scene.add(d);
@@ -599,6 +599,16 @@ export class Renderer3D {
     v.wasHurt = p.hurtFlash > 0;
     a.flash(p.hurtFlash, '#ff2020');
     a.fade(p.buffs.invisible ? 0.3 : 1);
+    // the Mall Goth's hairspray jet: long while she is attacking, a small wisp otherwise
+    if (v.jetRoot !== v.root) { // (re)find it after a respawn builds a new root
+      v.jetRoot = v.root; v.jet = null; v.jetS = 1;
+      v.root.traverse((o) => { if (o.userData.flame) v.jet = o; });
+    }
+    if (v.jet) {
+      const spraying = !!p.act && p.act.type === 'shoot' && g.time - p.act.t < 0.35;
+      v.jetS += ((spraying ? 2.6 : 1) - v.jetS) * (1 - Math.exp(-dt * 12)); // eased, not snapped
+      v.jet.scale.setScalar(v.jetS);
+    }
     v.root.position.y = p.buffs.levitate ? 6 + Math.sin(g.time * 4) * 2 : 0;
     const big = p.buffs.grow ? 1.4 : 1;
     v.root.scale.setScalar(v.root.scale.x + (big - v.root.scale.x) * 0.15);
@@ -812,7 +822,8 @@ export class Renderer3D {
     for (const [i, c] of (this.crts || []).entries()) c.material.color.setScalar(0.85 + Math.sin(t * 23 + i * 5) * 0.1 + (Math.sin(t * 61 + i) > 0.97 ? 0.3 : 0));
     // the alarm: a red pulse over the whole set (Scene 1)
     this.hemi.color.set(g.alarm > 0 ? '#ff9aa8' : g.theme.light);
-    this.hemi.intensity = g.theme.ambient * 1.7 * (g.alarm > 0 ? 0.75 + (Math.sin(t * 8) * 0.5 + 0.5) * 0.5 : 1);
+    const brownout = Math.sin(t * 2.1) * Math.sin(t * 7.3) > 0.82 ? 0.7 : 1; // the grid sags now and then
+    this.hemi.intensity = g.theme.ambient * 1.7 * brownout * (g.alarm > 0 ? 0.75 + (Math.sin(t * 8) * 0.5 + 0.5) * 0.5 : 1);
   }
 
   syncLights(g, t, cx, cz) {
@@ -824,7 +835,10 @@ export class Renderer3D {
       if (!s || s.d > 800 * 800) { l.intensity = 0; return; }
       l.position.set(s.tc.x, s.tc.y ?? 46, s.tc.z + 10);
       l.color.set(s.tc.color || '#ff9a50');
-      l.intensity = (s.tc.power || 110) * (1 + Math.sin(t * 13 + i * 3) * 0.08);
+      // dying tubes: every third light stutters and blacks out in bursts
+      const bad = (Math.floor(s.tc.x / 7) + i) % 3 === 0;
+      const dead = bad && Math.sin(t * 31 + s.tc.x) * Math.sin(t * 4.3 + s.tc.z * 0.1) > 0.35;
+      l.intensity = (s.tc.power || 110) * (1 + Math.sin(t * 13 + i * 3) * 0.08) * (dead ? 0.12 : 1);
     });
     const ps = g.allPlayers();
     this.playerLights.forEach((l, i) => {

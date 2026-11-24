@@ -310,10 +310,11 @@ function drawControlsBar(ctx, maxW) {
 
 function drawBanner(ctx, g) {
   if (!g.banner) return;
-  const a = Math.min(1, g.banner.t, 1);
+  // fades out over its last half second, and sits near the top so it stays off the play area
+  const a = Math.min(1, g.banner.t / 0.5) * 0.85;
   ctx.globalAlpha = Math.max(0, a);
   ctx.textAlign = 'center';
-  const y = 210;
+  const y = 96; // below the boss health bar (y 8 to 48), still well above the play area
   const grad = ctx.createLinearGradient(0, y - 46, 0, y + 30);
   grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(0.5, 'rgba(0,0,0,0.55)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grad;
@@ -1302,7 +1303,12 @@ function drawChoiceBar(ctx, v, time) {
   roundRect(ctx, (VIEW_W - pw) / 2, 446, pw, 28, 5);
   ctx.fill();
   outlined(ctx, v.prompt, VIEW_W / 2, 466, '#f6f0ff', '#000', 3);
-  if (v.hint) { ctx.font = `italic bold 13px ${SANS}`; outlined(ctx, v.hint, VIEW_W / 2, 490 - 14, '#ffcc33', '#000', 3); }
+  if (v.hint) { // a small dim note under the choice buttons, clear of the question
+    ctx.globalAlpha = 0.75;
+    ctx.font = `italic 12px ${SANS}`;
+    outlined(ctx, v.hint, VIEW_W / 2, CH.y + CH.h + 22, '#ffcc33', '#000', 2);
+    ctx.globalAlpha = 1;
+  }
   // the timer bar: thick, neon, full width above the four choices, and it drains
   const tx = CH.x, tw = 4 * CH.w + 3 * CH.gap, TH = 10, ty = CH.y - TH - 6;
   const frac = Math.max(0, Math.min(1, v.timerFrac));

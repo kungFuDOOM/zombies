@@ -23,8 +23,8 @@ export const WINGS = [
 export const THEMES = [
   { // Food Court: bright checkerboard tiles under magenta, cyan and gold neon
     name: 'Food Court', style: 'mall', stages: ['Food Court Plaza'],
-    floorA: '#f4ecd8', floorB: '#3fd6c8', wallTop: '#ff4fb8', wallSide: '#7a4cc8', rock: '#a07ad8', dark: 0.1, accent: '#ffcc33',
-    void: '#120a24', sky: '#1a0f33', fog: '#2a1850', light: '#f2eaee', ambient: 0.96, neonA: '#ff2ea6', neonB: '#2ee6ff', neonC: '#ffcc33',
+    floorA: '#b4b49c', floorB: '#2c8f86', wallTop: '#c8368c', wallSide: '#4a3a78', rock: '#a07ad8', dark: 0.1, accent: '#ffcc33',
+    void: '#080a10', sky: '#0c1210', fog: '#16241c', light: '#b8d4b4', ambient: 0.72, neonA: '#ff2ea6', neonB: '#2ee6ff', neonC: '#ffcc33',
   },
   { name: 'Arcade, Bowling & Batting Cages', style: 'mall', stages: ['Arcade'], floorA: '#2a2050', floorB: '#3a2a70', wallTop: '#5a3aa0', wallSide: '#2a1a60', rock: '#5a3aa0', dark: 0.3, accent: '#40ff90', void: '#08041a', sky: '#0a0620', fog: '#150a35', light: '#c0a0ff', ambient: 0.8, neonA: '#40ff90', neonB: '#ff40a0', neonC: '#40c0ff' },
   { name: 'Movie Theater', style: 'mall', stages: ['Theater'], floorA: '#5a1a20', floorB: '#6a2228', wallTop: '#a03040', wallSide: '#401018', rock: '#6a2228', dark: 0.4, accent: '#ffcc33', void: '#0a0406', sky: '#0a0406', fog: '#200a0e', light: '#ffd0c0', ambient: 0.7, neonA: '#ff3040', neonB: '#ffcc33', neonC: '#ffffff' },
@@ -39,7 +39,7 @@ export const STAGE_LOOKS = {
     particles: { type: 'motes', color: '#ffd0f0', count: 60 }, lantern: '#ff9ad8',
   },
   2: { // The Butcher's Kitchen: steel, steam and grease-fire orange
-    name: "The Butcher's Kitchen", floorA: '#cfd6de', floorB: '#8c97a4', wallTop: '#ff8a30', wallSide: '#5a6470', sky: '#160c10', fog: '#3a1a14', light: '#ffe0c0', ambient: 0.95,
+    name: "The Butcher's Kitchen", floorA: '#98a09a', floorB: '#5c665c', wallTop: '#d06a22', wallSide: '#3c4640', sky: '#100a08', fog: '#2a1610', light: '#e8c8a0', ambient: 0.74,
     neonA: '#ff7a1a', neonB: '#ffd040', neonC: '#ff2ea6', kitchen: true,
     particles: { type: 'sparks', color: '#ffa030', count: 50 }, lantern: '#ff8a30',
   },

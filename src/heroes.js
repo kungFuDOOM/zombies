@@ -242,7 +242,7 @@ function undeadFace(ctx, w, h, cx, f, soft) {
   for (let i = 0; i < 26; i++) soft(rnd() * w, 60 + rnd() * 150, 8 + rnd() * 18, 6 + rnd() * 12, rnd() < 0.5 ? '#5a4a6a' : '#a8a050', 0.12 + rnd() * 0.12);
   for (const s of [-1, 1]) {
     soft(cx + s * 38, 156, 18, 24, '#10140c', 0.38); // sunken cheeks
-    soft(cx + s * 28, 116, 27, 17, '#050308', 0.92); // black sockets
+    soft(cx + s * 28, 116, 33, 22, '#050308', 0.97); // big black sockets
   }
   // veins creeping out from the eyes and temple
   ctx.strokeStyle = 'rgba(70,40,90,0.7)'; ctx.lineWidth = 1.3;
@@ -274,9 +274,9 @@ function undeadFace(ctx, w, h, cx, f, soft) {
   ctx.beginPath(); ctx.ellipse(cx, 164, 16, 9, 0, 0, Math.PI * 2); ctx.stroke();
   // blood down the chin
   const blood = ctx.createLinearGradient(0, 168, 0, 230);
-  blood.addColorStop(0, 'rgba(170,16,16,1)'); blood.addColorStop(1, 'rgba(60,4,4,0)');
+  blood.addColorStop(0, 'rgba(210,20,20,1)'); blood.addColorStop(1, 'rgba(110,6,6,0.5)');
   ctx.fillStyle = blood;
-  ctx.beginPath(); ctx.moveTo(cx - 12, 166); ctx.quadraticCurveTo(cx - 20, 205, cx - 6, 232); ctx.lineTo(cx + 4, 226); ctx.quadraticCurveTo(cx + 6, 200, cx + 12, 166); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - 22, 160); ctx.quadraticCurveTo(cx - 36, 205, cx - 10, 244); ctx.lineTo(cx + 10, 240); ctx.quadraticCurveTo(cx + 32, 200, cx + 22, 160); ctx.fill();
   const wound = (x, y, rx, ry) => { // torn flesh: dark-red crater, pink rim, bone fleck
     ctx.fillStyle = '#e08a84'; ctx.beginPath(); ctx.ellipse(x, y, rx + 4, ry + 4, 0.3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2a0303'; ctx.beginPath();
@@ -284,12 +284,12 @@ function undeadFace(ctx, w, h, cx, f, soft) {
     ctx.fill();
     ctx.fillStyle = '#f0e8d0'; ctx.fillRect(x - 3, y - 1, 7, 3);
   };
-  if (f.wound === 'cheek') wound(cx + 36, 150, 13, 11);
-  if (f.wound === 'cheek2') wound(cx - 36, 144, 11, 10);
-  if (f.wound === 'brow') wound(cx + 14, 92, 10, 8);
+  if (f.wound === 'cheek') wound(cx + 36, 150, 22, 19);
+  if (f.wound === 'cheek2') wound(cx - 36, 144, 20, 18);
+  if (f.wound === 'brow') wound(cx + 14, 92, 18, 14);
   if (f.wound === 'jaw') { // the lower jaw is simply gone
     ctx.fillStyle = '#1a0606'; ctx.beginPath(); ctx.moveTo(cx - 34, 170); ctx.quadraticCurveTo(cx, 250, cx + 34, 170); ctx.fill();
-    ctx.fillStyle = '#a01818'; ctx.beginPath(); ctx.ellipse(cx, 196, 9, 16, 0, 0, Math.PI * 2); ctx.fill(); // tongue
+    ctx.fillStyle = '#d02020'; ctx.beginPath(); ctx.ellipse(cx, 196, 12, 20, 0, 0, Math.PI * 2); ctx.fill(); // tongue
     ctx.fillStyle = '#c8c0a0'; for (let i = -3; i <= 3; i++) ctx.fillRect(cx + i * 4 - 1.5, 158, 3, 7);
   }
 }
@@ -307,7 +307,7 @@ function rotTex(skin, seed = 1, opts = {}) {
         ctx.beginPath(); ctx.ellipse(rnd() * w, rnd() * h, r0 + rnd() * r1, r0 + rnd() * r1 * 0.8, rnd() * 3, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       }
     };
-    blot(30, ['#4a3a5a', '#2a3a2a', '#9a9a50', '#6a7a5a'], 0.16, 0.34, 4, 14);
+    blot(30, ['#3a2a4a', '#1a2e1a', '#b0b040', '#4a7a3a'], 0.25, 0.5, 5, 16);
     ctx.strokeStyle = 'rgba(60,40,90,0.65)'; ctx.lineWidth = 1.2; // veins
     for (let i = 0; i < 7; i++) {
       let x = rnd() * w, y = rnd() * h;
@@ -315,12 +315,12 @@ function rotTex(skin, seed = 1, opts = {}) {
       for (let k = 0; k < 5; k++) { x += -8 + rnd() * 16; y += 4 + rnd() * 10; ctx.lineTo(x, y); }
       ctx.stroke();
     }
-    for (let i = 0; i < (opts.sores ?? 3); i++) { // open sores: pink rim, red-black centre
+    for (let i = 0; i < (opts.sores ?? 5); i++) { // open sores: pink rim, red-black centre
       const x = rnd() * w, y = rnd() * h, r = 4 + rnd() * 6;
       ctx.fillStyle = '#b07a70'; ctx.beginPath(); ctx.ellipse(x, y, r + 2, r * 0.8 + 2, 0.4, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#2a0303'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, 0.4, 0, Math.PI * 2); ctx.fill();
     }
-    blot(opts.blood ?? 5, ['#8a0e0e', '#5a0808', '#c01818'], 0.65, 0.95, 3, 9);
+    blot((opts.blood ?? 5) + 5, ['#a01010', '#5a0808', '#d02020'], 0.75, 1, 5, 14);
     for (let i = 0; i < 90; i++) { ctx.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,230,0.08)'; ctx.fillRect(rnd() * w, rnd() * h, 2, 2); }
   });
 }
@@ -750,9 +750,13 @@ function hairspray(hand) {
   add(g, box(), mat('#ff2ea6'), [0, 0.45, 0.02], [0, 0, 0], [0.026, 0.03, 0.05]);          // nozzle
   // Slim jet along the can axis: tip points away from the nozzle, base thin at the nozzle. Modest emissive so it never blooms into a disc.
   const fl = mat('#ff7a10', { emissive: '#ff4a00', emissiveIntensity: 0.9 }), fl2 = mat('#ffd040', { emissive: '#ffa010', emissiveIntensity: 1.0 });
-  const flame = add(g, cone(6), fl, [0, 0.64, 0.02], [0, 0, 0], [0.04, 0.34, 0.04]);
-  add(g, cone(5), fl2, [0, 0.6, 0.02], [0, 0, 0], [0.022, 0.24, 0.022]);
-  flame.userData.flame = true;
+  // The jet hangs off a pivot at the nozzle so render3d.js can scale it as one piece (see updateHero).
+  const jet = new THREE.Group();
+  jet.position.set(0, 0.5, 0.02);
+  g.add(jet);
+  add(jet, cone(6), fl, [0, 0.14, 0], [0, 0, 0], [0.04, 0.34, 0.04]);
+  add(jet, cone(5), fl2, [0, 0.1, 0], [0, 0, 0], [0.022, 0.24, 0.022]);
+  jet.userData.flame = true;
   g.scale.setScalar(1.3);
   hand.add(g);
   return g;

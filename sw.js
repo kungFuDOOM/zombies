@@ -11,14 +11,20 @@
 //   announcer clips have content-hashed names and never change; models and images are
 //   re-checked quietly in the background so an updated model still arrives.
 
-const CODE_CACHE = 'motd-code';
-const ASSET_CACHE = 'motd-assets';
+const CODE_CACHE = 'motd-code-v2';
+const ASSET_CACHE = 'motd-assets-v2';
 const CODE = /\.(js|mjs|html|json|webmanifest|css)$/;
 const ASSET = /\.(glb|png|mp3)$/;
 const IMMUTABLE = /\/assets\/voice\/[0-9a-f]{10}\.mp3$/;
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+// Drop caches left over from older versions (e.g. the un-suffixed motd-code / motd-assets).
+const CURRENT_CACHES = [CODE_CACHE, ASSET_CACHE];
+self.addEventListener('activate', (e) => e.waitUntil(
+  caches.keys()
+    .then((names) => Promise.all(names.filter((n) => !CURRENT_CACHES.includes(n)).map((n) => caches.delete(n))))
+    .then(() => self.clients.claim()),
+));
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;

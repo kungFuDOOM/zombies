@@ -130,7 +130,7 @@ export function buildMall(r, g, group) {
   r.fireLights = [];
 
   r.scene.background = col(th.sky);
-  r.scene.fog = new THREE.Fog(th.fog, 560, 1500);
+  r.scene.fog = new THREE.Fog(th.fog, 380, 1150);
   r.hemi.color.set(th.light);
   r.hemi.groundColor.set(th.fog);
   r.hemi.intensity = th.ambient * 1.7;
@@ -147,11 +147,11 @@ export function buildMall(r, g, group) {
       const x = tx * S + 16, z = ty * S + 16;
       const isMosaic = L.ground && L.ground[ty * w + tx] === 1;
       const c = (tx + ty) % 2 ? B : A;
-      const shade = 0.94 + hashN(tx, ty) * 0.06;
+      const shade = 0.66 + hashN(tx, ty) * 0.14; // dirty, uneven tiles
       (isMosaic ? mosaic : floors).push({ x, y: 0, z, rx: -Math.PI / 2, color: `#${c.clone().multiplyScalar(shade).getHexString()}` });
     }
   }
-  const tileMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.32, metalness: 0.08, emissive: '#ffffff', emissiveIntensity: 0.1 });
+  const tileMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5, metalness: 0.05, emissive: '#ffffff', emissiveIntensity: 0.03 });
   tileMat.emissiveMap = null;
   r.instancedPrim(group, new THREE.PlaneGeometry(S, S), tileMat, floors);
   if (mosaic.length) {
@@ -188,9 +188,44 @@ export function buildMall(r, g, group) {
       }
     }
   }
-  r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.7, emissive: '#2a1650', emissiveIntensity: 0.35 }), walls);
-  r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5, emissive: '#ffffff', emissiveIntensity: 0.4 }), caps);
+  r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.7, emissive: '#1a2a1a', emissiveIntensity: 0.2 }), walls);
+  r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6, emissive: '#ffffff', emissiveIntensity: 0.06 }), caps);
   r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }), bands);
+
+  // ---- grime: blood smears on the floor and drag marks up the walls (two instanced draws) ----
+  {
+    const smear = canvasTex(128, 128, (ctx, cw, ch) => {
+      ctx.clearRect(0, 0, cw, ch);
+      for (let i = 0; i < 9; i++) {
+        const a = hashN(i, 7) * Math.PI * 2, rr = 10 + hashN(i, 8) * 40;
+        ctx.fillStyle = i % 3 ? 'rgba(90,6,6,0.75)' : 'rgba(40,2,4,0.8)';
+        ctx.beginPath(); ctx.ellipse(64 + Math.cos(a) * rr * 0.6, 64 + Math.sin(a) * rr * 0.6, 8 + hashN(i, 9) * 22, 5 + hashN(i, 10) * 14, a, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(70,4,6,0.7)'; ctx.fillRect(58, 64, 10, 60); // a drag trail
+    });
+    const smearMat = new THREE.MeshBasicMaterial({ map: smear, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const fl = [], wl = [];
+    for (let ty = 0; ty < h; ty++) {
+      for (let tx = 0; tx < w; tx++) {
+        const t = tileAt(tx, ty);
+        const x = tx * S + 16, z = ty * S + 16;
+        if (t === T.FLOOR && hashN(tx * 3 + 1, ty * 5 + 2) > 0.86) {
+          const sc = 22 + hashN(tx, ty * 7) * 30;
+          fl.push({ x: x + (hashN(tx, ty) - 0.5) * 16, y: 0.5, z: z + (hashN(ty, tx) - 0.5) * 16, rx: -Math.PI / 2, rz: hashN(tx + 9, ty) * 6.28, sx: sc, sy: sc, sz: 1 });
+        }
+        if (isWall(tx, ty) && hashN(tx * 7 + 3, ty * 3 + 1) > 0.78) {
+          for (const [dx, dy, ox, oz, ry] of [[0, -1, 0, -S / 2 - 0.6, Math.PI], [0, 1, 0, S / 2 + 0.6, 0], [-1, 0, -S / 2 - 0.6, 0, -Math.PI / 2], [1, 0, S / 2 + 0.6, 0, Math.PI / 2]]) {
+            if (!open(tx + dx, ty + dy)) continue;
+            wl.push({ x: x + ox, y: 14 + hashN(tx, ty) * 14, z: z + oz, ry, sx: 26, sy: 26, sz: 1 });
+            break;
+          }
+        }
+      }
+    }
+    const quad = new THREE.PlaneGeometry(1, 1);
+    const f = r.instancedPrim(group, quad, smearMat, fl); if (f) f.renderOrder = 1;
+    const wv = r.instancedPrim(group, quad, smearMat, wl); if (wv) wv.renderOrder = 1;
+  }
 
   // ---- stalls: awnings and neon signs ----
   const addSign = (text, color, cx, y, cz, ry, sw = 130, sh = 40, sub = '') => {

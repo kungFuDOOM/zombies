@@ -183,7 +183,8 @@ export class Game {
     this.scoreMul = L.n && !L.hub && !L.tutorial ? stagePoints(L.n) * (this.isCleared(L.n) ? REPLAY_POINTS : 1) : 1;
     for (const p of this.allPlayers()) { p.stageStart = p.score; p.stageDeaths = 0; }
     this.refreshDifficulty();
-    this.banner = { text: L.info.stageName, sub: L.info.theme.name + newFoes(L), t: 3.5 };
+    // the boss stage gets a short title so it doesn't sit over the Butcher for long
+    this.banner = { text: L.info.stageName, sub: L.info.theme.name + newFoes(L), t: L.info.isBoss ? 1.2 : 3.5 };
   }
 
   loadLevel(L, key = 'L0') {
