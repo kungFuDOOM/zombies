@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Actor, HERO_CLASSES } from './assets.js';
 import { VIEW_W, VIEW_H } from './config.js';
-import { ENEMY_STYLE } from './render3d.js';
+import { ENEMY_STYLE, HERO_STYLE } from './render3d.js';
 import { buildBoss, BOSS_SCALE } from './models.js';
 import { BOSS_ROSTER } from './bossRoster.js';
 
@@ -35,21 +35,23 @@ export function startLineup(r3d, section = 'all') {
   const oneHero = section.startsWith('hero:') ? section.slice(5) : null;
   if (want('heroes') || oneHero) {
     HERO_CLASSES.slice(0, 4).filter((c) => !oneHero || c === oneHero).forEach((cls, i) => {
-      const a = new Actor(cls); a.base('Idle'); actors.push(a);
+      const a = new Actor(cls); a.base(HERO_STYLE[cls].idle); actors.push(a);
       place(a.root, oneHero ? 0 : -105 + i * 70, 0, 1.15); a.root.position.z = 110; a.root.rotation.y = oneHero ? 0.5 : 0.3;
     });
   }
   if (want('zombies')) {
     ['walker', 'sprinter', 'brute', 'spitter'].forEach((t, ti) => [0, 1, 2].forEach((v) => {
       const st = ENEMY_STYLE[t];
-      const a = new Actor(`m_${t}${v || ''}`, { undead: { ...st.undead } });
+      const a = new Actor(`${st.model}${v || ''}`, { tint: st.tint, undead: { ...st.undead } });
+      if (st.slim) a.model.scale.x *= st.slim;
       a.base(st.walk, st.walkSpeed); actors.push(a);
-      place(a.root, -165 + (ti * 3 + v) * 30, 10, st.scale); a.root.rotation.y = 0.2;
+      place(a.root, -165 + (ti * 3 + v) * 30, 10, st.scale); a.root.scale.setScalar(st.scale * 1.15); a.root.rotation.y = 0.2;
     }));
   }
   if (want('bosses') || section.startsWith('boss:')) {
     const only = section.startsWith('boss:') ? section.slice(5) : null;
     BOSS_ROSTER.filter((b) => !only || b.id === only).forEach((b, i) => {
+      if (b.model === 'mulchmaw') { const a = new Actor('giant', { tint: '#c8d8a0' }); a.base('Walking_A'); actors.push(a); place(a.root, only ? 0 : -330 + i * 130, -150, 1); a.root.rotation.y = 0.2; return; }
       const root = buildBoss(b.model, b.color, b.horn);
       root.userData.rig && bosses.push({ root, rig: root.userData.rig });
       place(root, only ? 0 : -330 + i * 130, -150, BOSS_SCALE); root.rotation.y = 0.2;

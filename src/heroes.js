@@ -981,5 +981,5 @@ export function buildHero(cls, rig) {
 export const kit = {
   RIGS, BODIES, applyRig, hipsHeight, BASE_HIPS, mat, metal, shade, stripes, strands, canvasTex, rotTex, ragTex, seeded, cached, add, lathe, limb,
   sphere, box, cap, CAP_TILT, cylinder, cone, torus, shapeGeo, roundedBox, body, hairLong, bracer, flap, belt, boots, horns,
-  greatAxe, sword, shield, bow, staff, hammer, dagger,
+  greatAxe, sword, shield, bow, staff, hammer, dagger, chainsaw, shotgun, spikedBat, hairspray, boombox,
 };

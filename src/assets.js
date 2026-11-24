@@ -8,6 +8,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildHero } from './heroes.js';
 import { buildMonster, BUILT_MONSTERS } from './monsters.js';
+import { dressSurvivor, dressZombie } from './charProps.js';
 
 export const MODEL_SCALE = 16; // KayKit metres -> game units (one tile = 32 units = 2 m)
 
@@ -17,15 +18,32 @@ export const HERO_CLASSES = ['biker', 'mallCop', 'skater', 'mallGoth', 'ray', 'c
 export const HERO_SCALE = 27; // adult heroes are ~1.75 m tall -> ~47 game units
 const PROPS = ['weapon_staff', 'chest', 'barrel', 'food_b'];
 
-export const assets = { chars: {}, props: {}, clips: {}, ready: false };
+// Hand-modelled Quaternius "Zombie Apocalypse Kit" characters (CC0, see assets/CREDITS.md), baked to
+// vertex colours by tools/build-characters.mjs. Survivors share one animation library; each zombie
+// carries its own clips.
+const NATIVE = {
+  biker: 'ch_biker', mallCop: 'ch_mallCop', skater: 'ch_skater', mallGoth: 'ch_mallGoth',
+  z_walker: 'ch_zombie_walker', z_brute: 'ch_zombie_brute', z_spitter: 'ch_zombie_spitter', giant: 'ch_giant',
+};
+const NATIVE_HEIGHT = { biker: 49, mallCop: 47, skater: 46, mallGoth: 47, z_walker: 45, z_brute: 44, z_spitter: 42, giant: 150 };
+export const NATIVE_SURVIVORS = ['biker', 'mallCop', 'skater', 'mallGoth'];
+export const ZOMBIE_VARIANT_TINT = [null, '#c4cdb0', '#e2c8a4'];
+
+export const assets = { chars: {}, props: {}, clips: {}, survClips: {}, ready: false };
 
 export async function loadAssets(onProgress = () => {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const names = [...CHARACTERS, ...PROPS, 'anims', 'rig'];
+  const names = [...CHARACTERS, ...PROPS, ...Object.values(NATIVE), 'anims_survivor', 'anims', 'rig'];
   let done = 0;
   const load = async (name) => {
     const gltf = await loader.loadAsync(`assets/models/${name}.glb`);
+    if (name === 'anims_survivor') {
+      for (const c of gltf.animations) { c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale')); assets.survClips[c.name] = c; }
+      onProgress(++done / names.length); return;
+    }
+    const nat = Object.keys(NATIVE).find((k) => NATIVE[k] === name);
+    if (nat) { assets.nativeLoaded ||= {}; assets.nativeLoaded[nat] = gltf; onProgress(++done / names.length); return; }
     if (name === 'rig') { buildHeroes(gltf.scene); onProgress(++done / names.length); return; }
     if (name === 'anims') {
       // bone scale tracks are constant; dropping them lets us re-proportion the skeletons
@@ -36,6 +54,8 @@ export async function loadAssets(onProgress = () => {}) {
     onProgress(++done / names.length);
   };
   await Promise.all(names.map(load));
+  for (const [key, gltf] of Object.entries(assets.nativeLoaded || {})) assets.chars[key] = prepareNative(key, gltf);
+  assets.nativeLoaded = null;
   assets.ready = true;
 }
 
@@ -55,6 +75,29 @@ function buildHeroes(scene) {
     rig.userData.adult = buildMonster(type, rig);
     assets.chars[`m_${type}`] = rig;
   }
+}
+
+// A Quaternius character: normalise its size, keep its own clips (survivors use the shared library).
+function prepareNative(key, gltf) {
+  const scene = gltf.scene;
+  scene.userData.native = key;
+  const clips = new Map();
+  const src = NATIVE_SURVIVORS.includes(key) ? Object.values(assets.survClips) : gltf.animations;
+  for (const c of src) {
+    c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale'));
+    clips.set(c.name, c);
+  }
+  scene.userData.clips = clips;
+  scene.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(scene);
+  scene.userData.unit = NATIVE_HEIGHT[key] / Math.max(0.01, box.max.y - box.min.y);
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = false;
+    o.frustumCulled = false;
+    o.material.roughness = 0.82; o.material.metalness = 0;
+  });
+  return scene;
 }
 
 function prepareProp(scene) {
@@ -140,10 +183,42 @@ const LOWER = /^(root|hips|upperleg|lowerleg|foot|toes|kneeIK|control|heelIK|IK)
 const variantCache = new Map();
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
 
-function clipVariant(name, part, adult = 0) {
-  const key = `${name}:${part}:${adult}`;
+// Game clip names -> Quaternius clip names. Per character overrides win.
+const NATIVE_CLIPS = {
+  Idle: 'Idle', '2H_Melee_Idle': 'Idle', Idle_Combat: 'Idle', Running_A: 'Run', Running_B: 'Run', Running_C: 'Run',
+  Walking_A: 'Walk', Walking_D_Skeletons: 'Walk', '1H_Melee_Attack_Chop': 'Slash', '1H_Melee_Attack_Slice_Diagonal': 'Slash',
+  '1H_Melee_Attack_Stab': 'Stab', '2H_Melee_Attack_Chop': 'Slash', '2H_Melee_Attack_Slice': 'Slash', '2H_Melee_Attack_Spinning': 'Slash',
+  Unarmed_Melee_Attack_Punch_A: 'Punch', Throw: 'Punch', Spellcast_Shoot: 'Stab', Spellcast_Long: 'Wave', Spellcast_Raise: 'Wave',
+  '2H_Ranged_Shoot': 'Punch', '1H_Ranged_Shoot': 'Punch', Hit_A: 'HitReact', Hit_B: 'HitReact', Death_A: 'Death', Death_B: 'Death',
+  Death_C_Skeletons: 'Death', Cheer: 'Wave', Dodge_Forward: 'Jump',
+};
+const NATIVE_OVERRIDE = {
+  mallCop: { '2H_Melee_Idle': 'Idle_Gun', Running_C: 'Run_Gun', '2H_Ranged_Shoot': 'Idle_Gun' },
+  biker: { '2H_Melee_Idle': 'Idle_Gun', '2H_Melee_Attack_Chop': 'Slash', '2H_Melee_Attack_Spinning': 'Run_Slash' },
+  mallGoth: { Spellcast_Long: 'Yes' },
+  z_walker: { Running_C: 'Run_Arms', '1H_Melee_Attack_Stab': 'Punch', Walking_D_Skeletons: 'Walk' },
+  z_brute: { '2H_Melee_Attack_Chop': 'Punch' },
+  z_spitter: { Walking_D_Skeletons: 'Walk', Idle: 'Idle_Attack' },
+  giant: { Walking_A: 'Walk', Running_A: 'Run', Idle: 'Idle', Hit_B: 'HitRecieve', Hit_A: 'HitRecieve', Death_A: 'Death', '2H_Melee_Attack_Chop': 'Attack', Spellcast_Shoot: 'Attack', Spellcast_Raise: 'Attack', Spellcast_Long: 'Attack', Cheer: 'Jump' },
+};
+const NATIVE_LOWER = /^(Root|Body|Hips|UpperLeg|LowerLeg|Foot|PoleTarget)/;
+
+function clipVariant(name, part, adult = 0, nat = null) {
+  const key = `${nat ? nat.key : ''}:${name}:${part}:${adult}`;
   if (variantCache.has(key)) return variantCache.get(key);
-  let base = assets.clips[name];
+  let base;
+  if (nat) {
+    const n = (NATIVE_OVERRIDE[nat.key] || {})[name] || NATIVE_CLIPS[name];
+    base = nat.clips.get(n);
+    if (!base) { variantCache.set(key, null); return null; }
+    if (part !== 'full') {
+      base = base.clone(); base.name = key;
+      base.tracks = base.tracks.filter((t) => (part === 'lower') === NATIVE_LOWER.test(t.name.split('.')[0]));
+    }
+    variantCache.set(key, base);
+    return base;
+  }
+  base = assets.clips[name];
   if (!base) return null;
   if (adult) {
     // built heroes have adult bone lengths: keep rotations, scale hip/root motion to match
@@ -235,11 +310,22 @@ export class Actor {
   constructor(charName, { tint = null, ghost = false, emissiveEyes = null, undead = null } = {}) {
     this.undead = undead; // a shamble overlay (see startUndead)
     this.root = new THREE.Group();
+    // zombie variants are 'z_walker1': the same mesh with a different tint
+    const vm = /^(z_[a-z]+)([12])$/.exec(charName);
+    let zvariant = 0;
+    if (vm) { charName = vm[1]; zvariant = +vm[2]; tint = tint || ZOMBIE_VARIANT_TINT[zvariant]; }
     this.model = SkeletonUtils.clone(assets.chars[charName]);
-    this.adult = assets.chars[charName].userData.adult || 0;
-    if (this.adult) {
+    const natKey = assets.chars[charName].userData.native;
+    this.nat = natKey ? { key: natKey, clips: assets.chars[charName].userData.clips } : null;
+    this.adult = this.nat ? 0 : assets.chars[charName].userData.adult || 0;
+    if (this.nat) {
+      this.unit = assets.chars[charName].userData.unit;
+      this.model.scale.setScalar(this.unit);
+    } else if (this.adult) {
+      this.unit = HERO_SCALE;
       this.model.scale.setScalar(HERO_SCALE);
     } else {
+      this.unit = MODEL_SCALE * 0.84;
       this.model.scale.setScalar(MODEL_SCALE * 0.84);
       const lift = applyBuild(this.model, 'monster');
       this.model.position.y = lift * this.model.scale.y;
@@ -270,7 +356,9 @@ export class Actor {
       if (emissiveEyes && /Eyes/i.test(o.name)) { m.emissive.set(emissiveEyes); m.emissiveIntensity = 2; m.userData.e0 = m.emissive.clone(); m.userData.ei0 = 2; }
     });
     this.mixer = new THREE.AnimationMixer(this.model);
-    if (this.undead) this.startUndead();
+    if (this.nat && NATIVE_SURVIVORS.includes(this.nat.key)) dressSurvivor(this, this.nat.key);
+    if (this.nat && zvariant && charName === 'z_walker') dressZombie(this, zvariant);
+    if (this.undead && !this.nat) this.startUndead(); // Quaternius zombies bring their own shamble
     this.baseName = null;
     this.baseAction = null;
     this.baseMode = 'full';
@@ -309,7 +397,7 @@ export class Actor {
   base(name, timeScale = 1) {
     if (this.locked) return;
     if (this.baseName === name) { if (this.baseAction) this.baseAction.timeScale = timeScale; return; }
-    const clip = clipVariant(name, this.oneShot && this.oneShotUpper ? 'lower' : 'full', this.adult);
+    const clip = clipVariant(name, this.oneShot && this.oneShotUpper ? 'lower' : 'full', this.adult, this.nat);
     if (!clip) return;
     const prev = this.baseAction;
     const a = this.mixer.clipAction(clip);
@@ -323,7 +411,7 @@ export class Actor {
 
   setBaseMode(mode) {
     if (!this.baseName || this.baseMode === mode) return;
-    const clip = clipVariant(this.baseName, mode, this.adult);
+    const clip = clipVariant(this.baseName, mode, this.adult, this.nat);
     const a = this.mixer.clipAction(clip);
     a.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.08).play();
     a.time = this.baseAction ? this.baseAction.time : 0;
@@ -336,7 +424,7 @@ export class Actor {
   // Play a one-shot. upper=true keeps the legs on the base loop.
   play(name, { upper = false, timeScale = 1, clamp = false, fade = 0.08 } = {}) {
     if (this.locked) return;
-    const clip = clipVariant(name, upper ? 'upper' : 'full', this.adult);
+    const clip = clipVariant(name, upper ? 'upper' : 'full', this.adult, this.nat);
     if (!clip) return;
     if (this.oneShot) this.oneShot.fadeOut(fade);
     const a = this.mixer.clipAction(clip);
@@ -363,7 +451,7 @@ export class Actor {
     if (this.baseAction && !this.oneShot && this.baseAction.getEffectiveWeight() < 0.5) this.baseAction.setEffectiveWeight(1);
     this.mixer.update(dt);
     if (this.adult) this.adultPose();
-    if (this.undead) this.undeadAct.setEffectiveWeight(this.locked ? 0 : this.oneShot ? 0.35 : 1); // attacks keep their swing
+    if (this.undeadAct) this.undeadAct.setEffectiveWeight(this.locked ? 0 : this.oneShot ? 0.35 : 1); // attacks keep their swing
   }
 
   // Undead overlay: a looping ADDITIVE clip (collapsed spine, drooping head, arms reaching out,

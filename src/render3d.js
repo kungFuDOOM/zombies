@@ -26,7 +26,7 @@ function hash(x, y) {
 }
 
 // How each survivor is animated.
-const HERO_STYLE = {
+export const HERO_STYLE = {
   biker: { run: 'Running_C', idle: '2H_Melee_Idle', melee: '2H_Melee_Attack_Chop', shoot: 'Throw', turbo: '2H_Melee_Attack_Spinning', meleeSpeed: 2.2, shootSpeed: 2.4 },
   mallCop: { run: 'Running_C', idle: '2H_Melee_Idle', melee: '1H_Melee_Attack_Stab', shoot: '2H_Ranged_Shoot', turbo: '2H_Ranged_Shoot', meleeSpeed: 2.3, shootSpeed: 3 },
   skater: { run: 'Running_A', idle: '2H_Melee_Idle', melee: '1H_Melee_Attack_Slice_Diagonal', shoot: 'Throw', turbo: 'Dodge_Forward', meleeSpeed: 2.6, shootSpeed: 3.2 },
@@ -37,10 +37,10 @@ const HERO_STYLE = {
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
 export const ENEMY_STYLE = {
   // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
-  walker: { model: 'm_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.32, head: 0.26, reach: 1.45, bend: 0.2, sway: 0.14, hitch: 0.3, rate: 0.9 } },
-  sprinter: { model: 'm_sprinter', walk: 'Running_C', walkSpeed: 1.5, idleSpeed: 0.4, scale: 0.95, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.3, head: 0.2, reach: 1.1, bend: 0.5, sway: 0.2, hitch: 0.3, rate: 2.0, uneven: 0.6 } },
-  brute: { model: 'm_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.28, head: 0.25, reach: 1.15, bend: 0.25, sway: 0.2, hitch: 0.22, rate: 0.7, stomp: 0.045, drag: 0.4 } },
-  spitter: { model: 'm_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.34, head: 0.32, reach: 1.2, bend: 0.5, sway: 0.16, hitch: 0.4, rate: 1.2, retch: 0.5 } },
+  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.32, head: 0.26, reach: 1.45, bend: 0.2, sway: 0.14, hitch: 0.3, rate: 0.9 } },
+  sprinter: { model: 'z_walker', tint: '#e0a8a0', slim: 0.86, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 0.97, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.3, head: 0.2, reach: 1.1, bend: 0.5, sway: 0.2, hitch: 0.3, rate: 2.0, uneven: 0.6 } },
+  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.28, head: 0.25, reach: 1.15, bend: 0.25, sway: 0.2, hitch: 0.22, rate: 0.7, stomp: 0.045, drag: 0.4 } },
+  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.34, head: 0.32, reach: 1.2, bend: 0.5, sway: 0.16, hitch: 0.4, rate: 1.2, retch: 0.5 } },
   death: { model: 'skeleton_mage', weapon: 'weapon_staff', tint: '#3a3440', eyes: '#ff1010', walk: 'Walking_A', walkSpeed: 1.2, scale: 1.25 },
 };
 
@@ -289,7 +289,8 @@ export class Renderer3D {
     const vi = st.undead ? Math.floor(e.phase * 1000) % 3 : 0;
     const vr = st.undead ? ((Math.floor(e.phase * 7919) % 100) / 100 - 0.5) * 0.18 : 0;
     const a = new Actor(vi ? `${st.model}${vi}` : st.model, { tint: st.tint, ghost: st.ghost, emissiveEyes: st.eyes, undead: st.undead ? { ...st.undead } : null });
-    a.model.scale.setScalar((a.adult ? HERO_SCALE : S) * st.scale * (1 + vr));
+    a.model.scale.setScalar((a.nat ? a.unit : a.adult ? HERO_SCALE : S) * st.scale * (1 + vr));
+    if (st.slim) a.model.scale.x *= st.slim;
     if (st.weapon) a.attach(st.weapon, 'handslot.r');
     if (!st.float) this.blob(a.root, 30 * st.scale);
     a.base(st.undead ? st.walk : 'Idle', st.undead ? st.idleSpeed : 1);
@@ -319,6 +320,12 @@ export class Renderer3D {
 
   makeBoss(e, g) {
     const b = g.info.boss;
+    if (b.model === 'mulchmaw') { // a modelled (Quaternius Giant) base instead of a code build
+      const a = new Actor('giant', { tint: '#c8d8a0' });
+      this.blob(a.root, 110);
+      a.base('Idle');
+      return { kind: 'boss', root: a.root, actor: a, baseScale: 1 };
+    }
     const root = buildBoss(b.model, b.color, b.horn);
     root.traverse((o) => { if (o.isMesh) o.castShadow = false; });
     this.blob(root, 110);
