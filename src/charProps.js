@@ -156,7 +156,7 @@ const DRESS = {
   mallCop(a) {
     // the Worker body already has a moustache (and its hard hat was dropped at build time): cap + aviators only
     const h = holder(a, 'Head'); if (h) { copCap(h); shades(h, '#4a5a68', '#e8c040', 1.5, true); }
-    const w = holder(a, a.hand, WEAPON.mallCop); if (w) { shotgun(w); a.aim = { h: w, dir: [-0.4, 0.7, 0.55], roll: 0 }; } // barrel up across the chest
+    const w = holder(a, a.hand, WEAPON.mallCop); if (w) { shotgun(w); a.aim = { h: w, dir: [0.05, 0.28, 0.96], roll: 0 }; } // barrel along the facing, slightly up
     const t = holder(a, 'Torso', { pos: [0, 0.02, 0] });
     if (t) { // navy uniform shirt, bright gold badge, shoulder epaulettes, duty belt: reads as security from afar
       const navy = mat('#1c3070', { roughness: 0.6 }), gold = metal('#ffd23a', { emissive: '#a07800', emissiveIntensity: 0.5 }), black = mat('#0a0c14', { roughness: 0.4 });

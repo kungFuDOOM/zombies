@@ -772,11 +772,22 @@ export class Renderer3D {
     const a = v.actor;
     v.root.visible = !(p.invuln > 0 && Math.floor(g.time * 16) % 2);
     const moved = v.px !== undefined ? Math.hypot(p.x - v.px, p.y - v.py) : 0;
+    const stepOk = v.px === undefined || moved < 48; // a teleport or an off-screen catch-up is not a step
+    const inst = dt > 0 && stepOk ? moved / dt : (v.spd || 0); // actual ground speed, after walls have slid the step
+    v.spd = v.spd == null ? inst : v.spd + (inst - v.spd) * (1 - Math.exp(-dt * 10));
+    // face where the body is actually going, not where the stick points (a wall slide used to strafe).
+    // an attack holds the aim direction briefly, then the turn eases back onto the move direction.
+    if (stepOk && moved > 0.6) v.moveYaw = Math.atan2(p.x - v.px, p.y - v.py);
     v.px = p.x; v.py = p.y;
-    const moving = moved > 0.2 || !!p.dash;
+    const moving = v.spd > 12 || !!p.dash;
     v.root.position.set(p.x, 0, p.y);
-    v.root.rotation.y = lerpAngle(v.root.rotation.y, Math.atan2(p.fx, p.fy), 0.3);
-    a.base(moving ? st.run || 'Running_A' : st.idle, moving ? Math.max(0.8, (moved / Math.max(dt, 0.001)) / 150) : 1);
+    if (p.act && p.act !== v.lastAct) v.atkYaw = Math.atan2(p.fx, p.fy);
+    const aiming = v.atkYaw != null && p.act && g.time - p.act.t < 0.34 && !p.dash;
+    const face = aiming ? v.atkYaw : (moving && v.moveYaw != null ? v.moveYaw : v.root.rotation.y);
+    v.root.rotation.y = turnToward(v.root.rotation.y, face, dt, aiming ? 12 : 7);
+    if (!a.setGait(dt, p.dash ? inst : v.spd, { idle: st.idle, walk: 'Walking_A', run: st.run || 'Running_A' })) {
+      a.base(moving ? st.run || 'Running_A' : st.idle, moving ? Math.max(0.35, inst / 150) : 1);
+    }
     if (p.act && p.act !== v.lastAct) {
       v.lastAct = p.act;
       if (p.act.type === 'melee') a.play(st.melee, { upper: moving, timeScale: st.meleeSpeed });
@@ -836,7 +847,10 @@ export class Renderer3D {
     if (face !== null) v.root.rotation.y = lerpAngle(v.root.rotation.y, face, 0.18);
     const moved = v.px !== undefined ? Math.hypot(e.x - v.px, e.y - v.py) : 0;
     v.px = e.x; v.py = e.y;
-    const moving = moved > 0.15;
+    const stepOk = moved < 48;
+    const inst = dt > 0 && stepOk ? moved / dt : (v.spd || 0);
+    v.spd = v.spd == null ? inst : v.spd + (inst - v.spd) * (1 - Math.exp(-dt * 8));
+    const moving = v.spd > 8;
     if (v.creature) {
       v.creature.userData.anim(g.time + e.phase, moving, e);
       const hurt = e.hurt > 0;
@@ -848,8 +862,10 @@ export class Renderer3D {
       }
       return;
     }
-    if (st.undead) a.base(st.walk, moving ? st.walkSpeed : st.idleSpeed); // the dead never stand at ease
-    else a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : 1);
+    if (st.undead) {
+      // idle at rest, walk and run crossfaded, each cycle's timeScale matched to this zombie's ground speed
+      if (!a.setGait(dt, v.spd, { idle: 'Idle', walk: 'Walking_A', run: 'Running_A' })) a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : st.idleSpeed);
+    } else a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : 1);
     if (e.act && e.act !== v.lastAct) {
       v.lastAct = e.act;
       const clip = e.act.type === 'throw' ? 'Throw' : e.act.type === 'cast' ? st.shoot || 'Spellcast_Shoot' : st.melee || '1H_Melee_Attack_Chop';
@@ -1244,4 +1260,13 @@ function lerpAngle(a, b, k) {
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   return a + d * k;
+}
+
+// Frame-rate independent turn. `rate` is how quickly the error decays (per second), so a
+// direction change eases around instead of popping to the new yaw.
+function turnToward(cur, target, dt, rate) {
+  let d = target - cur;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return cur + d * (1 - Math.exp(-Math.max(0, dt) * rate));
 }
