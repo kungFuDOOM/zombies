@@ -177,6 +177,41 @@ const NATIVE_OWN = new Set(['giant']);
 // Lower-body tracks of the Modular rig (sanitised node names: "UpperLeg.L" -> "UpperLegL"; PT = leg pole targets).
 const NATIVE_LOWER = /^(Root|Body|Hips|UpperLeg|LowerLeg|Foot|PT|PoleTarget)/;
 
+// Metres the body should travel in one cycle at timeScale 1. The Quaternius foot bones are IK
+// targets parented to Root (their position tracks never move), so this is twice the shin-tip's
+// front-to-back swing: one step per foot, and the two stances tile the cycle. Durations differ
+// for the men and women libraries. Resolved clip names (Walk / Run / Run_Shoot), not game names.
+const STRIDE_M = {
+  men: { Walk: [1.76, 1.333], Run: [2.036, 0.792], Run_Shoot: [2.042, 0.833] },
+  women: { Walk: [1.76, 1.667], Run: [2.076, 1.0], Run_Shoot: [2.062, 1.042] },
+};
+
+function nativeClipName(nat, gameName) {
+  if (!nat) return gameName;
+  return (NATIVE_OVERRIDE[nat.key] || {})[gameName] || (NATIVE_OWN.has(nat.key) ? gameName : NATIVE_CLIPS[gameName]) || gameName;
+}
+
+// Game units per second at which this clip's feet match the ground, given the model's current scale.
+function strideSpeed(nat, gameName, scaleZ) {
+  if (!nat) return 0;
+  const table = WOMEN.includes(nat.key) ? STRIDE_M.women : STRIDE_M.men;
+  const row = table[nativeClipName(nat, gameName)];
+  if (!row) return 0;
+  return (row[0] / row[1]) * Math.max(0.001, scaleZ);
+}
+
+// idle / walk / run weights for a ground speed. The bands overlap so the crossfade, not a hard cut, owns the change.
+function gaitWeights(speed, walkAt, runAt) {
+  const idleEnd = walkAt * 0.42;
+  const runStart = Math.max(idleEnd + 1, walkAt * 1.05);
+  const runFull = Math.max(runStart + 1, runAt * 0.92);
+  if (!(speed > 0)) return { idle: 1, walk: 0, run: 0 };
+  if (speed < idleEnd) { const t = speed / idleEnd; return { idle: 1 - t, walk: t, run: 0 }; }
+  if (speed < runStart) return { idle: 0, walk: 1, run: 0 };
+  if (speed < runFull) { const t = (speed - runStart) / (runFull - runStart); return { idle: 0, walk: 1 - t, run: t }; }
+  return { idle: 0, walk: 0, run: 1 };
+}
+
 function clipVariant(name, part, adult = 0, nat = null) {
   const key = `${nat ? nat.key : ''}:${name}:${part}:${adult}`;
   if (variantCache.has(key)) return variantCache.get(key);
@@ -324,7 +359,7 @@ function undeadClip(u, sign, mod = false) {
 
 // scratch objects for Actor.undeadPose
 const _rq = new THREE.Quaternion(), _rqi = new THREE.Quaternion(), _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _pq = new THREE.Quaternion();
-const _Y = new THREE.Vector3(0, 1, 0), _right = new THREE.Vector3(), _t = new THREE.Vector3(), _d = new THREE.Vector3(), _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3(), _qi = new THREE.Quaternion();
+const _Y = new THREE.Vector3(0, 1, 0), _right = new THREE.Vector3(), _fwd = new THREE.Vector3(), _t = new THREE.Vector3(), _d = new THREE.Vector3(), _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3(), _qi = new THREE.Quaternion();
 // rotate `bone` by the world-space rotation qW (applied on top of whatever the mixer left it at)
 function worldRot(bone, qW) {
   bone.parent.getWorldQuaternion(_pq);
@@ -401,6 +436,7 @@ export class Actor {
     if (this.nat && charName === 'z_shopper') dressShopper(this);
     if (this.nat && this.undead && /^z_(walker|sprinter|brute|spitter)$/.test(charName)) dressUndead(this, charName, zvariant);
     if (this.undead && (!this.nat || MODULAR.includes(this.nat.key))) this.startUndead(); // additive shamble on the walk cycle
+    this.pinFeet(); // the pack's Foot bones are IK targets on Root; parent them to the shin so a step actually travels
     this.baseName = null;
     this.baseAction = null;
     this.baseMode = 'full';
@@ -413,6 +449,13 @@ export class Actor {
         this.oneShot.fadeOut(0.12);
         this.oneShot = null;
         this.setBaseMode('full');
+        // a full-body shot had parked the gait at ~0 weight; put the blend back before the next frame
+        if (this.gaitActions && this._gaitW) {
+          for (const key of ['idle', 'walk', 'run']) {
+            const g = this.gaitActions[key];
+            if (g) g.setEffectiveWeight(this._gaitW[key] || 0);
+          }
+        }
       }
     });
   }
@@ -435,9 +478,102 @@ export class Actor {
     return p;
   }
 
-  // Loop a base animation (idle/run/walk).
+  // Quaternius parents Foot.L/R to Root and animates only their rotation, so the foot mesh stays
+  // glued under the body while the knees pump. Remember where the ankle sits on the shin at bind,
+  // and after every mixer update move the foot bone there. The clip's foot rotation (sole angle)
+  // is left alone, because it was authored in Root space and the foot is still a child of Root.
+  pinFeet() {
+    if (!this.nat || !MODULAR.includes(this.nat.key)) return;
+    this.model.updateWorldMatrix(true, true);
+    const rest = [];
+    for (const side of ['L', 'R']) {
+      const foot = this.model.getObjectByName('Foot' + side);
+      const leg = this.model.getObjectByName('LowerLeg' + side);
+      if (!foot || !leg) continue;
+      _p0.setFromMatrixPosition(foot.matrixWorld);
+      leg.worldToLocal(_p0);
+      rest.push({ foot, leg, off: _p0.clone() });
+    }
+    this.feetRest = rest.length ? rest : null;
+  }
+
+  // Blend idle, walk and run against the actual ground speed (game units / second). timeScale on the
+  // walk and run clips is speed / stride, so a foot planted in the cycle stays planted on the floor.
+  // `names` are game clip names (Walking_A, Running_C, Idle). No-op for rigs without those clips.
+  setGait(dt, speed, names) {
+    if (this.locked) return false;
+    if (!this.nat || !clipVariant(names.walk, 'full', this.adult, this.nat) || !clipVariant(names.run, 'full', this.adult, this.nat)) return false;
+    if (this.oneShot && !this.oneShotUpper) return true; // a full-body action owns the pose
+    this.gait = names;
+    const mode = this.oneShot && this.oneShotUpper ? 'lower' : 'full';
+    this._ensureGait(mode);
+    const sc = Math.abs(this.model.scale.z) || 1;
+    const walkAt = strideSpeed(this.nat, names.walk, sc) || sc;
+    const runAt = strideSpeed(this.nat, names.run, sc) || walkAt * 1.8;
+    const target = gaitWeights(speed, walkAt, runAt);
+    if (!this._gaitW) this._gaitW = { ...target };
+    else {
+      const k = 1 - Math.exp(-Math.max(0, dt) * 8);
+      for (const key of ['idle', 'walk', 'run']) this._gaitW[key] += (target[key] - this._gaitW[key]) * k;
+    }
+    let lead = null, best = -1;
+    for (const key of ['idle', 'walk', 'run']) {
+      const a = this.gaitActions[key];
+      if (!a) continue;
+      a.setEffectiveWeight(this._gaitW[key]);
+      if (key === 'idle') a.timeScale = 1;
+      else {
+        const stride = key === 'walk' ? walkAt : runAt;
+        a.timeScale = THREE.MathUtils.clamp(speed / stride, 0.35, 3.4);
+      }
+      if (this._gaitW[key] > best) { best = this._gaitW[key]; lead = a; }
+    }
+    this.gaitLead = lead;
+    this._gaitMove = (this._gaitW.walk || 0) + (this._gaitW.run || 0);
+    if (this.undeadAct && this.gaitActions) {
+      const driver = (this._gaitW.run > this._gaitW.walk ? this.gaitActions.run : this.gaitActions.walk) || lead;
+      const ud = this.undeadAct.getClip().duration || 1;
+      if (driver && this._gaitMove > 0.25) {
+        // lock the shamble onto the gait so the hitch and the drag land on the footfalls
+        const gd = driver.getClip().duration || 1;
+        this.undeadAct.time = ((driver.time % gd) / gd) * ud;
+        this.undeadAct.timeScale = 0;
+      } else this.undeadAct.timeScale = 0.35;
+    }
+    return true;
+  }
+
+  _ensureGait(mode) {
+    if (this._gaitMode === mode && this.gaitActions) return;
+    const prev = this.gaitActions;
+    const next = {};
+    const w = this._gaitW || { idle: 1, walk: 0, run: 0 };
+    for (const key of ['idle', 'walk', 'run']) {
+      const clip = clipVariant(this.gait[key], mode, this.adult, this.nat);
+      if (!clip) continue;
+      const a = this.mixer.clipAction(clip);
+      const old = prev && prev[key];
+      if (!old || old.getClip() !== clip) {
+        a.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+        a.time = old ? old.time : (this.undead ? Math.random() * clip.duration : 0);
+      }
+      a.setEffectiveWeight(w[key] || 0);
+      a.enabled = true;
+      next[key] = a;
+    }
+    if (prev) for (const a of Object.values(prev)) if (!Object.values(next).includes(a)) a.stop();
+    if (this.baseAction) { this.baseAction.stop(); this.baseAction = null; this.baseName = null; }
+    this.gaitActions = next;
+    this._gaitMode = mode;
+  }
+
+  // Loop a base animation (idle/run/walk). Drops a blended gait if one was running.
   base(name, timeScale = 1) {
     if (this.locked) return;
+    if (this.gaitActions) {
+      for (const a of Object.values(this.gaitActions)) a.stop();
+      this.gaitActions = null; this.gait = null; this.gaitLead = null; this._gaitMode = null;
+    }
     if (this.baseName === name) { if (this.baseAction) this.baseAction.timeScale = timeScale; return; }
     const clip = clipVariant(name, this.oneShot && this.oneShotUpper ? 'lower' : 'full', this.adult, this.nat);
     if (!clip) return;
@@ -453,6 +589,7 @@ export class Actor {
   }
 
   setBaseMode(mode) {
+    if (this.gait) { this._ensureGait(mode); return; }
     if (!this.baseName || this.baseMode === mode) return;
     const clip = clipVariant(this.baseName, mode, this.adult, this.nat);
     const a = this.mixer.clipAction(clip);
@@ -478,6 +615,7 @@ export class Actor {
     this.oneShotUpper = upper;
     this.setBaseMode(upper ? 'lower' : 'full');
     if (!upper && this.baseAction) this.baseAction.setEffectiveWeight(0.0001);
+    if (!upper && this.gaitActions) for (const g of Object.values(this.gaitActions)) g.setEffectiveWeight(0.0001);
   }
 
   die(name = 'Death_A') {
@@ -491,8 +629,18 @@ export class Actor {
     // Paused (no time passed): leave the pose alone. The mixer doesn't rewrite bones for a
     // zero step, so adultPose's relative arm turn would pile up every frame and spin the arms.
     if (!(dt > 0)) return;
-    if (this.baseAction && !this.oneShot && this.baseAction.getEffectiveWeight() < 0.5) this.baseAction.setEffectiveWeight(1);
+    if (this.baseAction && !this.oneShot && !this.gait && this.baseAction.getEffectiveWeight() < 0.5) this.baseAction.setEffectiveWeight(1);
     this.mixer.update(dt);
+    // park each foot bone on the ankle. The mixer just wrote the clip's Root-space rotation; the
+    // position track (if any) never leaves the bind spot under the hips, which is the skate.
+    if (this.feetRest) {
+      for (const r of this.feetRest) {
+        _p0.copy(r.off);
+        r.leg.localToWorld(_p0);
+        r.foot.parent.worldToLocal(_p0);
+        r.foot.position.copy(_p0);
+      }
+    }
     if (this.undeadWorld && !this.locked && !(this.poseLod < 0)) this.undeadPose(dt);
     if (this.aim) this.weaponAim(dt);
     if (this.adult) this.adultPose();
@@ -504,6 +652,7 @@ export class Actor {
   startUndead() {
     const u = this.undead;
     this.tiltDir = Math.random() < 0.5 ? 1 : -1;
+    this.limp = 0.35 + Math.random() * 0.85; // how uneven this corpse's stride is
     const clip = undeadClip(u, this.tiltDir, !!(this.nat && MODULAR.includes(this.nat.key)));
     const act = this.mixer.clipAction(clip);
     act.setLoop(THREE.LoopRepeat, Infinity).play();
@@ -530,49 +679,74 @@ export class Actor {
     A.h.quaternion.copy(A.q0).slerp(_qa, A.k);
   }
 
-  // World-space zombie pose, run right after the mixer (which rewrites every bone it has a track for, so nothing piles
-  // up): hunch the torso toward the camera, keep the chin up so the face shows, and reach BOTH arms out in front of the
-  // chest (a sprinter flails them). Works in the actor's own frame (+Z forward, +X to the right... of the root), so the
-  // rig's twisted bind axes do not matter. Module scratch objects only: no allocations per frame.
+  gaitPhase() {
+    const a = this.gaitLead || this.baseAction;
+    if (!a) return this.upT || 0;
+    const d = a.getClip().duration || 1;
+    return ((a.time % d) / d) * Math.PI * 2;
+  }
+
+  // World-space zombie pose, run right after the mixer. The walk cycle stays in the bones: the arms are
+  // only PARTLY aimed forward (a full aim locked them rigid and erased the swing), then an out-of-phase
+  // swing, a torso sway and a step bob are added on top, in time with the gait. Sprinters flail; brutes
+  // drop their weight on each footfall; each corpse has its own limp. Actor frame: +Z forward.
   undeadPose(dt) {
     const u = this.undead;
     if (!this.upBones) {
       const g = (n) => this.model.getObjectByName(n);
-      this.upBones = { torso: g('Torso'), head: g('Head'), ua: [g('UpperArmL'), g('UpperArmR')], la: [g('LowerArmL'), g('LowerArmR')], wr: [g('WristL'), g('WristR')] };
+      this.upBones = { torso: g('Torso'), head: g('Head'), hips: g('Hips'), ua: [g('UpperArmL'), g('UpperArmR')], la: [g('LowerArmL'), g('LowerArmR')], wr: [g('WristL'), g('WristR')] };
     }
     const B = this.upBones;
     if (!B.torso || !B.head || !B.ua[0] || !B.ua[1] || !B.la[0] || !B.la[1]) return;
-    this.upT += dt * (u.rate || 1) * 2.6;
+    this.upT += dt * (u.rate || 1) * 1.4;
+    const move = this._gaitMove != null ? this._gaitMove : (this.baseName && /Walk|Run/i.test(this.baseName) ? 1 : 0);
+    const phase = move > 0.3 && (this.gaitLead || this.baseAction) ? this.gaitPhase() : this.upT;
     const lite = this.poseLod === 1; // Low quality: torso, head and upper arms only (forearms keep the mixer's pose)
-    const ph = this.upT, w = this.oneShot ? (this.oneShotUpper ? 0.5 : 0.3) : 1;
+    const w = this.oneShot ? (this.oneShotUpper ? 0.5 : 0.3) : 1;
+    const flail = u.flail || 0;
+    const limp = this.limp || 0.6;
     this.root.updateWorldMatrix(true, false);
     this.root.getWorldQuaternion(_rq);
-    _rqi.copy(_rq).invert();
-    // actor-frame axes in world space
     _right.set(1, 0, 0).applyQuaternion(_rq);
-    // hunch: the torso pitches about the actor's right axis (positive = lean forward)
-    const hunch = (u.hunch ?? 0.45) * w * (1 + Math.sin(ph * 0.5) * 0.08);
+    _fwd.set(0, 0, 1).applyQuaternion(_rq);
+    // hunch, plus a roll that swaps sides each step and a little extra lean while actually walking
+    const hunch = (u.hunch ?? 0.45) * w * (1 + Math.sin(phase) * 0.07) * (1 + 0.18 * move);
+    const sway = Math.sin(phase) * (u.sway ?? 0.16) * w * this.tiltDir * (0.55 + 0.45 * limp);
     _qa.setFromAxisAngle(_right, hunch);
     worldRot(B.torso, _qa);
+    _qa.setFromAxisAngle(_fwd, sway);
+    worldRot(B.torso, _qa);
     B.torso.updateWorldMatrix(false, true);
-    // chin up, so a camera 40 degrees overhead still sees the face
-    _qa.setFromAxisAngle(_right, -hunch * 0.6);
+    // chin up, with a nod on the footfalls, so a camera overhead still sees the face
+    _qa.setFromAxisAngle(_right, -hunch * 0.55 + Math.sin(phase * 2) * 0.06 * move);
     worldRot(B.head, _qa);
     B.head.updateWorldMatrix(false, true);
-    // arms
-    const flail = u.flail || 0, armY = u.armY ?? -0.05, spread = u.spread ?? 0.16;
+    // arms: partial aim keeps the reaching silhouette; the swing is the walk cycle's opposite-phase pump,
+    // added back on top so it isn't averaged away. One side is weaker (the limp). Sprinters add a second harmonic.
+    const aim = (u.reach > 0.8 ? 0.48 : 0.22) * w * (flail ? 0.62 : 1);
+    const armY = u.armY ?? -0.05, spread = u.spread ?? 0.16;
     for (let i = 0; i < 2; i++) {
       const s = i === 0 ? -1 : 1, ua = B.ua[i], la = B.la[i], wr = B.wr[i];
-      const sw = Math.sin(ph * 1.7 + i * 2.1);
-      // target direction in actor space, then to world
-      _t.set(s * (spread + flail * 0.5 * sw), armY + flail * 0.35 * Math.sin(ph * 2.3 + i * 1.7) + Math.sin(ph + i) * 0.05, 1).normalize().applyQuaternion(_rq);
-      aimBone(ua, la, _t, w);
+      const side = i === 0 ? 1 : (1 - 0.35 * Math.min(1, limp)); // the dragging side swings less
+      const swing = (Math.sin(phase + i * Math.PI) * (0.42 + flail * 0.55) + Math.sin(phase * 2.2 + i * 1.7) * flail * 0.28) * side * (0.2 + 0.8 * move);
+      _t.set(s * spread, armY, 1).normalize().applyQuaternion(_rq);
+      aimBone(ua, la, _t, aim);
+      ua.updateWorldMatrix(false, true);
+      _qa.setFromAxisAngle(_right, swing);
+      worldRot(ua, _qa);
       if (lite) continue;
       ua.updateWorldMatrix(false, true);
-      _t.set(s * (spread * 0.7 + flail * 0.35 * sw), armY - 0.1 + Math.sin(ph * 1.3 + i) * 0.05, 1).normalize().applyQuaternion(_rq);
-      aimBone(la, wr, _t, w);
+      _t.set(s * spread * 0.65, armY - 0.12, 1).normalize().applyQuaternion(_rq);
+      aimBone(la, wr, _t, aim * 0.7);
       la.updateWorldMatrix(false, true);
+      _qa.setFromAxisAngle(_right, swing * 0.45);
+      worldRot(la, _qa);
     }
+    // body bob tied to the two footfalls in the cycle. Brutes stomp; everyone else just bobs.
+    if (this._baseY === undefined) this._baseY = this.model.position.y;
+    const fall = Math.pow(Math.abs(Math.sin(phase * 2)), 0.65);
+    const amp = (u.stomp ? 4.2 : flail ? 1.7 : 1.35) * (0.7 + 0.5 * limp);
+    this.model.position.y = this._baseY - fall * amp * move * w;
   }
 
   // The shared animations hold the arms well out from a chibi's wide body; bring them in
