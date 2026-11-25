@@ -8,14 +8,15 @@ import { Input } from './input.js';
 import { TouchControls } from './touch.js';
 import { Tutorial, tutorialView } from './tutorial.js';
 import { Game } from './game.js';
-import { initAudio, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap } from './audio.js';
+import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap } from './audio.js';
 import { Host, Guest, showCode } from './net.js';
 import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanGame } from './netstate.js';
 import { Lobby } from './lobby.js';
 import { Renderer3D } from './render3d.js';
+import { Intro } from './intro.js';
 import { loadAssets } from './assets.js';
 import { startLineup, renderLineup, lineupActive } from './lineup.js';
-import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
+import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawIntro, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
 import { unlockedClasses, loadSave, writeSave, newSave, hasProgress, isUnlocked, levelNumber, nextStage, completeLevel, SHOP, buy, STORY, wingOpen, REALMS } from './campaign.js';
 import { levelInfo, WINGS } from './level.js';
 import { applyChoice, resetWing1, writeStory, recap, hubRayPresent } from './story.js';
@@ -75,12 +76,25 @@ let game = null;
 let state = 'loading';
 let loadProgress = 0;
 let loadError = null;
-loadAssets((p) => (loadProgress = p)).then(() => { setState('title'); const q = new URLSearchParams(location.search); if (q.has('lineup')) startLineup(r3d, q.get('lineup') || 'all'); }).catch((err) => { loadError = err; console.error(err); });
+loadAssets((p) => (loadProgress = p)).then(() => {
+  const q = new URLSearchParams(location.search);
+  setState('title');
+  if (q.has('lineup')) { startLineup(r3d, q.get('lineup') || 'all'); return; }
+  // The opening cinematic plays once, on the first launch (motd-intro-seen); ?intro=1 forces it (capture tools) and
+  // needs no key press; automated browsers (webdriver) only see it when asked, so smoke tests still land on the title.
+  const forced = q.has('intro') && q.get('intro') !== '0';
+  if (forced) startIntro({ gate: false });
+  else if (!introSeen() && !navigator.webdriver) startIntro({ gate: true });
+}).catch((err) => { loadError = err; console.error(err); });
 let stateT = 0;
+let intro = null;          // the opening cinematic (intro.js)
+let titleGrace = 0;        // ms timestamp: the title ignores presses until then (the press that skipped the intro)
+let titleFade = false;     // the title comes up out of black after the intro
 let slots = [];       // character select: { source, cls, ready }
 let countdown = null;
 let clearInfo = null;
 let toast = null;
+let wantTraining = false; // TRAINING / ORIENTATION picked on the title: run the lessons after hero select
 let tutorial = null;  // the Training Grounds lessons, while they're being played
 let showControls = true; // the key-cap strip along the bottom (H toggles it)
 try { showControls = localStorage.getItem('motd-controls') !== 'off'; } catch { /* storage unavailable */ }
@@ -138,10 +152,11 @@ function announceRuns(placed) {
 
 function setState(s) {
   if (window.__traceStates) console.log(`state ${state} -> ${s}`);
-  if (s === 'title') { input.split = false; announceRuns(stats.endRuns()); } // a new party starts with one keyboard player
+  if (s === 'title') { wantTraining = false; input.split = false; announceRuns(stats.endRuns()); } // a new party starts with one keyboard player
   if (s === 'stats' && recordsTab === 3) loadGlobal();
   if (s === 'gameover' || s === 'recap') offerPending = true;
   state = s; stateT = 0;
+  if (input.touch) input.touch.setMode(s === 'play' || s === 'paused' ? 'play' : s === 'title' || s === 'cutscene' || s === 'intro' ? 'hidden' : 'menu');
 }
 
 // A second player on the same keyboard joins with the 2 key: player 1 keeps WASD (and the
@@ -205,13 +220,59 @@ function updateStory(dt) {
   }
 }
 
+// ---------- the opening cinematic ----------
+const INTRO_KEY = 'motd-intro-seen';
+function introSeen() { try { return localStorage.getItem(INTRO_KEY) === '1'; } catch { return true; } }
+function markIntroSeen() { try { localStorage.setItem(INTRO_KEY, '1'); } catch { /* storage unavailable */ } }
+
+// Play the cinematic. gate: wait for a key / tap first (browsers only start sound after a gesture; skipped when sound is already on).
+function startIntro({ gate = false } = {}) {
+  if (net) return false; // never while online
+  try {
+    if (!intro) intro = new Intro(r3d);
+    if (gate && !audioReady()) { /* the gate stays up */ } else { initAudio(); gate = false; }
+    stopVoice();
+    intro.start({ gate });
+    markIntroSeen(); // opening it counts as seen, so a crash can never trap anyone in it
+    setState('intro');
+    return true;
+  } catch (err) { // never block the title if anything about the film fails
+    console.error(err);
+    endIntro();
+    return false;
+  }
+}
+
+function endIntro() {
+  try { stopCine(); stopVoice(); } catch { /* audio not ready */ }
+  if (intro && intro.active) intro.finish();
+  markIntroSeen();
+  titleGrace = performance.now() + 450;
+  titleFade = true;
+  setState('title');
+}
+
+function updateIntro(dt) {
+  if (!intro || intro.done) { endIntro(); return; }
+  // any key, tap or gamepad button: the first one wakes the sound (gate), a later one skips
+  let pressed = taps.length > 0 || (input.frameGlobal && input.frameGlobal.size > 0);
+  if (!pressed) for (const id of input.sources()) { const p = input.get(id).pressed; if (p.attack || p.magic || p.turbo || p.start || p.up || p.down || p.left || p.right) { pressed = true; break; } }
+  if (pressed) {
+    initAudio();
+    if (intro.press() === 'skip') { endIntro(); return; }
+  }
+  try { intro.update(dt); } catch (err) { console.error(err); endIntro(); return; }
+  if (intro.done) endIntro();
+}
+
 // ---------- title ----------
 
 // On the title screen almost any key starts (people try A, Enter, Space...), except the
 // ones that do something else there.
-const TITLE_IGNORE = /^(Key[EGMNVXPOLKC]|Period|NumpadDecimal|Quote|Tab|Escape|F\d+|Meta|Alt|Control|OS|ContextMenu|CapsLock)/;
+const TITLE_IGNORE = /^(Key[EGMNVXPOLKCTI]|Period|NumpadDecimal|Quote|Tab|Escape|F\d+|Meta|Alt|Control|OS|ContextMenu|CapsLock)/;
 
 function updateTitle() {
+  if (performance.now() < titleGrace) return;
   if (titleControls) { // the controls card: any key or tap closes it
     if (input.key('Escape') || input.key('KeyC') || input.key('Enter') || input.key('Space') || taps.length) { titleControls = false; sfx.select(); }
     return;
@@ -225,6 +286,8 @@ function updateTitle() {
   if (!net && !lobby.isOpen && (input.key('KeyC') || hit === 'controls')) { initAudio(); sfx.select(); titleControls = true; return; }
   // the CO-OP LOBBY button: tap or click it, or press O
   if (!net && !lobby.isOpen && (input.key('KeyO') || hit === 'coop')) { initAudio(); sfx.select(); lobby.open(); return; }
+  // WATCH INTRO: the opening cinematic again (tap or click it, or press I)
+  if (!net && !lobby.isOpen && (input.key('KeyI') || hit === 'intro')) { initAudio(); sfx.select(); startIntro({ gate: false }); return; }
   if (lobby.isOpen) { if (input.key('Escape')) lobby.close(); return; } // don't start the game under the panel
   // the STATS & LEADERBOARD button: tap or click it, or press L
   if (!net && (input.key('KeyL') || taps.some((t) => titleRecordsAt(t.x, t.y)))) { initAudio(); sfx.select(); setState('stats'); return; }
@@ -232,7 +295,8 @@ function updateTitle() {
   // (it wipes the save) or start the host's game for them.
   const guests = [...input.remote.keys()];
   const anyKey = input.frameGlobal && [...input.frameGlobal].some((k) => !TITLE_IGNORE.test(k));
-  const atk = input.firstPressed('attack', guests) || input.sources().find((id) => !isNet(id) && input.get(id).pressed.start) || (anyKey && 'kb') || (hit === 'solo' && 'kb');
+  if (!net && (input.key('KeyT') || hit === 'training')) wantTraining = true;
+  const atk = (!net && wantTraining && 'kb') || input.firstPressed('attack', guests) || input.sources().find((id) => !isNet(id) && input.get(id).pressed.start) || (anyKey && 'kb') || (hit === 'solo' && 'kb');
   if (input.firstPressed('magic', guests) && hasProgress(save)) { initAudio(); setState('confirm'); return; }
   if (atk) {
     initAudio();
@@ -334,8 +398,10 @@ function startGame() {
   stats.gameStarted(!!net);
   // online guests start with fresh heroes; players here continue their saved ones
   slots.forEach((s, i) => { if (s) game.addPlayer(i, s.source, s.cls, isNet(s.source) ? null : save.heroes[s.cls]); });
-  save.progress.tutorialDone = true; // the controls are on screen; the orientation lessons are not part of this slice
-  openMap();
+  // first play (or TRAINING on the title): the orientation lessons come before the hub
+  const training = wantTraining || (!save.progress.tutorialDone && !net);
+  wantTraining = false;
+  if (training) startTutorial(); else openMap();
 }
 
 // ---------- the Training Grounds (first-time tutorial) ----------
@@ -440,6 +506,18 @@ function enterLevel(n) {
 
 // ---------- cutscenes (Telltale-style timed choices, see cutscenes.js) ----------
 
+// Debug / capture hook: window.__motd.cutscene('opening' | 'crisis' | 'boss') plays that scene on a fresh Biker, then returns to the title.
+function debugCutscene(id = 'opening') {
+  if (net || !['opening', 'crisis', 'boss'].includes(id)) return false;
+  game = new Game();
+  game.story = save.story;
+  game.addPlayer(0, 'kb', 'biker', save.heroes.biker);
+  if (id === 'opening') game.startHub(); else game.startLevel(id === 'boss' ? 2 : 1);
+  game.stageCutscene(id);
+  startCutscene(id, () => { game.endCutscene(); game = null; setState('title'); });
+  return true;
+}
+
 function startCutscene(id, done) {
   cutDone = done;
   cut = new Cutscene(id, {
@@ -470,7 +548,7 @@ function finishCutscene() {
 }
 
 function updateCutscene(dt) {
-  game.updateScene(dt, cut.view().alarm ? 'alarm' : cut.beat && cut.beat.fx);
+  game.updateScene(dt * cut.timeScale, cut.view().alarm ? 'alarm' : cut.beat && cut.beat.fx); // (slow motion on a big hit: the set only, never the timers)
   // lines: Space / Enter / click / attack advance; choices: keys 1-4, click, or the d-pad
   const local = input.sources().filter((id) => !isNet(id));
   let adv = input.key('Space') || input.key('Enter') || input.key('NumpadEnter') || local.some((id) => input.get(id).pressed.attack);
@@ -488,6 +566,11 @@ function updateCutscene(dt) {
   if (adv) cut.advance();
   cut.update(dt);
   for (const t of cut.toasts.splice(0)) { storyToasts.push(t); sfx.select(); }
+  for (const c of cut.cues.splice(0)) { // stings, camera shake and a spike in the key lights, on the beat
+    if (c.sting && Object.prototype.hasOwnProperty.call(sfx, c.sting)) sfx[c.sting]();
+    if (c.shake) game.shake = Math.max(game.shake, c.shake);
+    if (c.shake || c.flash) r3d.cineHit(Math.min(2, (c.shake || 4) / 8 + c.flash));
+  }
   if (cut.done) { finishCutscene(); return; }
   game.cutCam = cut.camera(game);
 }
@@ -618,7 +701,7 @@ function hostSend(dt) {
     tut: tutorial ? [tutorial.idx, tutorial.doneT > 0 ? 1 : 0] : null,
   };
   // (the stats screen is this device's own: guests keep seeing the title)
-  net.link.send({ t: 's', st: state === 'stats' ? 'title' : state, stT: Math.round(stateT * 100) / 100, ui, g: game ? net.writer.game(game) : null, fx });
+  net.link.send({ t: 's', st: state === 'stats' || state === 'intro' ? 'title' : state, stT: Math.round(stateT * 100) / 100, ui, g: game ? net.writer.game(game) : null, fx });
 }
 
 // Guest: apply what the host sent (all of it checked first: see netstate.js).
@@ -789,6 +872,7 @@ function updatePlay(dt) {
     persist();
     writeStory(save.story);
     clearInfo = { level: n, wasBoss: info.isBoss, realm: info.theme.name, name: info.stageName, bonus };
+    if (info.isBoss) sfx.stingHit(); // the recap's title lands with a hit
     setState(info.isBoss ? 'recap' : 'levelclear');
     return;
   }
@@ -871,6 +955,7 @@ function updateGameOver() {
 
 // Background music for whatever is on screen (the track table is in music-data.js).
 function currentTrack() {
+  if (state === 'intro') return null; // the cinematic scores itself
   const inLevel = !!(game && game.level && ['play', 'paused', 'levelclear', 'gameover', 'realm', 'shop', 'cutscene', 'recap'].includes(state));
   return trackFor({
     state, inLevel,
@@ -895,9 +980,12 @@ function render() {
   const heroes = guest ? net.ui.heroes || {} : save.heroes;
   if (state === 'loading') {
     drawLoading(ctx, loadProgress, loadError);
+  } else if (state === 'intro' && intro) {
+    try { intro.render(); drawIntro(ctx, intro.view(), stateT); } catch (err) { console.error(err); endIntro(); }
   } else if (state === 'title' || state === 'confirm') {
     r3d.renderShowcase(titleShowcase(stateT), stateT);
     drawTitle(ctx, stateT, topScores(), hasProgress(save) ? save.progress : null, !net && state === 'title', titleControls, skipCutscenes);
+    if (titleFade) { if (stateT > 0.7) titleFade = false; else { ctx.fillStyle = `rgba(0,0,0,${1 - stateT / 0.7})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); } }
     if (guest) drawOverlay(ctx, `ROOM ${showCode(net.code)}`, ['Connected! Waiting for the host to start...', `Press ${btn('attack')} to join the party`], '#8fe0ff');
     if (state === 'confirm') drawOverlay(ctx, 'NEW GAME?', ['Your saved survivors, upgrades and story choices will be lost.', '', `${btn('attack')}: start over        ${btn('back')}: keep my game`], '#ffb060');
   } else if (state === 'stats') {
@@ -1020,6 +1108,7 @@ function frame(now) {
   }
   switch (state) {
     case 'title': updateTitle(); break;
+    case 'intro': updateIntro(dt); break;
     case 'stats': updateRecords(); break;
     case 'confirm': updateConfirm(); break;
     case 'story': updateStory(dt); break;
@@ -1065,7 +1154,7 @@ function loop(now) {
 }
 
 // Debug/test hook (used by automated smoke tests).
-window.__motd = { lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
+window.__motd = { startTutorial, cutscene: debugCutscene, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate }), get intro() { return intro; }, introSeen, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
 
 // Scale canvas to fit window while keeping aspect ratio.
 function fit() {

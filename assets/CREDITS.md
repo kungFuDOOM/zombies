@@ -9,8 +9,8 @@ props) are by **Kay Lousberg** ([kaylousberg.com](https://kaylousberg.com)); the
 | Pack | Used for |
 |---|---|
 | [KayKit Character Pack: Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) | The animation rig Ray, the clerk and the realm monsters are built on (`src/heroes.js`) |
-| [KayKit Character Pack: Skeletons](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0) | Skeleton rig and animations used for zombies |
-| [KayKit Dungeon Remastered](https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0) | Floors, walls, gates, torches, banners, chests, barrels, food, coins, keys, potions |
+| [KayKit Character Pack: Skeletons](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0) | Skeleton rig and animations used by the bosses and the Security Room NPCs (zombies and The Grim Shopper use the Quaternius rig below) |
+| [KayKit Dungeon Remastered](https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0) | Floors, walls, gates, torches, banners, barrels, food, coins, keys, potions |
 | [KayKit Halloween Bits](https://github.com/KayKit-Game-Assets/KayKit-Halloween-Bits-1.0) | Bones, skulls, graves, shrines and candles (generators and dungeon clutter) |
 
 ## Characters (survivors, zombies, Mulchmaw)
@@ -32,6 +32,7 @@ fetched from poly.pizza (direct GLB download, no login). Mulchmaw is the "Giant"
 | Men's Casual | [poly.pizza/m/kZ3DmIoGip](https://poly.pizza/m/kZ3DmIoGip) | Walker |
 | Men's Farmer | [Ultimate Modular Men](https://quaternius.com/packs/ultimatemodularcharacters.html) | Sprinter (hat dropped) |
 | Men's Hoodie | [Ultimate Modular Men](https://quaternius.com/packs/ultimatemodularcharacters.html) | Brute |
+| Men's Suit (BusinessMan) | [Ultimate Modular Men](https://quaternius.com/packs/ultimatemodularcharacters.html) | The Grim Shopper (undead mall manager, `ch_zombie_shopper.glb`) |
 | Women's Casual (AnimatedWoman2) | [Ultimate Modular Women](https://quaternius.com/packs/ultimatemodularwomen.html) | Spitter |
 | Giant | [poly.pizza/m/BldaiPtyJa](https://poly.pizza/m/BldaiPtyJa) (Ultimate Monsters) | Mulchmaw (wing 6 boss) |
 
@@ -64,3 +65,9 @@ All music is **original to this project**: it is composed as data in `src/music-
 synthesized live with Web Audio by `src/music.js` (no samples, no recordings, nothing
 downloaded). The sound effects in `src/audio.js` are synthesized the same way. No third-party
 audio is included.
+
+## Cinematic audio
+
+The opening cinematic and the cutscene stings (`src/cineAudio.js`) are synthesized at runtime with
+Web Audio oscillators and noise. There are no samples, recordings or third-party music. The PA
+announcement uses the player's own browser speech voice, pushed low and slow.

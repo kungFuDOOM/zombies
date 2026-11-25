@@ -42,7 +42,7 @@ export const STAGE_LOOKS = {
     particles: { type: 'motes', color: '#ffd0f0', count: 60 }, lantern: '#ff9ad8',
   },
   2: { // The Butcher's Kitchen: steel, steam and grease-fire orange
-    name: "The Butcher's Kitchen", floorA: '#98a09a', floorB: '#5c665c', wallTop: '#d06a22', wallSide: '#3c4640', sky: '#100a08', fog: '#2a1610', light: '#e8c8a0', ambient: 0.74,
+    name: "The Butcher's Kitchen", floorA: '#98a09a', floorB: '#5c665c', wallTop: '#d06a22', wallSide: '#3c4640', sky: '#100a08', fog: '#2a1610', light: '#dcd8cc', ambient: 0.74,
     neonA: '#ff7a1a', neonB: '#ffd040', neonC: '#ff2ea6', kitchen: true,
     particles: { type: 'sparks', color: '#ffa030', count: 50 }, lantern: '#ff8a30',
   },

@@ -1155,28 +1155,22 @@ export class Game {
         return;
       }
       if (it.type === 'propane') { this.explodePropane(it, pr.p); pr.dead = true; return; }
-      if (it.type === 'chest' || it.type === 'barrel') {
+      if (it.type === 'barrel') {
         it.dead = true; pr.dead = true;
-        this.openChest(it);
+        this.openBarrel(it);
         return;
       }
     }
   }
 
-  openChest(it) {
+  openBarrel(it) {
     sfx.door();
     this.burst(it.x, it.y, '#c9a24a', 14, 120);
     const roll = Math.random();
     const drops = [];
-    if (it.type === 'barrel') {
-      // barrels are usually empty, sometimes hide food or gold
-      if (roll < 0.25) drops.push('food'); else if (roll < 0.5) drops.push('gold');
-      this.burst(it.x, it.y, '#8a5a2a', 16, 140);
-    } else if (roll < 0.35) drops.push('gold', 'gold', 'gem');
-    else if (roll < 0.55) drops.push('food');
-    else if (roll < 0.7) drops.push('potion');
-    else if (roll < 0.85) drops.push('key', 'gold');
-    else drops.push('amulet');
+    // barrels are usually empty, sometimes hide food or gold
+    if (roll < 0.25) drops.push('food'); else if (roll < 0.5) drops.push('gold');
+    this.burst(it.x, it.y, '#8a5a2a', 16, 140);
     drops.forEach((type, i) => {
       const a = (i / drops.length) * Math.PI * 2;
       this.items.push({
@@ -1191,7 +1185,7 @@ export class Game {
   updateItems(dt) {
     for (const it of this.items) {
       it.bob += dt * 3;
-      if (it.dead || it.type === 'chest' || it.type === 'barrel' || it.type === 'propane') continue;
+      if (it.dead || it.type === 'barrel' || it.type === 'propane') continue;
       for (const p of this.livePlayers()) {
         if (dist(p, it) > p.r + it.r) continue;
         if (this.pickup(p, it)) { it.dead = true; break; }
@@ -1357,6 +1351,11 @@ export class Game {
     if (fx === 'fire' && this.level.foodCourt) {
       for (let i = 0; i < 3; i++) if (Math.random() < dt * 40) this.particle(rand(15, 22) * TILE, rand(39, 42) * TILE, rand(-20, 20), rand(-60, -20), Math.random() < 0.5 ? '#ff8a20' : '#ffd040', 0.8, 5);
       if (Math.random() < dt * 8) this.particle(rand(46, 60) * TILE, 38 * TILE, rand(-20, 20), rand(-40, -10), '#ffb040', 0.6, 4);
+    }
+    if (fx === 'kitchen') { // the Butcher's kitchen: rising fryer steam, grease sparks and the odd ember off the grill
+      const bx = this.boss ? this.boss.x : 32 * TILE, by = this.boss ? this.boss.y : 16 * TILE;
+      for (let i = 0; i < 2; i++) if (Math.random() < dt * 28) this.particle(bx + rand(-170, 170), by + rand(-120, 120), rand(-8, 8), rand(-14, 4), Math.random() < 0.7 ? '#a89484' : '#ffd8a0', rand(0.9, 1.6), rand(4, 8));
+      if (Math.random() < dt * 14) this.particle(bx + rand(-60, 60), by + rand(-40, 40), rand(-60, 60), rand(-60, 20), '#ff9a30', 0.5, 3);
     }
     this.flash = Math.max(0, this.flash - dt * 2);
     this.shake = Math.max(0, this.shake - dt * 20);

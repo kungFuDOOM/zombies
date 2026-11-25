@@ -1,6 +1,7 @@
 // Synthesized sound effects (Web Audio) and the announcer (Web Speech).
 
 import { createMusic } from './music.js';
+import { makeCine } from './cineAudio.js';
 
 let ctx = null;
 let master = null;
@@ -105,6 +106,30 @@ export const sfx = {
   select() { tone(880, 0.05, { type: 'triangle', vol: 0.1 }); },
   boss() { tone(70, 1.2, { type: 'sawtooth', vol: 0.25, slide: 40 }); noise(1.2, { vol: 0.2, freq: 300 }); },
 };
+
+// Cinematic cues (the opening, the story scenes): see cineAudio.js. They are sfx like any other, so an
+// online host's stings reach the guests too; stopAll is local only.
+const cine = makeCine(() => ({ ctx, master, muted }));
+const { stopAll: stopCine, ...cineCues } = cine;
+Object.assign(sfx, cineCues);
+export { stopCine, cine };
+export const audioReady = () => !!ctx && ctx.state === 'running';
+
+// The mall's PA: the one speaking voice that can't go through Web Audio, so it is the browser's
+// speech voice pushed low and slow, with the crackle laid over it by cineAudio. Returns false if
+// there is no speech (the caption carries the line).
+export function paSpeak(text) {
+  if (muted || !voiceOn || !window.speechSynthesis) return false;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = browserVoice();
+    if (v) u.voice = v;
+    u.pitch = 0.45; u.rate = 0.78; u.volume = 1;
+    window.speechSynthesis.speak(u);
+    return true;
+  } catch { return false; }
+}
 
 // When hosting online, every sound effect and announcer line is also handed to audioTap.fn
 // so it can be replayed on the guests' machines.
@@ -229,6 +254,7 @@ function ensureMusic() {
 // name: a track id from music-data.js; playing the same one again does nothing
 export function playMusic(name) {
   if (!ensureMusic()) return;
+  if (!name) { engine.stop(0.8); return; } // null: silence (the opening cinematic scores itself)
   engine.play(name);
 }
 export const currentMusic = () => (engine ? engine.current : null);

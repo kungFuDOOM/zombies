@@ -18,7 +18,7 @@ const load = (name) => new Promise((res, rej) => {
   const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder);
   l.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', res, rej);
 });
-const CHARS = ['ch_biker', 'ch_mallCop', 'ch_skater', 'ch_mallGoth', 'ch_zombie_walker', 'ch_zombie_sprinter', 'ch_zombie_brute', 'ch_zombie_spitter'];
+const CHARS = ['ch_biker', 'ch_mallCop', 'ch_skater', 'ch_mallGoth', 'ch_zombie_walker', 'ch_zombie_sprinter', 'ch_zombie_brute', 'ch_zombie_spitter', 'ch_zombie_shopper'];
 const NEED = ['Root', 'Body', 'Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'Middle1L', 'Middle1R'];
 const WOMEN = new Set(['ch_mallGoth', 'ch_zombie_spitter']);
 const libs = { men: await load('anims_survivor'), women: await load('anims_women') };

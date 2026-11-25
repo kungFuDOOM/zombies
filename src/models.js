@@ -305,21 +305,7 @@ export function buildBoss(model, color, hornColor) {
     return h;
   };
 
-  if (model === 'dragon') {
-    part(rig, G.sphere(16, 10), skin, 0, 30, 0).scale.set(1.1, 0.9, 1.6);
-    part(rig, G.sphere(13, 8), belly, 0, 26, 6).scale.set(0.9, 0.7, 1.2);
-    legs(24, 12, 22, 8);
-    const neck = pivot(rig, 0, 36, 18);
-    for (let i = 0; i < 4; i++) part(neck, G.cyl(5 - i * 0.3, 6 - i * 0.3, 8, 8), skin, 0, i * 6, i * 4).rotation.x = 0.8;
-    head(neck, 0, 26, 20, 1.3, 'dragon');
-    r.neck = neck;
-    addWings(42, 48);
-    const tail = pivot(rig, 0, 28, -22);
-    for (let i = 0; i < 5; i++) part(tail, G.cyl(5 - i, 6 - i, 9, 6), skin, 0, -i * 1.5, -i * 8).rotation.x = Math.PI / 2;
-    part(tail, G.cone(3, 8, 4), horn, 0, -8, -44).rotation.x = -Math.PI / 2;
-    r.tail = tail;
-    for (let i = 0; i < 4; i++) part(rig, G.cone(2.5, 7, 4), horn, 0, 45 - i * 2, 10 - i * 8);
-  } else if (model === 'chimera') {
+  if (model === 'chimera') {
     part(rig, G.sphere(16, 10), skin, 0, 30, 0).scale.set(1.1, 0.85, 1.6);
     legs(24, 12, 22, 9);
     head(rig, 0, 38, 24, 1.4, 'lion');
@@ -557,7 +543,7 @@ export function buildItem(type, sub, powerColor) {
     root.add(s);
   }
   spin.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  return finish(root, mats, { kind: 'item', spin, spins: !['food', 'chest', 'barrel', 'gold'].includes(type) });
+  return finish(root, mats, { kind: 'item', spin, spins: !['food', 'barrel', 'gold'].includes(type) });
 }
 
 // ---------- level dressing ----------

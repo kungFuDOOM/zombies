@@ -34,7 +34,6 @@ const N = { C: 48, 'C#': 49, D: 50, Eb: 51, E: 52, F: 53, 'F#': 54, G: 55, Ab: 5
 // k kick, s snare / side-stick, h hat / shaker, o open hat, t tom, m metal clank ('x' hit, 'g' ghost note)
 export const DRUMS = {
   none:    { k: '', s: '', h: '', o: '', t: '' },
-  soft:    { k: 'x.......x.......', s: '', h: '..x...x...x...x.', o: '', t: '' },
   sparse:  { k: 'x...............', s: '', h: '', o: '', t: '........g.......' },
   muzak:   { k: 'x.......x.......', s: '....g.......g...', h: 'g.g.g.g.g.g.g.g.', o: '', t: '' },
   lounge:  { k: 'x.....x...x.....', s: '....g.......g.g.', h: 'g.x.g.x.g.x.g.x.', o: '', t: '' },
@@ -42,7 +41,6 @@ export const DRUMS = {
   heart:   { k: 'x.x.............', s: '', h: '', o: '', t: '......g.........' },
   dread:   { k: 'x...............', s: '', h: '', o: '', t: '', m: '..........g.....' },
   clank:   { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', o: '.x...x...x...x..', t: '', m: '..x.....x..x..x.' },
-  rim:     { k: 'x.......x.......', s: '....g.......g...', h: '', o: '', t: '' },
 };
 
 const ARP = (w, pat, rate, oct = 1, vol = 0.03) => ({ w, pat, rate, oct, vol });
@@ -85,7 +83,7 @@ export const TRACKS = {
     { pad: PAD('strings', 0.03, 1000), bass: BASS('saw', 'rr.rr.r.rr.rr.c.', 0.1, 600), arp: ARP('buzz', 'skip', 1, 1, 0.014), lead: LEAD('stab', '1-.1.2-.1-.1.2-.1-.5-.-.-.4.2-.1.2.1.-.-.-', 1, 0.07), drums: 'clank' }, { boss: true }),
 
   // ----- stingers (play once) -----
-  clear: T('clear', 'Stage Clear', 'C', 'major', 128, [1, 4, 5, 1],
+  clear: T('clear', 'Exit Sign Glow', 'C', 'major', 128, [1, 4, 5, 1],
     { pad: PAD('epiano', 0.04, 1800), bass: BASS('sine', 'r.......r.......', 0.09), arp: ARP('vibes', 'up', 2, 2, 0.025), lead: LEAD('vibes', '5.-.-.-.8.-.-.-.3.-.-.-.5.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.', 1, 0.06), drums: 'none' }, { once: true }),
   bossclear: T('bossclear', 'Butcher Fried', 'D', 'major', 112, [1, 4, 5, 1, 6, 4, 5, 1],
     { pad: PAD('epiano', 0.05, 1800), bass: BASS('tri', 'r.......5.......', 0.09, 600), arp: ARP('vibes', 'up', 2, 2, 0.03), lead: LEAD('sax', '8---.-7-5---3---6---5-3-2---1-.-.---3---2---1---.---.---.---.---.---', 1, 0.06), drums: 'muzak' }, { once: true, wow: 14, sev: true }),

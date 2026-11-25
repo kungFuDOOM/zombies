@@ -37,11 +37,12 @@ export const HERO_STYLE = {
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
 export const ENEMY_STYLE = {
   // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
-  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.32, head: 0.26, reach: 1.45, bend: 0.2, sway: 0.14, hitch: 0.3, rate: 0.9 } },
-  sprinter: { model: 'z_sprinter', slim: 0.92, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 0.97, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.3, head: 0.2, reach: 1.1, bend: 0.5, sway: 0.2, hitch: 0.3, rate: 2.0, uneven: 0.6 } },
-  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.28, head: 0.25, reach: 1.15, bend: 0.25, sway: 0.2, hitch: 0.22, rate: 0.7, stomp: 0.045, drag: 0.4 } },
-  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.34, head: 0.32, reach: 1.2, bend: 0.5, sway: 0.16, hitch: 0.4, rate: 1.2, retch: 0.5 } },
-  death: { model: 'skeleton_mage', weapon: 'weapon_staff', tint: '#3a3440', eyes: '#ff1010', walk: 'Walking_A', walkSpeed: 1.2, scale: 1.25 },
+  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.22, head: 0.18, reach: 1.3, bend: 0.2, sway: 0.14, hitch: 0.16, rate: 0.9 } },
+  sprinter: { model: 'z_sprinter', slim: 0.92, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 0.97, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.2, head: 0.14, reach: 1.0, bend: 0.5, sway: 0.2, hitch: 0.16, rate: 2.0, uneven: 0.6 } },
+  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.2, head: 0.18, reach: 1.05, bend: 0.25, sway: 0.2, hitch: 0.12, rate: 0.7, stomp: 0.045, drag: 0.4 } },
+  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.24, head: 0.22, reach: 1.1, bend: 0.5, sway: 0.16, hitch: 0.2, rate: 1.2, retch: 0.5 } },
+  // The Grim Shopper: an upright, unhurried undead mall manager (ch_zombie_shopper, dressed in charProps.dressShopper)
+  death: { model: 'z_shopper', single: true, tint: '#dfe4e2', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.3, scale: 1.2, undead: { lean: 0.08, head: 0.1, reach: 0.45, bend: 0.15, sway: 0.06, hitch: 0.08, rate: 0.6 } },
 };
 
 export class Renderer3D {
@@ -75,6 +76,8 @@ export class Renderer3D {
     }
     this.exitLight = new THREE.PointLight('#60c0ff', 0, 220, 1);
     this.scene.add(this.exitLight);
+    this.cineLights = [0, 1].map(() => { const l = new THREE.PointLight('#ffffff', 0, 300, 1); this.scene.add(l); return l; }); // (cutscene key lights: made up front so the first cutscene doesn't recompile every material)
+    this.cineFog = new THREE.Fog('#0a0610', 300, 1200);
 
     const pg = new THREE.BufferGeometry();
     this.pPos = new Float32Array(MAX_PARTICLES * 3);
@@ -286,8 +289,8 @@ export class Renderer3D {
   makeEnemy(e) {
     const st = ENEMY_STYLE[e.type] || ENEMY_STYLE.walker;
     // zombies come in three variants and slightly different sizes, picked from their phase
-    const vi = st.undead ? Math.floor(e.phase * 1000) % 3 : 0;
-    const vr = st.undead ? ((Math.floor(e.phase * 7919) % 100) / 100 - 0.5) * 0.18 : 0;
+    const vi = st.undead && !st.single ? Math.floor(e.phase * 1000) % 3 : 0;
+    const vr = st.undead && !st.single ? ((Math.floor(e.phase * 7919) % 100) / 100 - 0.5) * 0.18 : 0;
     const a = new Actor(vi ? `${st.model}${vi}` : st.model, { tint: st.tint, ghost: st.ghost, emissiveEyes: st.eyes, undead: st.undead ? { ...st.undead } : null });
     a.model.scale.setScalar((a.nat ? a.unit : a.adult ? HERO_SCALE : S) * st.scale * (1 + vr));
     if (st.slim) a.model.scale.x *= st.slim;
@@ -336,15 +339,34 @@ export class Renderer3D {
 
   // Kill burst: flesh chunks, bone and a tumbling limb or two, plus a blood pool on the floor.
   // Pooled and capped so a horde dying at once stays cheap.
-  spawnGibs(x, z, scale = 1, type = 'walker') {
+  initGibs() {
     if (!this.gibMats) {
       const m = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, flatShading: true, ...o });
       this.gibMats = [m('#7a1010'), m('#4a0808'), m('#6a7a58'), m('#a05050'), m('#d8d0b4')];
       this.gibBox = new THREE.BoxGeometry(1, 1, 1);
       this.gibLimb = new THREE.CylinderGeometry(0.5, 0.38, 1, 6);
       this.decalGeo = new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2);
-      this.decalMats = ['#7a0a0a', '#4a0606'].map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, depthWrite: false }));
+      this.decalMats = ['#7a0a0a', '#4a0606', '#2c0404', '#5e0b0b'].map((c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, depthWrite: false }));
     }
+  }
+
+  // A small red spurt where a blow lands (a few chips, no floor decal).
+  hitSpray(x, z, scale = 1) {
+    this.initGibs();
+    for (let i = 0; i < 4; i++) {
+      const mesh = new THREE.Mesh(this.gibBox, this.gibMats[i % 2]);
+      const sz = (1 + Math.random() * 1.2) * scale;
+      mesh.scale.set(sz, sz * 0.7, sz);
+      mesh.position.set(x, 20 + Math.random() * 12, z);
+      const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 60;
+      this.scene.add(mesh);
+      this.gibs.push({ mesh, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 40 + Math.random() * 60, sx: 0, sz: 0, t: 0, life: 0.7 });
+    }
+    while (this.gibs.length > 160) this.scene.remove(this.gibs.shift().mesh);
+  }
+
+  spawnGibs(x, z, scale = 1, type = 'walker') {
+    this.initGibs();
     const big = type === 'brute' ? 1.5 : 1;
     const n = Math.round((7 + Math.random() * 4) * big);
     for (let i = 0; i < n; i++) {
@@ -359,14 +381,14 @@ export class Renderer3D {
       this.gibs.push({ mesh, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 70 + Math.random() * 110, sx: (Math.random() - 0.5) * 14, sz: (Math.random() - 0.5) * 14, t: 0, life: limb ? 2.6 : 1.8 });
     }
     while (this.gibs.length > 160) this.scene.remove(this.gibs.shift().mesh);
-    const d = new THREE.Mesh(this.decalGeo, this.decalMats[(Math.random() * 2) | 0]);
+    const d = new THREE.Mesh(this.decalGeo, this.decalMats[(Math.random() * this.decalMats.length) | 0]);
     d.position.set(x, 0.6 + this.decals.length * 0.002, z);
-    d.scale.set((14 + Math.random() * 10) * big, 1, (10 + Math.random() * 9) * big);
+    d.scale.set((12 + Math.random() * 14) * big, 1, (8 + Math.random() * 12) * big);
     d.rotation.y = Math.random() * 3;
     d.renderOrder = 1;
     this.scene.add(d);
     this.decals.push({ d, t: 0 });
-    while (this.decals.length > 36) this.scene.remove(this.decals.shift().d);
+    while (this.decals.length > 60) this.scene.remove(this.decals.shift().d);
   }
 
   updateGibs(dt) {
@@ -387,7 +409,7 @@ export class Renderer3D {
     for (let i = this.decals.length - 1; i >= 0; i--) {
       const dc = this.decals[i];
       dc.t += dt;
-      if (dc.t > 10) { dc.d.material = dc.d.material.clone(); dc.d.material.opacity -= dt * 0.4; if (dc.d.material.opacity <= 0) { this.scene.remove(dc.d); this.decals.splice(i, 1); } }
+      if (dc.t > 24) { if (!dc.own) { dc.own = true; dc.d.material = dc.d.material.clone(); } dc.d.material.opacity -= dt * 0.25; if (dc.d.material.opacity <= 0) { this.scene.remove(dc.d); this.decals.splice(i, 1); } }
     }
   }
 
@@ -443,7 +465,6 @@ export class Renderer3D {
         glow = '#50ff30';
         break;
       }
-      case 'chest': add('chest', 0.6); break;
       case 'barrel': add('barrel', 0.75); break;
       default: {
         // pizza, soda, cash, propane, armor crates, flashbangs and turbo power-ups keep their bespoke models
@@ -455,7 +476,7 @@ export class Renderer3D {
       }
     }
     if (glow) { const s = glowSprite(glow, 30, 0.45); s.position.y = 10; root.add(s); }
-    this.blob(root, it.type === 'chest' ? 34 : 24);
+    this.blob(root, 24);
     return { kind: 'item', root, spin, spins };
   }
 
@@ -485,19 +506,27 @@ export class Renderer3D {
     const tx = g.camX + WORLD_VIEW_W / 2, tz = g.camY + WORLD_VIEW_H / 2 + 10;
     const sx = (Math.random() - 0.5) * g.shake, sz = (Math.random() - 0.5) * g.shake;
     const cc = g.cutCam;
+    const now = performance.now();
+    const rdt = Math.min(0.05, Math.max(0.001, (now - (this.lastReal || now)) / 1000));
+    this.lastReal = now;
     if (cc) {
-      // a cutscene shot: a cinematic camera on the real survivors and the real mall
-      this.cutFov = this.cutFov == null ? cc.fov : this.cutFov + (cc.fov - this.cutFov) * 0.1;
+      // a cutscene shot: a cinematic camera on the real survivors and the real mall. Moves are authored
+      // in cutscenes.js, so the camera only smooths them lightly (frame-rate independent); a `snap` is a hard cut.
+      const snap = !!cc.snap || this.cutFov == null;
+      const kf = snap ? 1 : 1 - Math.exp(-rdt * 9);
+      this.cutFov = this.cutFov == null ? cc.fov : this.cutFov + (cc.fov - this.cutFov) * (snap ? 1 : 1 - Math.exp(-rdt * 6));
       if (this.camera.fov !== this.cutFov) { this.camera.fov = this.cutFov; this.camera.updateProjectionMatrix(); }
-      const k = this.cutPos ? 0.14 : 1;
       this.cutPos = this.cutPos || new THREE.Vector3(cc.px, cc.py, cc.pz);
       this.cutLook = this.cutLook || new THREE.Vector3(cc.lx, cc.ly, cc.lz);
-      this.cutPos.lerp(this.tmpV.set(cc.px, cc.py, cc.pz), k);
-      this.cutLook.lerp(this.tmpV.set(cc.lx, cc.ly, cc.lz), k);
-      this.camera.position.copy(this.cutPos).add(this.tmpV.set(sx, 0, sz));
+      this.cutPos.lerp(this.tmpV.set(cc.px, cc.py, cc.pz), kf);
+      this.cutLook.lerp(this.tmpV.set(cc.lx, cc.ly, cc.lz), kf);
+      const sh = (cc.shake || 0) * 0.5;
+      this.camera.position.copy(this.cutPos).add(this.tmpV.set(sx + (Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh * 0.6, sz + (Math.random() - 0.5) * sh));
+      this.camera.up.set(0, 1, 0);
       this.camera.lookAt(this.cutLook);
+      if (cc.roll) this.camera.rotateZ(cc.roll);
     } else {
-      if (this.cutPos) { this.cutPos = null; this.cutLook = null; this.cutFov = null; this.camera.fov = 42; this.camera.updateProjectionMatrix(); }
+      if (this.cutPos) { this.cutPos = null; this.cutLook = null; this.cutFov = null; this.camera.fov = 42; this.camera.updateProjectionMatrix(); this.camera.up.set(0, 1, 0); }
       this.camera.position.set(tx + CAM_OFFSET.x + sx, CAM_OFFSET.y, tz + CAM_OFFSET.z + sz);
       this.camera.lookAt(tx + sx, CAM_LOOK_Y, tz + sz - 10);
     }
@@ -506,6 +535,7 @@ export class Renderer3D {
     this.camX = tx; this.camZ = tz;
 
     this.syncLevel(g, t);
+    this.applyCine(cc, t, rdt);
 
     const seen = new Set();
     for (const p of g.allPlayers()) this.sync(p, () => this.makeHero(p), (v) => this.updateHero(v, p, g, dt), seen);
@@ -674,10 +704,19 @@ export class Renderer3D {
       const clip = e.act.type === 'throw' ? 'Throw' : e.act.type === 'cast' ? st.shoot || 'Spellcast_Shoot' : st.melee || '1H_Melee_Attack_Chop';
       a.play(clip, { upper: moving, timeScale: 2 });
     }
+    if (e.hurt > 0 && !v.wasHurt) { // a blow connects: squash punch and a red spurt (visual only)
+      v.punch = 0.14;
+      if (st.undead) this.hitSpray(e.x, e.y, st.scale);
+    }
     if (e.hurt > 0 && !v.wasHurt && !a.busy) a.play('Hit_B', { upper: true, timeScale: 2.2 });
     v.wasHurt = e.hurt > 0;
+    if (v.punch > 0) {
+      v.punch = Math.max(0, v.punch - dt);
+      const k = Math.sin((v.punch / 0.14) * Math.PI * 0.5);
+      v.root.scale.set(1 + 0.16 * k, 1 - 0.14 * k, 1 + 0.16 * k);
+    }
     a.fade(e.invisible ? 0.15 : 1);
-    a.flash(e.hurt);
+    a.flash(e.hurt, '#ffd8d0');
     a.update(dt);
   }
 
@@ -834,7 +873,47 @@ export class Renderer3D {
     // the alarm: a red pulse over the whole set (Scene 1)
     this.hemi.color.set(g.alarm > 0 ? '#ff9aa8' : g.theme.light);
     const brownout = Math.sin(t * 2.1) * Math.sin(t * 7.3) > 0.82 ? 0.7 : 1; // the grid sags now and then
-    this.hemi.intensity = g.theme.ambient * 1.7 * brownout * (g.alarm > 0 ? 0.75 + (Math.sin(t * 8) * 0.5 + 0.5) * 0.5 : 1);
+    // play-time mood: a darker, sicker green-grey fluorescent mall; the hub and training stay neon
+    const play = !(g.level.hub || g.level.tutorial);
+    this.mood = (this.mood ?? (play ? 1 : 0)) + ((play ? 1 : 0) - (this.mood ?? 0)) * 0.1;
+    const mood = this.mood, th = g.theme, foodCourt = g.level.kitchen || g.levelNum <= 1;
+    if (g.alarm <= 0) this.hemi.color.set(th.light).lerp(this.tmpColor.set('#9fc49a'), 0.35 * mood);
+    this.hemi.groundColor.set(th.fog).lerp(this.tmpColor.set('#0b0f0a'), mood);
+    this.hemi.intensity = th.ambient * (1.7 - mood * (foodCourt ? 0.35 : 0.5)) * brownout * (g.alarm > 0 ? 0.75 + (Math.sin(t * 8) * 0.5 + 0.5) * 0.5 : 1);
+    this.sun.color.set(th.light).lerp(this.tmpColor.set('#c8d6b4'), mood);
+    this.sun.intensity = th.ambient * (1.1 - 0.35 * mood) + 0.3 - 0.15 * mood;
+    this.renderer.toneMappingExposure = 0.86 - mood * (foodCourt ? 0.06 : 0.1);
+    if (play && !this.scene.fog) this.scene.fog = new THREE.Fog('#0e1610', 600, 1500);
+    else if (!play && this.scene.fog) this.scene.fog = null;
+    this.torchMood = 1 - 0.15 * mood;
+  }
+
+  // A big cinematic hit: the key lights spike for a moment.
+  cineHit(amount = 1) { this.cineSpike = Math.max(this.cineSpike || 0, amount); }
+
+  // The cinematography a cutscene shot asks for on top of the set's own lighting: key / rim lights on the
+  // subject, a tighter fog so the background falls away behind them (the depth cue), a dimmer ambient.
+  applyCine(cc, t, dt) {
+    const lights = cc && cc.lights ? cc.lights : [];
+    this.cineLights.forEach((l, i) => {
+      const d = lights[i];
+      if (!d) { l.intensity += (0 - l.intensity) * Math.min(1, dt * 10); return; }
+      l.color.set(d.color);
+      l.position.set(d.x, d.y, d.z);
+      const flick = 1 + (d.flick || 0) * (Math.sin(t * 23 + i * 5) * 0.5 + Math.sin(t * 41 + i) * 0.35 + (Math.sin(t * 7.3) > 0.9 ? -0.9 : 0));
+      l.intensity = d.power * Math.max(0.05, flick) * (1 + (this.cineSpike || 0));
+    });
+    this.cineSpike = Math.max(0, (this.cineSpike || 0) - dt * 3);
+    if (cc && cc.fog) {
+      const f = this.cineFog;
+      f.color.set(cc.fog.color); f.near = cc.fog.near; f.far = cc.fog.far;
+      if (this.scene.fog !== f) this.savedFog = this.scene.fog;
+      this.scene.fog = f;
+    } else if (this.scene.fog === this.cineFog) this.scene.fog = this.savedFog || null; // back to the level's own fog
+    if (cc && cc.dim != null) {
+      this.hemi.intensity *= cc.dim;
+      this.sun.intensity *= Math.min(1, cc.dim + 0.1);
+    }
   }
 
   syncLights(g, t, cx, cz) {
@@ -849,7 +928,7 @@ export class Renderer3D {
       // dying tubes: every third light stutters and blacks out in bursts
       const bad = (Math.floor(s.tc.x / 7) + i) % 3 === 0;
       const dead = bad && Math.sin(t * 31 + s.tc.x) * Math.sin(t * 4.3 + s.tc.z * 0.1) > 0.35;
-      l.intensity = (s.tc.power || 110) * (1 + Math.sin(t * 13 + i * 3) * 0.08) * (dead ? 0.12 : 1);
+      l.intensity = (s.tc.power || 110) * (this.torchMood ?? 1) * (1 + Math.sin(t * 13 + i * 3) * 0.08) * (dead ? 0.12 : 1);
     });
     const ps = g.allPlayers();
     this.playerLights.forEach((l, i) => {
@@ -857,7 +936,7 @@ export class Renderer3D {
       if (!p || !p.alive) { l.intensity = 0; return; }
       l.color.set(heroColor(p.cls)).lerp(this.tmpColor.set('#ffffff'), 0.65);
       l.position.set(p.x, 60, p.y + 10);
-      l.intensity = 60;
+      l.intensity = 60 + 20 * (this.mood || 0);
     });
     const ex = g.level.exit;
     if (ex) this.exitLight.position.set(ex.x * TILE + 16, 30, ex.y * TILE + 16);
@@ -920,6 +999,7 @@ export class Renderer3D {
     for (const [k, h] of SC.heroes) if (!seen.has(k)) h.root.visible = false;
     SC.halos.forEach((hl, i) => hl.scale.setScalar(240 * (1 + Math.sin(time * 17 + i) * 0.06 + (Math.sin(time * 41 + i * 9) > 0.98 ? -0.3 : 0))));
     SC.lights.forEach((l, i) => (l.intensity = 150 * (1 + Math.sin(time * 13 + i * 3) * 0.08)));
+    this.renderer.toneMappingExposure = 0.86; // the menus stay neon
     this.renderer.render(SC.scene, SC.camera);
   }
 

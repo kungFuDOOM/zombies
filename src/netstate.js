@@ -37,7 +37,7 @@ export class SnapshotWriter {
       bn: g.banner ? [g.banner.text, g.banner.sub || '', r2(g.banner.t)] : 0,
       hf: g.hubFocus || 0,
       N: (g.npcs || []).map((n) => [n.id, r1(n.x), r1(n.y), r2(n.fx || 0), r2(n.fy || 0), n.hurt ? 1 : 0, act(n.act)]),
-      cc: g.cutCam ? [r1(g.cutCam.px), r1(g.cutCam.py), r1(g.cutCam.pz), r1(g.cutCam.lx), r1(g.cutCam.ly), r1(g.cutCam.lz), r1(g.cutCam.fov)] : 0,
+      cc: g.cutCam ? [r1(g.cutCam.px), r1(g.cutCam.py), r1(g.cutCam.pz), r1(g.cutCam.lx), r1(g.cutCam.ly), r1(g.cutCam.lz), r1(g.cutCam.fov), r1(g.cutCam.shake || 0), r2(g.cutCam.roll || 0), g.cutCam.snap ? 1 : 0] : 0,
       tiles,
       P: g.players.map((p) => p && [
         p.slot, p.cls, p.source, r1(p.x), r1(p.y), r2(p.fx), r2(p.fy), Math.round(p.hp), p.alive ? 1 : 0, r2(p.deadT),
@@ -72,7 +72,7 @@ const str = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '');
 const list = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
 const color = (v) => (typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v) ? v : '#ffffff');
 const LEVEL_KEY = /^(H|HR|U|L([1-9]|1[0-2]))$/;
-const ITEM_TYPES = new Set(['food', 'poison', 'gold', 'gem', 'chest', 'barrel', 'potion', 'key', 'amulet', 'propane', 'armorcrate']);
+const ITEM_TYPES = new Set(['food', 'poison', 'gold', 'gem', 'barrel', 'potion', 'key', 'amulet', 'propane', 'armorcrate']);
 const PROJ_KINDS = new Set(['wrench', 'pellet', 'deck', 'spray', 'efire', 'lob', 'bomb', 'flask', 'quake', 'pool', 'fireball', 'axe']);
 const ACT_TYPES = new Set(['melee', 'shoot', 'turbo', 'throw', 'cast', 'windup', 'breath', 'leap', 'teleport', 'roar', 'sweep', 'slam']);
 const STATES = new Set(['title', 'confirm', 'story', 'select', 'realm', 'shop', 'ending', 'play', 'paused', 'levelclear', 'gameover', 'cutscene', 'recap']);
@@ -93,7 +93,7 @@ export function cleanGame(s) {
     bn: Array.isArray(s.bn) ? [str(s.bn[0], 80), str(s.bn[1], 80), num(s.bn[2], 0, 10)] : 0,
     hf: s.hf && typeof s.hf === 'object' && (s.hf.type === 'shop' || s.hf.type === 'directory') ? { type: s.hf.type } : 0,
     N: list(s.N, 8).filter((r) => Array.isArray(r) && own(NPC_IDS, r[0])).map((r) => [r[0], num(r[1], -POS, POS), num(r[2], -POS, POS), num(r[3], -1, 1), num(r[4], -1, 1), r[5] ? 1 : 0, cleanAct(r[6])]),
-    cc: Array.isArray(s.cc) && s.cc.length === 7 ? s.cc.map((v, i) => num(v, -POS, POS, i === 6 ? 42 : 0)) : 0,
+    cc: Array.isArray(s.cc) && (s.cc.length === 7 || s.cc.length === 10) ? s.cc.map((v, i) => num(v, -POS, POS, i === 6 ? 42 : 0)) : 0,
     tiles: list(s.tiles, 40000).map((v, i) => (i % 2 ? int(v, 0, 9) : int(v, -1, 1e6, -1))), // bad index: -1, skipped
     P: list(s.P, MAX_PLAYERS).map((r) => {
       if (!Array.isArray(r) || !own(CLASSES, r[1])) return null;
@@ -156,9 +156,9 @@ function story(v) {
 function cleanCut(v) {
   if (!v || typeof v !== 'object') return null;
   const choices = Array.isArray(v.choices) ? list(v.choices, 4).map((c, i) => ({ n: i + 1, label: str(c && c.label, 90), silence: !!(c && c.silence) })) : null;
-  const card = v.card && typeof v.card === 'object' ? { title: str(v.card.title, 60), sub: str(v.card.sub, 60), boss: !!v.card.boss, t: num(v.card.t, 0, 1), out: num(v.card.out, 0, 1) } : null;
+  const card = v.card && typeof v.card === 'object' ? { title: str(v.card.title, 60), sub: str(v.card.sub, 60), boss: !!v.card.boss, t: num(v.card.t, 0, 1), out: num(v.card.out, 0, 1), age: num(v.card.age, 0, 60), dur: num(v.card.dur, 0, 60) } : null;
   return {
-    id: str(v.id, 12), letterbox: 1, alarm: v.alarm ? 1 : 0, card, speaker: str(v.speaker, 40), who: str(v.who, 12), text: str(v.text, 300), prompt: str(v.prompt, 120),
+    id: str(v.id, 12), letterbox: 1, bar: num(v.bar, 0, 110), flash: num(v.flash, 0, 1), fade: num(v.fade, 0, 1), mood: str(v.mood, 12), alarm: v.alarm ? 1 : 0, card, speaker: str(v.speaker, 40), who: str(v.who, 12), text: str(v.text, 300), prompt: str(v.prompt, 120),
     choices, timerFrac: num(v.timerFrac, 0, 1), hint: str(v.hint, 60), beat: ['card', 'line', 'choice'].includes(v.beat) ? v.beat : null,
   };
 }
@@ -267,7 +267,7 @@ export class SnapshotReader {
     g.banner = s.bn ? { text: s.bn[0], sub: s.bn[1] || undefined, t: s.bn[2] } : null;
     g.hubFocus = s.hf || null;
     g.npcs = s.N.map((r) => ({ kind: 'npc', id: r[0], cls: r[0], x: r[1], y: r[2], fx: r[3], fy: r[4], hurt: !!r[5], act: r[6] ? { type: r[6][0], t: r[6][1] } : null, name: r[0] }));
-    g.cutCam = s.cc ? { px: s.cc[0], py: s.cc[1], pz: s.cc[2], lx: s.cc[3], ly: s.cc[4], lz: s.cc[5], fov: s.cc[6] } : null;
+    g.cutCam = s.cc ? { px: s.cc[0], py: s.cc[1], pz: s.cc[2], lx: s.cc[3], ly: s.cc[4], lz: s.cc[5], fov: s.cc[6], shake: s.cc[7] || 0, roll: s.cc[8] || 0, snap: !!s.cc[9] } : null;
     // tiles the host changed since the level was generated (they only ever open up)
     for (let i = 0; i + 1 < s.tiles.length; i += 2) if (s.tiles[i] >= 0 && s.tiles[i] < g.tiles.length) g.tiles[s.tiles[i]] = s.tiles[i + 1];
 

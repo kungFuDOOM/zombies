@@ -382,11 +382,13 @@ export function titleShowcase(time) {
 
 // The title menu: SOLO PLAY, CO-OP LOBBY and CONTROLS (click, tap, or keys). Co-op is also the O key.
 const TITLE_BTNS = [
-  { id: 'solo', label: 'SOLO PLAY', y: 296, c0: '#ff4fb8', c1: '#8a1a6a', hint: '' },
-  { id: 'coop', label: 'CO-OP LOBBY', y: 350, c0: '#3fd6f0', c1: '#1a5fb0', hint: '(or press O)' },
-  { id: 'controls', label: 'CONTROLS', y: 404, c0: '#ffd040', c1: '#a06a10', hint: '(or press C)' },
+  { id: 'solo', label: 'SOLO PLAY', y: 290, c0: '#ff4fb8', c1: '#8a1a6a', hint: '' },
+  { id: 'coop', label: 'CO-OP LOBBY', y: 340, c0: '#3fd6f0', c1: '#1a5fb0', hint: '(or press O)' },
+  { id: 'controls', label: 'CONTROLS', y: 390, c0: '#ffd040', c1: '#a06a10', hint: '(or press C)' },
+  { id: 'training', label: 'TRAINING / ORIENTATION', y: 440, c0: '#7be07b', c1: '#1c6a2c', hint: '(or press T)' },
+  { id: 'intro', label: 'WATCH INTRO', y: 490, c0: '#c070ff', c1: '#4a1a8a', hint: '(or press I)' },
 ];
-const TB_W = 340, TB_H = 44, TB_X = (VIEW_W - TB_W) / 2;
+const TB_W = 340, TB_H = 42, TB_X = (VIEW_W - TB_W) / 2;
 export function titleButtonAt(x, y) {
   for (const b of TITLE_BTNS) if (x >= TB_X - 10 && x <= TB_X + TB_W + 10 && y >= b.y - 6 && y <= b.y + TB_H + 6) return b.id;
   return null;
@@ -441,17 +443,13 @@ function drawControlsPanel(ctx) {
   outlined(ctx, `${btn('attack')} / ESC: back`, VIEW_W / 2, 500, '#80e0ff', '#000', 3);
 }
 
-export function drawTitle(ctx, time, hiscores, progress = null, online = false, controlsOpen = false, skipOn = false) {
-  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-  const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, 200, VIEW_W / 2, VIEW_H / 2, 620);
-  vg.addColorStop(0, 'rgba(10,0,30,0)'); vg.addColorStop(1, 'rgba(10,0,30,0.8)');
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  // the neon sign
+// The neon MALL OF THE DEAD sign: the title screen draws it, and the opening cinematic slams the very same one in.
+export function drawTitleSign(ctx, time, scale = 1, alpha = 1) {
+  ctx.save();
   ctx.textAlign = 'center';
+  if (scale !== 1) { ctx.translate(VIEW_W / 2, 140); ctx.scale(scale, scale); ctx.translate(-VIEW_W / 2, -140); }
   const flick = Math.sin(time * 23) > 0.96 ? 0.55 : 1;
-  ctx.globalAlpha = flick;
+  ctx.globalAlpha = flick * alpha;
   ctx.shadowColor = '#ff2ea6';
   ctx.shadowBlur = 30;
   ctx.font = `bold 78px ${SERIF}`;
@@ -459,8 +457,17 @@ export function drawTitle(ctx, time, hiscores, progress = null, online = false, 
   ctx.shadowColor = '#2ee6ff';
   ctx.font = `bold 52px ${SERIF}`;
   outlined(ctx, 'OF THE DEAD', VIEW_W / 2, 172, '#d8fbff', '#18a8d8', 7);
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+export function drawTitle(ctx, time, hiscores, progress = null, online = false, controlsOpen = false, skipOn = false) {
+  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, 200, VIEW_W / 2, VIEW_H / 2, 620);
+  vg.addColorStop(0, 'rgba(10,0,30,0)'); vg.addColorStop(1, 'rgba(10,0,30,0.8)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  drawTitleSign(ctx, time);
   ctx.font = `bold 15px ${SANS}`;
   outlined(ctx, 'BLACK FRIDAY SALE: EVERYONE MUST GO', VIEW_W / 2, 204, '#ffcc33', '#000', 4);
   if (progress) {
@@ -477,7 +484,7 @@ export function drawTitle(ctx, time, hiscores, progress = null, online = false, 
   } else if (Math.floor(time * 2) % 2) {
     ctx.font = `bold 24px ${SANS}`;
     const verb = device === 'touch' ? 'TAP' : 'PRESS';
-    outlined(ctx, `${verb} ${BTN('attack')} TO ${progress ? 'CONTINUE' : 'START'}`, VIEW_W / 2, 498, '#ffffff', '#000', 5);
+    outlined(ctx, `${verb} ${BTN('attack')} TO ${progress ? 'CONTINUE' : 'START'}`, VIEW_W / 2, 540, '#ffffff', '#000', 5);
   }
   ctx.font = `12px ${SANS}`;
   ctx.textAlign = 'center';
@@ -789,10 +796,8 @@ function drawHubLabels(ctx, g, r3d, prompt = true) {
   const L = g.level;
   // low on the kiosk, clear of the big 3D SECURITY ROOM / MALL DIRECTORY neon overhead
   const dp = r3d.toScreen((L.directory.x + 0.5) * TILE, (L.directory.y + 0.5) * TILE, 6);
-  ctx.font = `bold 12px ${SERIF}`;
+  ctx.font = `bold 14px ${SERIF}`;
   outlined(ctx, 'MALL DIRECTORY', dp.x, dp.y + 18, '#2ee6ff', '#000', 3);
-  const sp = r3d.toScreen((L.shop.x + 1.5) * TILE, (L.shop.y + 0.5) * TILE, 80);
-  outlined(ctx, 'CASH UPGRADE COUNTER', sp.x, sp.y, '#ffd860', '#000', 4);
   const rp = r3d.toScreen((HUB_RAY.x + 0.5) * TILE, (HUB_RAY.y + 0.5) * TILE, 64);
   const label = hubRayLabel(g.story);
   if (label) { ctx.font = `bold 12px ${SANS}`; outlined(ctx, label, rp.x, rp.y, label.startsWith('RAY:') ? '#a090b0' : '#ffb060', '#000', 3); }
@@ -1175,7 +1180,7 @@ function drawGlobalBoard(ctx, time, g, isMine) {
 
 // ---------- in-game chatter ----------
 
-const BARK_COLORS = { biker: '#ff7a50', mallCop: '#6aa0ff', skater: '#50e890', mallGoth: '#d070ff', ray: '#ffb060' };
+const BARK_COLORS = { biker: '#ff7a50', mallCop: '#6aa0ff', skater: '#50e890', mallGoth: '#d070ff', ray: '#ffb060', butcher: '#ff8a30' };
 const BARK_NAMES = { biker: 'BIKER', mallCop: 'MALL COP', skater: 'SKATER', mallGoth: 'MALL GOTH', ray: 'RAY' };
 
 // Short lines of squad chatter along the bottom of the screen.
@@ -1208,7 +1213,7 @@ function drawBarks(ctx, g) {
 // bars, a dark translucent dialogue plaque, a bottom bar of four choices (three actions and "..."),
 // and a thin timer line that drains. The 3D scene behind it is the real mall and the real survivors.
 
-const LB = 30; // letterbox bar height
+const LB = 42; // default letterbox bar height (cutscenes ask for their own: see Cutscene.view)
 const CH = { x: 30, y: 504, w: 210, h: 66, gap: 10 };
 const choiceRect = (i) => ({ x: CH.x + i * (CH.w + CH.gap), y: CH.y, w: CH.w, h: CH.h });
 
@@ -1222,9 +1227,21 @@ export function cutChoiceAt(x, y, view) {
   return -1;
 }
 
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
+
 export function drawCutscene(ctx, v, time) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   if (!v) return;
+  const card = !!v.card;
+  // letterbox: as tall as the scene asks on a desktop; a phone (390px tall) keeps the picture and the text clear
+  let bar = Math.max(0, Math.min(v.bar == null ? LB : v.bar, 110));
+  if (device === 'touch') bar = Math.min(bar, card ? 64 : 38);
+  // a heavy vignette so every shot falls away at the edges
+  const vg0 = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.34, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.92);
+  vg0.addColorStop(0, 'rgba(0,0,0,0)'); vg0.addColorStop(1, 'rgba(2,0,8,0.62)');
+  ctx.fillStyle = vg0;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   // an alarm pulse around the edges (red, clean: no pattern)
   if (v.alarm) {
     const a = 0.12 + (Math.sin(time * 8) * 0.5 + 0.5) * 0.2;
@@ -1233,39 +1250,105 @@ export function drawCutscene(ctx, v, time) {
     vg.addColorStop(1, `rgba(255,20,60,${a})`);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  } else if (v.mood === 'kitchen' || v.mood === 'fire') { // a warm throb at the edges: the fryers / the burning locker
+    const a = 0.1 + (Math.sin(time * 5.3) * 0.5 + 0.5) * 0.1 + (Math.sin(time * 31) > 0.93 ? 0.08 : 0);
+    const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.9);
+    vg.addColorStop(0, 'rgba(255,120,20,0)');
+    vg.addColorStop(1, `rgba(255,110,20,${a})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
-  // letterbox
-  ctx.fillStyle = 'rgba(4,2,12,0.92)';
-  ctx.fillRect(0, 0, VIEW_W, LB);
-  ctx.fillRect(0, VIEW_H - LB + 4, VIEW_W, LB);
-  ctx.strokeStyle = 'rgba(46,230,255,0.5)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, LB + 0.5); ctx.lineTo(VIEW_W, LB + 0.5); ctx.moveTo(0, VIEW_H - LB + 3.5); ctx.lineTo(VIEW_W, VIEW_H - LB + 3.5); ctx.stroke();
-
-  if (v.card) { drawChapterCard(ctx, v.card, time); return; }
-  if (v.beat === 'line') drawDialogue(ctx, v);
+  if (v.flash > 0) { ctx.fillStyle = `rgba(255,240,230,${Math.min(0.85, v.flash * 0.8)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+  drawBars(ctx, bar);
+  if (v.card) drawChapterCard(ctx, v.card, time);
+  else if (v.beat === 'line') drawDialogue(ctx, v);
   else if (v.beat === 'choice') drawChoiceBar(ctx, v, time);
+  if (v.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, v.fade)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 }
 
+// Black bars with a thin neon edge (shared with the opening cinematic).
+export function drawBars(ctx, bar) {
+  if (bar <= 0) return;
+  ctx.fillStyle = 'rgba(2,1,8,0.97)';
+  ctx.fillRect(0, 0, VIEW_W, bar);
+  ctx.fillRect(0, VIEW_H - bar, VIEW_W, bar);
+  ctx.strokeStyle = 'rgba(46,230,255,0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, bar + 0.5); ctx.lineTo(VIEW_W, bar + 0.5); ctx.moveTo(0, VIEW_H - bar - 0.5); ctx.lineTo(VIEW_W, VIEW_H - bar - 0.5); ctx.stroke();
+}
+
+// Chapter and boss title cards: big type slammed into the middle of the picture, between the bars.
+// A boss card (the long Butcher reveal) holds back until the camera lands on him.
 function drawChapterCard(ctx, c, time) {
-  const a = Math.min(c.t, 1 - c.out);
-  ctx.globalAlpha = Math.max(0, a);
-  const y = 250, h = 130;
-  const g = ctx.createLinearGradient(0, y, VIEW_W, y);
-  g.addColorStop(0, 'rgba(10,4,26,0)'); g.addColorStop(0.15, 'rgba(10,4,26,0.86)'); g.addColorStop(0.85, 'rgba(10,4,26,0.86)'); g.addColorStop(1, 'rgba(10,4,26,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, y, VIEW_W, h);
+  const show = c.boss && c.dur > 5 ? 2.55 : 0;       // when the type hits
+  const age = c.age - show;
+  if (age < 0) return;
+  const out = c.out > 0 ? 1 - c.out : 1;
+  const slam = easeOut(age / (c.boss ? 0.2 : 0.28));  // 0 -> 1: the scale-down onto the screen
+  const scale = 1 + (1 - slam) * (c.boss ? 0.75 : 0.4);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, age / 0.08)) * out;
+  const cy = c.boss ? 318 : 312;
+  // a dark band behind the type so it reads over any shot
+  const band = ctx.createLinearGradient(0, cy - 100, 0, cy + 100);
+  band.addColorStop(0, 'rgba(6,2,14,0)'); band.addColorStop(0.5, `rgba(6,2,14,${c.boss ? 0.78 : 0.7})`); band.addColorStop(1, 'rgba(6,2,14,0)');
+  ctx.fillStyle = band;
+  ctx.fillRect(0, cy - 100, VIEW_W, 200);
+  const c0 = c.boss ? '#ff5a18' : '#ff2ea6', c1 = c.boss ? '#ffd040' : '#2ee6ff';
   ctx.textAlign = 'center';
-  const c0 = c.boss ? '#ff8a30' : '#ff2ea6', c1 = c.boss ? '#ffd040' : '#2ee6ff';
+  if (c.boss) { // a small red tag over the name
+    ctx.font = `bold 16px ${SANS}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '7px';
+    outlined(ctx, 'GUARDIAN', VIEW_W / 2 + 3, cy - 52, '#ff7a50', '#000', 3);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  }
+  ctx.translate(VIEW_W / 2, cy);
+  ctx.scale(scale, scale);
   ctx.shadowColor = c0;
-  ctx.shadowBlur = 22;
-  ctx.font = `bold ${c.boss ? 54 : 44}px ${SERIF}`;
-  outlined(ctx, c.title, VIEW_W / 2, y + 62, '#ffffff', c0, 7);
+  ctx.shadowBlur = 24 + Math.sin(time * 9) * 5;
+  const px = c.boss ? 62 : 54;
+  ctx.font = `bold ${px}px ${SERIF}`;
+  // type that tracks in from wide: letters settle together
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${Math.round((1 - easeOut(age / 0.7)) * 14 + 1)}px`;
+  let w = ctx.measureText(c.title).width;
+  if (w > VIEW_W - 120) { ctx.font = `bold ${Math.floor(px * (VIEW_W - 120) / w)}px ${SERIF}`; w = ctx.measureText(c.title).width; }
+  const fill = ctx.createLinearGradient(0, -px * 0.8, 0, px * 0.2);
+  fill.addColorStop(0, '#ffffff'); fill.addColorStop(0.55, c.boss ? '#ffe9b0' : '#ffe0f4'); fill.addColorStop(1, c.boss ? '#ff9a30' : '#ff8ad0');
+  outlined(ctx, c.title, 0, 0, fill, c0, 8);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.shadowBlur = 0;
-  ctx.font = `bold 20px ${SANS}`;
-  outlined(ctx, c.sub, VIEW_W / 2, y + 100, c1, '#000', 4);
-  ctx.globalAlpha = 1;
-  void time;
+  // the underline sweeps out from the middle (a grease drip on the Butcher's)
+  const sweep = easeOut((age - 0.15) / 0.5);
+  const uw = Math.min(w, 700) * sweep;
+  const ug = ctx.createLinearGradient(-uw / 2, 0, uw / 2, 0);
+  ug.addColorStop(0, 'rgba(255,255,255,0)'); ug.addColorStop(0.5, c1); ug.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = ug;
+  ctx.fillRect(-uw / 2, 14, uw, 4);
+  if (c.boss) for (let i = 0; i < 5; i++) { // drips
+    const dx = (i - 2) * w * 0.17, dl = (10 + ((i * 37) % 22)) * clamp01((age - 0.4 - i * 0.07) / 0.5);
+    ctx.fillStyle = c1; ctx.fillRect(dx - 1.5, 18, 3, dl); ctx.beginPath(); ctx.arc(dx, 18 + dl, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  // the sub-line fades in under the slam
+  ctx.save();
+  ctx.globalAlpha = clamp01((age - 0.35) / 0.4) * out;
+  ctx.textAlign = 'center';
+  ctx.font = `bold 21px ${SANS}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '6px';
+  outlined(ctx, c.sub, VIEW_W / 2 + 3, cy + 58, c.boss ? '#ffd040' : '#2ee6ff', '#000', 4);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.restore();
+  // a light streak across the screen as the type lands
+  if (age < 0.35) {
+    ctx.save();
+    ctx.globalAlpha = (1 - age / 0.35) * 0.9 * out;
+    const sx = -200 + (VIEW_W + 400) * easeOut(age / 0.3);
+    const sg = ctx.createLinearGradient(sx - 160, 0, sx + 160, 0);
+    sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, c.boss ? 'rgba(255,200,120,0.9)' : 'rgba(180,255,255,0.9)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, cy - 3, VIEW_W, 6);
+    ctx.restore();
+  }
 }
 
 function drawDialogue(ctx, v) {
@@ -1392,7 +1475,14 @@ export function drawRecap(ctx, time, r, g) {
   ctx.shadowColor = '#ff2ea6';
   ctx.shadowBlur = 20;
   ctx.font = `bold 46px ${SERIF}`;
-  outlined(ctx, r.title, VIEW_W / 2, 84, '#ffffff', '#ff2ea6', 7);
+  { // the title slams in
+    const k = easeOut(time / 0.3), sc = 1 + (1 - k) * 0.7;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, time / 0.08);
+    ctx.translate(VIEW_W / 2, 84); ctx.scale(sc, sc);
+    outlined(ctx, r.title, 0, 0, '#ffffff', '#ff2ea6', 7);
+    ctx.restore();
+  }
   ctx.shadowBlur = 0;
   ctx.font = `bold 16px ${SANS}`;
   outlined(ctx, `${r.sub}  ·  Summary`, VIEW_W / 2, 112, '#2ee6ff', '#000', 3);
@@ -1433,4 +1523,102 @@ export function drawRecap(ctx, time, r, g) {
     outlined(ctx, `Press ${btn('attack')} to return to the Security Room`, VIEW_W / 2, 608, '#ffffff', '#000', 4);
   }
   void g;
+}
+
+
+// ---------- the opening cinematic's overlay ----------
+// Letterbox, the PA subtitles, the hero name cards, the title slam and the skip hint. Text stays inside
+// x 60..900 and y 70..570 (between the bars) so a 390px-tall phone, where 1 virtual px is ~0.6 CSS px, can read it.
+
+export function drawIntro(ctx, v, time) {
+  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  if (!v) return;
+  if (v.gate) { // before anything: the black waits for a press, which also unlocks the sound
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.55 + Math.sin(time * 3) * 0.3;
+    ctx.font = `bold 24px ${SANS}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
+    outlined(ctx, device === 'touch' ? 'TAP TO BEGIN' : 'PRESS ANY KEY TO BEGIN', VIEW_W / 2 + 2, 322, '#e8e0f0', '#000', 3);
+    ctx.globalAlpha = 0.45;
+    ctx.font = `20px ${SANS}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+    outlined(ctx, 'sound on', VIEW_W / 2 + 1, 356, '#9a90b8', '#000', 3);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.3, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.95);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(2,0,8,0.7)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  if (v.flash > 0) { ctx.fillStyle = `rgba(235,242,255,${Math.min(0.9, v.flash)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+  drawBars(ctx, v.bar);
+  ctx.textAlign = 'center';
+  // the PA's captions
+  if (v.caption && v.caption.a > 0) {
+    ctx.save();
+    ctx.globalAlpha = v.caption.a * (Math.sin(time * 41) > 0.9 ? 0.55 : 1);
+    ctx.font = `bold ${v.caption.size}px ${SANS}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
+    outlined(ctx, v.caption.text, VIEW_W / 2 + 2, v.caption.y, '#f0ead8', '#000', 5);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.restore();
+  }
+  if (v.stamp) {
+    ctx.save();
+    ctx.globalAlpha = v.stamp.a;
+    ctx.textAlign = 'left';
+    ctx.font = `bold 21px ${SANS}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
+    outlined(ctx, v.stamp.text, 84, 540, '#9fe8ff', '#000', 4);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.restore();
+  }
+  // a survivor's name card: slides in at the lower left with a role chip
+  if (v.card) {
+    const c = v.card, a = Math.min(c.in, c.out), x = 84 + (1 - easeOut(c.in)) * -60;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'left';
+    const bg = ctx.createLinearGradient(40, 0, 560, 0);
+    bg.addColorStop(0, 'rgba(6,2,14,0.8)'); bg.addColorStop(1, 'rgba(6,2,14,0)');
+    ctx.fillStyle = bg; ctx.fillRect(40, 436, 520, 118);
+    ctx.fillStyle = c.color; ctx.fillRect(x - 14, 446, 5, 98);
+    ctx.shadowColor = c.color; ctx.shadowBlur = 16;
+    ctx.font = `bold 50px ${SERIF}`;
+    outlined(ctx, c.name, x, 500, '#ffffff', c.color, 6);
+    ctx.shadowBlur = 0;
+    ctx.font = `bold 21px ${SANS}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '5px';
+    const tw = ctx.measureText(c.role).width;
+    ctx.fillStyle = c.color; roundRect(ctx, x, 512, tw + 30, 30, 4); ctx.fill();
+    ctx.fillStyle = '#10061e'; ctx.fillText(c.role, x + 15, 534);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    ctx.restore();
+  }
+  // MALL OF THE DEAD: slammed in, the same sign the title screen shows
+  if (v.title) {
+    const age = v.title.age;
+    const k = easeOut(age / 0.14), scale = 1 + (1 - k) * 1.1 + (age > 0.14 && age < 0.4 ? Math.sin((age - 0.14) / 0.26 * Math.PI) * 0.04 : 0);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, age / 0.04);
+    drawTitleSign(ctx, time, scale, 1);
+    if (age > 0.5) {
+      ctx.globalAlpha = clamp01((age - 0.5) / 0.6);
+      ctx.textAlign = 'center';
+      ctx.font = `bold 15px ${SANS}`;
+      outlined(ctx, 'BLACK FRIDAY SALE: EVERYONE MUST GO', VIEW_W / 2, 204, '#ffcc33', '#000', 4);
+    }
+    ctx.restore();
+  }
+  if (v.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, v.fade)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+  // the skip hint: small, bottom right, inside the bar, never on the picture
+  if (v.hint > 0) {
+    ctx.save();
+    ctx.globalAlpha = v.hint * (0.8 + Math.sin(time * 2.4) * 0.2);
+    ctx.textAlign = 'right';
+    ctx.font = `17px ${SANS}`;
+    outlined(ctx, 'tap or press any button to skip', VIEW_W - 64, VIEW_H - 26, '#c8c0e0', '#000', 3);
+    ctx.restore();
+  }
 }

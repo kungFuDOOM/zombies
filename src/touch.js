@@ -28,6 +28,9 @@ const CSS = `
 #touch .magic { width: 64px; height: 64px; right: 5%; bottom: calc(10% + 76px); background: rgba(225,40,40,0.6); }
 #touch .turbo { width: 64px; height: 64px; right: calc(5% + 144px); bottom: calc(10% + 76px); background: rgba(30,110,230,0.6); }
 #touch .ybtn { width: 64px; height: 64px; right: calc(5% + 72px); bottom: calc(10% + 142px); background: rgba(240,190,20,0.65); }
+#touch.menu .face { opacity: 0.4; transform: scale(0.7); }
+#touch.menu .btn.down { transform: scale(0.62); }
+#touch.hidden .face, #touch.hidden .hint { display: none; }
 #touch .small { width: 46px; height: 46px; top: 10px; font-size: 18px; background: rgba(0,0,0,0.35); }
 #touch .pause { right: 12px; }
 #touch .mute { right: 66px; }
@@ -141,6 +144,13 @@ export class TouchControls {
       el.addEventListener('pointerup', up);
       el.addEventListener('pointercancel', up);
     }
+  }
+
+  // 'play' keeps the full joystick and diamond; 'menu' shrinks and fades the face buttons
+  // (they still work); 'hidden' removes them so titles and cutscenes stay readable.
+  setMode(mode) {
+    this.root.classList.toggle('menu', mode === 'menu');
+    this.root.classList.toggle('hidden', mode === 'hidden');
   }
 
   // Make a button throb for a few seconds to draw the eye to it.

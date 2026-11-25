@@ -194,24 +194,39 @@ export function buildMall(r, g, group) {
 
   // ---- grime: blood smears on the floor and drag marks up the walls (two instanced draws) ----
   {
-    const smear = canvasTex(128, 128, (ctx, cw, ch) => {
+    // three different smear textures (splat, long drag, spatter) so no two stamps look cloned
+    const mk = (kind) => canvasTex(128, 128, (ctx, cw, ch) => {
       ctx.clearRect(0, 0, cw, ch);
-      for (let i = 0; i < 9; i++) {
-        const a = hashN(i, 7) * Math.PI * 2, rr = 10 + hashN(i, 8) * 40;
-        ctx.fillStyle = i % 3 ? 'rgba(90,6,6,0.75)' : 'rgba(40,2,4,0.8)';
-        ctx.beginPath(); ctx.ellipse(64 + Math.cos(a) * rr * 0.6, 64 + Math.sin(a) * rr * 0.6, 8 + hashN(i, 9) * 22, 5 + hashN(i, 10) * 14, a, 0, Math.PI * 2); ctx.fill();
+      const n = kind === 2 ? 16 : kind === 1 ? 5 : kind === 3 ? 0 : 9;
+      for (let i = 0; i < n; i++) {
+        const a = hashN(i, 7, kind) * Math.PI * 2, rr = (kind === 2 ? 14 : 8) + hashN(i, 8, kind) * (kind === 2 ? 48 : 38);
+        ctx.fillStyle = i % 3 ? 'rgba(84,8,8,0.7)' : 'rgba(34,3,4,0.8)';
+        const rad = kind === 2 ? 2 + hashN(i, 9, kind) * 7 : 8 + hashN(i, 9, kind) * 20;
+        ctx.beginPath(); ctx.ellipse(64 + Math.cos(a) * rr * 0.7, 64 + Math.sin(a) * rr * 0.7, rad, rad * (0.5 + hashN(i, 10, kind) * 0.5), a, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.fillStyle = 'rgba(70,4,6,0.7)'; ctx.fillRect(58, 64, 10, 60); // a drag trail
+      if (kind === 3) { // wall drips: a smudge with streaks running down
+        ctx.fillStyle = 'rgba(80,6,8,0.7)';
+        ctx.beginPath(); ctx.ellipse(64, 38, 38, 20, 0, 0, Math.PI * 2); ctx.fill();
+        for (let i = 0; i < 6; i++) { const x = 36 + hashN(i, 5, 3) * 56, len = 30 + hashN(i, 6, 3) * 70; ctx.fillRect(x, 38, 3 + hashN(i, 7, 3) * 4, len); }
+      }
+      if (kind === 1) { // a drag trail
+        const g = ctx.createLinearGradient(0, 24, 0, 124);
+        g.addColorStop(0, 'rgba(70,4,6,0.75)'); g.addColorStop(1, 'rgba(70,4,6,0)');
+        ctx.fillStyle = g; ctx.fillRect(56 + hashN(3, 3) * 6, 24, 8 + hashN(4, 4) * 6, 100);
+      }
     });
-    const smearMat = new THREE.MeshBasicMaterial({ map: smear, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
-    const fl = [], wl = [];
+    const smears = [mk(0), mk(1), mk(2), mk(3)];
+    const mats = smears.map((map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    const fl = [[], [], []], wl = [];
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
         const t = tileAt(tx, ty);
         const x = tx * S + 16, z = ty * S + 16;
-        if (t === T.FLOOR && hashN(tx * 3 + 1, ty * 5 + 2) > 0.86) {
-          const sc = 22 + hashN(tx, ty * 7) * 30;
-          fl.push({ x: x + (hashN(tx, ty) - 0.5) * 16, y: 0.5, z: z + (hashN(ty, tx) - 0.5) * 16, rx: -Math.PI / 2, rz: hashN(tx + 9, ty) * 6.28, sx: sc, sy: sc, sz: 1 });
+        if (t === T.FLOOR && hashN(tx * 3 + 1, ty * 5 + 2) > 0.93) {
+          const sc = 14 + hashN(tx, ty * 7) * 34, stretch = 0.55 + hashN(tx * 5, ty + 3) * 0.7;
+          const v = 0.45 + hashN(tx + 2, ty * 3) * 0.55; // fainter and darker for some stamps
+          const kind = Math.floor(hashN(tx + 5, ty + 11) * 3) % 3;
+          fl[kind].push({ x: x + (hashN(tx, ty) - 0.5) * 20, y: 0.5, z: z + (hashN(ty, tx) - 0.5) * 20, rx: -Math.PI / 2, rz: hashN(tx + 9, ty) * 6.28, sx: sc, sy: sc * stretch, sz: 1, color: new THREE.Color(v, v * 0.9, v * 0.9) });
         }
         if (isWall(tx, ty) && hashN(tx * 7 + 3, ty * 3 + 1) > 0.78) {
           for (const [dx, dy, ox, oz, ry] of [[0, -1, 0, -S / 2 - 0.6, Math.PI], [0, 1, 0, S / 2 + 0.6, 0], [-1, 0, -S / 2 - 0.6, 0, -Math.PI / 2], [1, 0, S / 2 + 0.6, 0, Math.PI / 2]]) {
@@ -223,8 +238,8 @@ export function buildMall(r, g, group) {
       }
     }
     const quad = new THREE.PlaneGeometry(1, 1);
-    const f = r.instancedPrim(group, quad, smearMat, fl); if (f) f.renderOrder = 1;
-    const wv = r.instancedPrim(group, quad, smearMat, wl); if (wv) wv.renderOrder = 1;
+    fl.forEach((list, k) => { const f = r.instancedPrim(group, quad, mats[k], list); if (f) f.renderOrder = 1; });
+    const wv = r.instancedPrim(group, quad, mats[3], wl); if (wv) wv.renderOrder = 1;
   }
 
   // ---- stalls: awnings and neon signs ----
@@ -234,7 +249,7 @@ export function buildMall(r, g, group) {
     m.rotation.y = ry;
     group.add(m);
     const halo = glowSprite(color, sw * 1.5, 0.35);
-    halo.position.set(cx, y, cz + (ry === 0 ? 4 : -4));
+    halo.position.set(cx + Math.sin(ry) * 4, y, cz + Math.cos(ry) * 4);
     group.add(halo);
     return m;
   };
@@ -387,7 +402,8 @@ export function buildMall(r, g, group) {
     }
     addSign("BUTCHER'S KITCHEN", '#ff7a1a', 30 * S, WALL_H * 0.85, 2.5 * S + 12, 0, 240, 60, 'EMPLOYEES ONLY');
     addSign('LOADING DOCK', '#2ee6ff', 6 * S, WALL_H * 0.8, 12 * S + 4, 0, 130, 34);
-    for (const [tx, ty, c] of [[22, 8, '#ff7a1a'], [36, 8, '#ffd040'], [22, 24, '#ff2ea6'], [36, 24, '#ff7a1a'], [30, 16, '#ff5a1a'], [7, 16, '#2ee6ff']]) r.torches.push({ x: tx * S, z: ty * S, y: 50, color: c, power: 150 });
+    // the Butcher stands at (30, 16): a cool, pale light there keeps him a grim greasy grey, not a carrot; the orange lives in the fryers
+    for (const [tx, ty, c, pw] of [[22, 8, '#ffb070', 110], [36, 8, '#ffd040', 140], [22, 24, '#ff2ea6', 150], [36, 24, '#ffb070', 110], [30, 16, '#e6eeff', 120], [7, 16, '#2ee6ff', 150]]) r.torches.push({ x: tx * S, z: ty * S, y: 50, color: c, power: pw });
   }
 
   // ---- the Security Room ----
@@ -448,7 +464,7 @@ function buildSecurityRoom(r, g, group, addSign) {
   const kioskBack = new THREE.Mesh(new THREE.BoxGeometry(56, 48, 8), new THREE.MeshStandardMaterial({ color: '#1a1030', roughness: 0.5 }));
   kioskBack.position.set((dir.x + 0.5) * S, 24, (dir.y + 0.5) * S);
   group.add(kioskBack);
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(50, 42), new THREE.MeshBasicMaterial({ map: directoryTexture(), toneMapped: false }));
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(38.4, 48), new THREE.MeshBasicMaterial({ map: directoryTexture(), toneMapped: false }));
   board.position.set((dir.x + 0.5) * S, 25, (dir.y + 0.5) * S + 4.2);
   group.add(board);
   const dh = glowSprite('#2ee6ff', 80, 0.3);
@@ -463,7 +479,7 @@ function buildSecurityRoom(r, g, group, addSign) {
   const till = new THREE.Mesh(new THREE.BoxGeometry(18, 10, 14), new THREE.MeshStandardMaterial({ color: '#d8dce8', metalness: 0.6, roughness: 0.3 }));
   till.position.set((sh.x + 1.5) * S, 29, (sh.y + 0.5) * S);
   group.add(till);
-  addSign('CASH', '#ffcc33', (sh.x + 1.5) * S + 18, 52, (sh.y + 0.5) * S, Math.PI / 2, 90, 30, 'UPGRADES');
+  addSign('CASH', '#ffcc33', (sh.x + 1.5) * S + 19, 46, (sh.y + 0.5) * S, Math.PI / 2, 72, 24, 'UPGRADES');
   r.torches.push({ x: (sh.x + 1.5) * S, z: (sh.y + 0.5) * S, y: 50, color: '#ffcc33', power: 130 });
   r.clerkSpot = { x: (sh.x + 0.4) * S, z: (sh.y + 0.5) * S };
   r.makeClerk(group);

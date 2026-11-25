@@ -107,20 +107,20 @@ function backCap(g) {
   add(g, sphere(8), green, [0, y0 + hw * 0.92, zc], [0, 0, 0], [hw * 0.14, hw * 0.14, hw * 0.14]);               // button
 }
 
-// High-tops for the Skater (the Beach body only has flip-flops): white sock, white shoe with a pink stripe and toe cap.
+// Sneakers for the Skater (the Beach body only has flip-flops): white sock, slim white shoe with a pink stripe and toe cap.
 // Built in each foot bone's frame: +Y toe-ward, -Z up (the sole is at +Z), X across.
 function highTops(a) {
   for (const side of ['L', 'R']) {
     const h = holder(a, 'Foot' + side); if (!h) continue;
     const white = mat('#f4f4f4', { roughness: 0.7 }), pink = mat('#ff5ad0', { roughness: 0.6 }), sole = mat('#e6e6e6', { roughness: 0.9 }), dark = mat('#1a1a22');
-    add(h, cylinder(1, 1, 14), white, [0, -0.01, -0.13], [Math.PI / 2, 0, 0], [0.056, 0.14, 0.056]);                       // crew sock
-    add(h, roundedBox(0.4), white, [0, 0.07, -0.05], [0, 0, 0], [0.105, 0.3, 0.1]);                                     // shoe body
-    add(h, roundedBox(0.4), white, [0, -0.015, -0.11], [0, 0, 0], [0.098, 0.115, 0.12]);                                // the high collar around the ankle
-    add(h, roundedBox(0.4), pink, [0, 0.0, -0.16], [0, 0, 0], [0.102, 0.04, 0.035]);                                    // collar trim
-    add(h, roundedBox(0.4), sole, [0, 0.075, 0.0], [0, 0, 0], [0.11, 0.315, 0.03]);                                      // sole
-    add(h, roundedBox(0.4), pink, [0, 0.195, -0.045], [0, 0, 0], [0.108, 0.07, 0.07]);                                  // toe cap
-    add(h, box(), dark, [0, 0.105, -0.101], [0, 0, 0], [0.06, 0.12, 0.012]);                                            // tongue/laces
-    for (const sx of [-1, 1]) add(h, box(), pink, [sx * 0.053, 0.06, -0.06], [0, 0, 0], [0.01, 0.15, 0.03]);           // side stripes
+    add(h, cylinder(1, 1, 14), white, [0, -0.01, -0.12], [Math.PI / 2, 0, 0], [0.045, 0.12, 0.045]);                       // crew sock
+    add(h, roundedBox(0.4), white, [0, 0.07, -0.045], [0, 0, 0], [0.084, 0.27, 0.08]);                                   // shoe body
+    add(h, roundedBox(0.4), white, [0, -0.015, -0.085], [0, 0, 0], [0.078, 0.1, 0.07]);                                  // a low collar around the ankle
+    add(h, roundedBox(0.4), pink, [0, 0.0, -0.118], [0, 0, 0], [0.08, 0.034, 0.024]);                                    // collar trim
+    add(h, roundedBox(0.4), sole, [0, 0.075, 0.0], [0, 0, 0], [0.088, 0.29, 0.026]);                                     // sole
+    add(h, roundedBox(0.4), pink, [0, 0.185, -0.04], [0, 0, 0], [0.086, 0.06, 0.056]);                                   // toe cap
+    add(h, box(), dark, [0, 0.105, -0.084], [0, 0, 0], [0.05, 0.11, 0.01]);                                              // tongue/laces
+    for (const sx of [-1, 1]) add(h, box(), pink, [sx * 0.043, 0.06, -0.05], [0, 0, 0], [0.008, 0.14, 0.024]);         // side stripes
   }
 }
 
@@ -152,6 +152,37 @@ export function dressSurvivor(actor, cls) {
   actor.hand = 'Wrist.R'; // the Modular clips swing the right arm for guns, swords and punches
   measureHead(actor);
   DRESS[cls](actor);
+}
+
+// The Grim Shopper: an oxblood apron with a grimy hem, a mall name tag, a wire shopping basket on the
+// left wrist with a glowing green jar in it, and two burning red eyes (props, so they keep glowing in a hurt flash).
+export function dressShopper(actor) {
+  measureHead(actor);
+  const h = holder(actor, 'Head');
+  if (h) {
+    const { y, r, zf } = HEAD;
+    const eye = mat('#ff2a1a', { roughness: 0.4, emissive: '#ff2a1a', emissiveIntensity: 3 });
+    for (const s of [-1, 1]) add(h, sphere(8), eye, [s * r * 0.4, y - r * 0.08, zf - r * 0.02], [0, 0, 0], [r * 0.13, r * 0.1, r * 0.1]);
+  }
+  const t = holder(actor, 'Torso', { pos: [0, 0.02, 0] });
+  if (t) {
+    const apron = mat('#4a0e12', { roughness: 0.9 }), hem = mat('#2a1a14', { roughness: 0.95 });
+    add(t, roundedBox(0.2), apron, [0, -0.03, 0.115], [0.04, 0, 0], [0.27, 0.42, 0.03]);             // the apron, bib to knee
+    add(t, box(), hem, [0, -0.23, 0.128], [0.04, 0, 0], [0.275, 0.07, 0.02]);                         // grimy hem
+    for (const sx of [-1, 1]) add(t, box(), apron, [sx * 0.085, 0.14, 0.05], [0.5, 0, 0], [0.025, 0.02, 0.2]); // neck straps
+    add(t, box(), mat('#e8e0c8', { roughness: 0.6 }), [0.07, 0.1, 0.134], [0.04, 0, 0], [0.07, 0.04, 0.012]);  // name tag
+    add(t, box(), mat('#b01818'), [0.07, 0.113, 0.141], [0.04, 0, 0], [0.07, 0.012, 0.004]);                    // its red stripe
+  }
+  const w = holder(actor, 'Wrist.L', { pos: [0, 0.02, 0] });
+  if (w) {
+    const wire = metal('#9aa0a8');
+    add(w, box(), wire, [0, 0.19, 0], [0, 0, 0], [0.2, 0.012, 0.14]);                                  // basket floor
+    for (const [bx, bz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) add(w, box(), wire, [bx * 0.1, 0.14, bz * 0.07], [0, 0, 0], [0.012, 0.1, 0.012]); // corner posts
+    for (const sz of [-1, 1]) add(w, box(), wire, [0, 0.1, sz * 0.07], [0, 0, 0], [0.2, 0.012, 0.012]);  // rims
+    for (const sx of [-1, 1]) add(w, box(), wire, [sx * 0.1, 0.1, 0], [0, 0, 0], [0.012, 0.012, 0.14]);
+    add(w, box(), wire, [0, 0.06, 0], [0, 0, 0], [0.012, 0.012, 0.14]);                                  // handle
+    add(w, cylinder(1, 1, 10), mat('#60ff40', { roughness: 0.3, emissive: '#40e020', emissiveIntensity: 1.6 }), [0.01, 0.145, 0], [0, 0, 0], [0.04, 0.09, 0.04]); // glowing jar
+  }
 }
 
 // Cheap zombie outfit variants on top of the shared bodies: a food-court visor, a security cap...

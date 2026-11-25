@@ -19,25 +19,25 @@ export const CLASSES = {
     short: 'BIK', name: 'Biker', color: '#e0402a', dark: '#6a140c', accent: '#f2c14e',
     hp: 1100, speed: 105, strength: 30, armor: 0.2, magic: 1.0,
     shotDmg: 10, shotSpeed: 330, shotCooldown: 0.45, shot: 'wrench', turbo: 'revcharge',
-    blurb: 'Chainsaw tank. Turbo: rev-charge.',
+    blurb: 'Chainsaw tank. Hates stairs. Turbo: rev-charge.',
   },
   mallCop: {
     short: 'COP', name: 'Mall Cop', color: '#3a78d8', dark: '#17387a', accent: '#f0f0f8',
     hp: 850, speed: 125, strength: 15, armor: 0.22, magic: 1.1,
     shotDmg: 7, shotSpeed: 520, shotCooldown: 0.55, shot: 'pellet', turbo: 'riot', pellets: 5, spread: 0.5, shotLife: 0.55, knockback: 14,
-    blurb: 'Pump shotgun, big knockback. Turbo: riot blast.',
+    blurb: 'By-the-book shotgun. Turbo: riot blast.',
   },
   skater: {
     short: 'SK8', name: 'Skater', color: '#38c870', dark: '#146a3a', accent: '#ff5ad0',
     hp: 750, speed: 160, strength: 18, armor: 0.08, magic: 1.0,
     shotDmg: 7, shotSpeed: 480, shotCooldown: 0.22, shot: 'deck', turbo: 'kickflip',
-    blurb: 'Spiked bat, fastest runner. Turbo: kickflip dash.',
+    blurb: 'Spiked bat, fastest. Turbo: kickflip dash.',
   },
   mallGoth: {
     short: 'GTH', name: 'Mall Goth', color: '#b040e0', dark: '#4a126a', accent: '#40e0ff',
     hp: 800, speed: 128, strength: 11, armor: 0.08, magic: 1.6,
     shotDmg: 5, shotSpeed: 300, shotCooldown: 0.14, shot: 'spray', turbo: 'boombox', pierce: 2, shotLife: 0.42,
-    blurb: 'Hairspray flamethrower. Turbo: boombox shockwave.',
+    blurb: 'Dark, flammable. Turbo: boombox shockwave.',
   },
 };
 export const BASE_CLASSES = ['biker', 'mallCop', 'skater', 'mallGoth'];

@@ -17,6 +17,7 @@
 //     Farmer.glb     (Men's Farmer, Ultimate Modular Men)                         -> ch_zombie_sprinter (hat dropped)
 //     Hoodie.glb     (Men's Hoodie, Ultimate Modular Men)                         -> ch_zombie_brute
 //     AnimatedWoman2.glb (Women's Casual, Ultimate Modular Women)                 -> ch_zombie_spitter
+//     BusinessMan.glb (Men's Suit, Ultimate Modular Men)                          -> ch_zombie_shopper (The Grim Shopper)
 //   (ch_giant, Mulchmaw, is NOT rebuilt here: it is the older Ultimate Monsters "Giant" and keeps its own file.)
 //   Put them all in one directory, then:
 //     node tools/build-characters.mjs <dir>
@@ -32,7 +33,7 @@ import { statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const src = process.argv[2];
-if (!src) { console.error('usage: node tools/build-characters.mjs <dir-with-glbs>'); process.exit(1); }
+if (!src) { console.error('usage: node tools/build-characters.mjs <dir-with-glbs> [chars]'); process.exit(1); }
 const out = new URL('../assets/models/', import.meta.url).pathname;
 await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
@@ -83,7 +84,7 @@ const SPECS = {
     },
   },
   Casual: { // Walker: gaunt dead shopper
-    out: 'ch_zombie_walker',
+    out: 'ch_zombie_walker', drop: [[/Head$/, 'Hair']], // bald and rotting: the pack's hair read as a sporty tuft
     colors: { Skin: '#74b04c', Skin_Darker: '#4f7a34', LightBrown: '#a89c88', LightBlue: '#33404c', White: '#d8c8b0', Red_Dark: '#6a2a2a', Hair: '#2a2218', Eye: '#e8e8b0', Eyebrows: '#2a2218' },
     undead: { cloth: 0.35, wounds: 1 },
   },
@@ -93,9 +94,14 @@ const SPECS = {
     undead: { cloth: 0.3, wounds: 1.2 },
   },
   Hoodie: { // Brute: grey slab of meat in a torn dark hoodie
-    out: 'ch_zombie_brute',
+    out: 'ch_zombie_brute', drop: [[/Head$/, 'Hair']],
     colors: { Skin: '#8a9ca2', Purple: '#1c2236', LightBlue: '#26324a', White: '#c8c8c0', Hair: '#1c1c20', Eye: '#d8e0e0', Eyebrows: '#1c1c20' },
     undead: { cloth: 0.3, wounds: 1.5 },
+  },
+  BusinessMan: { // The Grim Shopper: a grey, upright undead mall manager in a funeral suit with a blood-red tie
+    out: 'ch_zombie_shopper',
+    colors: { Skin: '#9aa39a', Suit: '#1c1a24', White: '#b8b09a', Tie: '#6a0f14', Black: '#0a0a0c', Hair: '#c8c4bc', Eye: '#ff3020', Eyebrows: '#3a3830' },
+    undead: { cloth: 0.15, wounds: 0.35 },
   },
   AnimatedWoman2: { // Spitter: toxic-green skin, cream smock
     out: 'ch_zombie_spitter',
@@ -146,7 +152,7 @@ async function build(name, spec) {
             rgb = mix(rgb, lin('#2e2c24'), u.cloth);
             if (smooth(p[0] + 7, p[1], p[2], 420) > 0.62) rgb = mix(rgb, lin('#1c1812'), 0.55);
           }
-          if (WOUNDABLE.test(joint) && !isEye) {
+          if (WOUNDABLE.test(joint) && !isEye && !/^Hair|^Eyebrows/.test(mname)) { // hair and brows stay hair-coloured (no red tufts)
             const face = /^Head|^Neck/.test(joint), s = smooth(p[0], p[1], p[2], face ? 1300 : 620), d = smooth(p[0] + 3, p[1], p[2], 260), kk = face ? u.wounds * 0.4 : u.wounds;
             if (s > 0.8 - 0.04 * kk) rgb = mix(rgb, lin(s > 0.86 ? '#4a0606' : '#9a1212'), 0.92); // raw wounds, dark at the core
             else if (d > 0.66) rgb = mix(rgb, lin(u.goo ? '#5ac030' : '#3a4a22'), 0.55);            // rot / bruising (goo for the spitter)
@@ -181,7 +187,10 @@ async function build(name, spec) {
   console.log(`${spec.out}.glb`.padEnd(30), `${Math.round(statSync(path).size / 1024)} KB`, `(${P.length / 3} verts)`);
 }
 
+// optional 2nd argument: 'chars' rebuilds the characters only (leaves the shared animation libraries as they are)
+const charsOnly = process.argv[3] === 'chars';
 for (const [name, spec] of Object.entries(SPECS)) await build(name, spec);
+if (charsOnly) process.exit(0);
 
 // ---------- the shared animation libraries: the pack's clips on a bare armature ----------
 // All Men's files share one rest pose; the Women's files share a different one (arms and legs sit

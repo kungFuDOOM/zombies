@@ -24,10 +24,7 @@ const WAVES = {
   bell:  [1, 0, 0.3, 0, 0, 0.5, 0, 0.1, 0, 0, 0.25],
   glass: [1, 0.2, 0, 0.45, 0, 0, 0.22, 0, 0, 0, 0.15],
   flute: [1, 0.12, 0.05, 0.02],
-  horn:  [1, 0.8, 0.55, 0.35, 0.22, 0.12, 0.06],
-  pipe:  [1, 0, 0.5, 0, 0.3, 0, 0.18, 0, 0.1],
   reed:  [1, 0.1, 0.7, 0.1, 0.5, 0.1, 0.35, 0.1, 0.2],
-  brass: [1, 0.9, 0.7, 0.55, 0.42, 0.3, 0.2, 0.12, 0.08],
   vibes: [1, 0, 0.1, 0, 0, 0.05, 0, 0, 0, 0.02],            // mall-PA vibraphone
   epiano: [1, 0.45, 0.12, 0.18, 0.05, 0.07],                 // soft electric piano
   sax:   [1, 0.6, 0.45, 0.2, 0.28, 0.1, 0.12, 0.05],         // smooth-jazz sax patch
@@ -41,10 +38,7 @@ const INSTR = {
   glass: { w: 'glass', atk: 0.005, rel: 1, bright: 1, ring: true },
   pluck: { w: 'saw',   atk: 0.004, rel: 1, bright: 0.6, ring: true, pluck: true },
   flute: { w: 'flute', atk: 0.05, rel: 0.4, bright: 1 },
-  horn:  { w: 'horn',  atk: 0.06, rel: 0.4, bright: 0.8, scoop: true },
-  pipe:  { w: 'pipe',  atk: 0.02, rel: 0.3, bright: 1 },
   reed:  { w: 'reed',  atk: 0.02, rel: 0.3, bright: 0.9, scoop: true },
-  brass: { w: 'brass', atk: 0.03, rel: 0.3, bright: 1, scoop: true },
   vibes:  { w: 'vibes',  atk: 0.006, rel: 1, bright: 1, ring: true, det: 7 },
   epiano: { w: 'epiano', atk: 0.008, rel: 1, bright: 0.9, ring: true, det: 5 },
   sax:    { w: 'sax',    atk: 0.07, rel: 0.5, bright: 0.75, scoop: true, det: 9 },

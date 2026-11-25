@@ -1,0 +1,259 @@
+// Original synth-horror cues for the opening cinematic and the story scenes: a 90s mall PA
+// chime, static, rain, glass, doors, weapons and the stings that land on the big camera hits.
+// Every sound here is built from oscillators and noise in Web Audio (no samples, no recordings,
+// nothing copyrighted). audio.js hands in a getter for the shared context, then spreads these
+// into `sfx`, so an online host's cutscene stings also play on the guests' machines.
+//
+//   const cine = makeCine(() => ({ ctx, master, muted }));
+//   cine.paChime(); cine.stopAll();   // stopAll silences whatever is still ringing (skipping a cutscene)
+
+export function makeCine(get) {
+  let bus = null, busCtx = null;
+
+  // Everything goes through one bus so a skip can kill the tails at once.
+  function out() {
+    const a = get();
+    if (!a || !a.ctx || a.muted) return null;
+    if (!bus || busCtx !== a.ctx) {
+      busCtx = a.ctx;
+      bus = a.ctx.createGain();
+      bus.gain.value = 1;
+      bus.connect(a.master);
+    }
+    return { ctx: a.ctx, bus };
+  }
+
+  const curves = new Map();
+  function curve(k) { // a soft-clip waveshaper curve
+    if (curves.has(k)) return curves.get(k);
+    const n = 1024, c = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(x * k) / Math.tanh(k); }
+    curves.set(k, c);
+    return c;
+  }
+
+  const noiseBufs = new Map();
+  function noiseBuf(ctx, secs) {
+    const key = Math.round(secs * 10);
+    const hit = noiseBufs.get(key);
+    if (hit && hit.ctx === ctx) return hit.buf;
+    const len = Math.floor(ctx.sampleRate * secs);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    noiseBufs.set(key, { ctx, buf });
+    return buf;
+  }
+
+  // A filtered oscillator note: { type, vol, slide (end freq), delay, attack, filter:[type, freq, toFreq, q], drive, detune, vib:[hz, cents] }
+  function note(freq, dur, o = {}) {
+    const a = out(); if (!a) return;
+    const { ctx } = a;
+    const t0 = ctx.currentTime + (o.delay || 0);
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || 'sawtooth';
+    osc.frequency.setValueAtTime(freq, t0);
+    if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(o.slide, 15), t0 + dur);
+    if (o.detune) osc.detune.value = o.detune;
+    const atk = o.attack || 0.01, vol = o.vol ?? 0.2;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    let node = osc;
+    if (o.vib) { // slow pitch wobble: a wavering PA / dying tape
+      const lfo = ctx.createOscillator(), lg = ctx.createGain();
+      lfo.frequency.value = o.vib[0]; lg.gain.value = o.vib[1];
+      lfo.connect(lg).connect(osc.detune); lfo.start(t0); lfo.stop(t0 + dur + 0.05);
+    }
+    if (o.filter) {
+      const f = ctx.createBiquadFilter();
+      f.type = o.filter[0]; f.frequency.setValueAtTime(o.filter[1], t0); f.Q.value = o.filter[3] || 1;
+      if (o.filter[2]) f.frequency.exponentialRampToValueAtTime(o.filter[2], t0 + dur);
+      node.connect(f); node = f;
+    }
+    if (o.drive) { const w = ctx.createWaveShaper(); w.curve = curve(o.drive); node.connect(w); node = w; }
+    node.connect(g).connect(a.bus);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+
+  // A filtered noise burst: { vol, filter:[type, freq, toFreq, q], delay, attack, decay:'exp'|'lin' }
+  function hiss(dur, o = {}) {
+    const a = out(); if (!a) return;
+    const { ctx } = a;
+    const t0 = ctx.currentTime + (o.delay || 0);
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf(ctx, Math.min(2, Math.max(0.3, dur)));
+    src.loop = true;
+    const g = ctx.createGain(), atk = o.attack || 0.005, vol = o.vol ?? 0.2;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    let node = src;
+    const [type, f0, f1, q] = o.filter || ['lowpass', 1200];
+    const f = ctx.createBiquadFilter();
+    f.type = type; f.frequency.setValueAtTime(f0, t0); f.Q.value = q || 0.7;
+    if (f1) f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    node.connect(f); node = f;
+    if (o.drive) { const w = ctx.createWaveShaper(); w.curve = curve(o.drive); node.connect(w); node = w; }
+    node.connect(g).connect(a.bus);
+    src.start(t0, Math.random()); src.stop(t0 + dur + 0.05);
+  }
+
+  const R = (a, b) => a + Math.random() * (b - a);
+
+  // Crackle: a scatter of short clicks, like a failing speaker.
+  function crackle(dur, density = 14, vol = 0.12, delay = 0) {
+    for (let i = 0; i < dur * density; i++) hiss(R(0.006, 0.03), { vol: vol * R(0.3, 1), filter: ['bandpass', R(1500, 5000), 0, 1.2], delay: delay + R(0, dur) });
+  }
+
+  const cue = {
+    // The mall's PA: a 90s three-note descending "attention shoppers" chime, thin and band-limited.
+    paChime(delay = 0) {
+      [[783.99, 0], [659.25, 0.5], [523.25, 1.0]].forEach(([f, d]) => {
+        note(f, 1.7, { type: 'sine', vol: 0.2, delay: delay + d, attack: 0.008, filter: ['bandpass', 1900, 0, 0.5] });
+        note(f * 2.005, 1.2, { type: 'sine', vol: 0.07, delay: delay + d, attack: 0.006, filter: ['bandpass', 2400, 0, 0.5] });
+        note(f * 3.99, 0.5, { type: 'triangle', vol: 0.03, delay: delay + d, attack: 0.004 });
+      });
+      hiss(2.6, { vol: 0.035, filter: ['bandpass', 3200, 0, 0.8], delay });
+    },
+    // The speaker coming alive / dying: pop, hiss, crackle.
+    paOpen() { hiss(0.05, { vol: 0.25, filter: ['bandpass', 900, 0, 0.8] }); note(60, 0.1, { type: 'sine', vol: 0.25 }); hiss(2.8, { vol: 0.03, filter: ['bandpass', 3000, 0, 0.7], delay: 0.05 }); crackle(2.8, 8, 0.07); },
+    paStatic(dur = 1.2, vol = 0.1) { hiss(dur, { vol, attack: 0.05, filter: ['bandpass', 2400, 900, 0.5] }); crackle(dur, 22, vol * 1.2); note(50, dur, { type: 'sawtooth', vol: vol * 0.7, filter: ['lowpass', 180, 0, 1] }); },
+    paClose() { hiss(0.06, { vol: 0.25, filter: ['bandpass', 800, 0, 0.8] }); note(55, 0.12, { type: 'sine', vol: 0.2 }); },
+
+    thunder() { hiss(3.4, { vol: 0.45, attack: 0.3, filter: ['lowpass', 260, 70, 0.8] }); hiss(1.3, { vol: 0.25, attack: 0.02, filter: ['lowpass', 900, 120, 0.6] }); note(46, 2.6, { type: 'sine', vol: 0.25, slide: 30, attack: 0.15 }); },
+    rain(dur = 12, vol = 0.07) { // a steady wash with pattering highs
+      hiss(dur, { vol, attack: 1.2, filter: ['highpass', 1800, 0, 0.5] });
+      hiss(dur, { vol: vol * 0.9, attack: 1.5, filter: ['bandpass', 600, 0, 0.4] });
+    },
+    neonBuzz(dur = 3, vol = 0.05) {
+      note(120, dur, { type: 'sawtooth', vol, attack: 0.1, filter: ['bandpass', 360, 0, 6], drive: 6 });
+      note(240.7, dur, { type: 'square', vol: vol * 0.5, attack: 0.1, filter: ['bandpass', 720, 0, 8] });
+    },
+    zap(delay = 0) { hiss(0.06, { vol: 0.2, delay, filter: ['highpass', 3000, 0, 0.7], drive: 5 }); note(2400, 0.07, { type: 'square', vol: 0.05, delay, slide: 400 }); },
+    escalatorGroan() {
+      note(58, 2.6, { type: 'sawtooth', vol: 0.16, slide: 44, attack: 0.3, filter: ['lowpass', 220, 90, 4], vib: [5.5, 25] });
+      note(1180, 1.1, { type: 'square', vol: 0.025, slide: 780, delay: 0.5, attack: 0.1, filter: ['bandpass', 1000, 0, 9] }); // a seized-gear squeal
+      for (let i = 0; i < 6; i++) hiss(0.05, { vol: 0.12, delay: 0.3 + i * 0.4, filter: ['bandpass', 500, 0, 3] }); // clanks
+    },
+    monitorOn() { hiss(0.25, { vol: 0.22, filter: ['highpass', 3500, 0, 0.5], drive: 4 }); note(7800, 0.4, { type: 'sine', vol: 0.02 }); note(180, 0.4, { type: 'square', vol: 0.06, slide: 40 }); },
+    monitorGlitch(dur = 2.2) {
+      hiss(dur, { vol: 0.09, attack: 0.1, filter: ['bandpass', 3000, 1400, 1.2], drive: 4 });
+      for (let i = 0; i < 9; i++) note(R(300, 1800), R(0.04, 0.14), { type: 'square', vol: 0.045, delay: R(0, dur), slide: R(120, 2400), filter: ['bandpass', 1200, 0, 2] });
+      note(52, dur, { type: 'sawtooth', vol: 0.08, attack: 0.4, filter: ['lowpass', 150, 0, 1], vib: [9, 40] });
+    },
+    // A fist of dead weight against glass.
+    doorSlam(vol = 1) {
+      hiss(0.5, { vol: 0.5 * vol, filter: ['lowpass', 380, 70, 0.8] });
+      note(78, 0.55, { type: 'sine', vol: 0.5 * vol, slide: 30 });
+      hiss(0.1, { vol: 0.2 * vol, delay: 0.01, filter: ['bandpass', 2800, 0, 1.4] }); // the glass ringing
+      note(1640, 0.35, { type: 'sine', vol: 0.03 * vol, delay: 0.01, slide: 1500 });
+    },
+    glassCrack() {
+      hiss(0.07, { vol: 0.35, filter: ['highpass', 4200, 0, 0.7], drive: 3 });
+      hiss(0.2, { vol: 0.2, delay: 0.04, filter: ['bandpass', 5500, 3000, 3] });
+      note(4300, 0.15, { type: 'sine', vol: 0.05, slide: 2800 });
+      note(90, 0.3, { type: 'sine', vol: 0.18, slide: 50 });
+    },
+    glassShatter() {
+      hiss(0.12, { vol: 0.6, filter: ['highpass', 2500, 0, 0.7], drive: 3 });
+      hiss(1.8, { vol: 0.28, attack: 0.02, filter: ['highpass', 5000, 3000, 0.6] });
+      for (let i = 0; i < 26; i++) note(R(3000, 9500), R(0.05, 0.22), { type: 'sine', vol: R(0.02, 0.06), delay: R(0.02, 1.4), slide: R(2000, 7000) });
+      hiss(0.8, { vol: 0.5, filter: ['lowpass', 500, 80, 0.8] });
+      note(70, 1, { type: 'sine', vol: 0.45, slide: 26 });
+    },
+    // A swelling mass of groaning dead: detuned saws through a moving vowel filter.
+    horde(dur = 4, vol = 0.14) {
+      [74, 81, 90, 98, 112].forEach((f, i) => note(f, dur, { type: 'sawtooth', vol: vol * 0.55, attack: dur * 0.5, slide: f * R(0.62, 0.8), detune: R(-30, 30), filter: ['bandpass', 450 + i * 90, 260 + i * 40, 3], vib: [R(3, 6), 40], drive: 3, delay: i * 0.05 }));
+      hiss(dur, { vol: vol * 0.7, attack: dur * 0.55, filter: ['lowpass', 500, 160, 0.8] });
+      for (let i = 0; i < 5; i++) note(R(150, 260), R(0.5, 1.1), { type: 'sawtooth', vol: vol * 0.28, delay: R(0.4, dur - 0.5), slide: R(70, 120), attack: 0.1, filter: ['bandpass', R(600, 1100), 0, 4], drive: 2 });
+    },
+    moan() { note(R(110, 170), 1.3, { type: 'sawtooth', vol: 0.09, slide: R(60, 85), attack: 0.2, filter: ['bandpass', R(500, 900), 300, 4], vib: [4, 35], drive: 3 }); },
+    chainsawRev() {
+      for (let i = 0; i < 3; i++) {
+        const d = i * 0.42;
+        note(48, 0.42, { type: 'sawtooth', vol: 0.2, delay: d, slide: 150 + i * 70, attack: 0.04, filter: ['lowpass', 900, 3200, 1.2], drive: 7, vib: [28, 120] });
+        note(96, 0.42, { type: 'square', vol: 0.06, delay: d, slide: 300 + i * 140, attack: 0.04, filter: ['lowpass', 1600, 0, 1], drive: 5 });
+        hiss(0.42, { vol: 0.08, delay: d, filter: ['bandpass', 1800, 0, 1] });
+      }
+      note(160, 0.7, { type: 'sawtooth', vol: 0.12, delay: 1.3, slide: 55, filter: ['lowpass', 1400, 400, 1], drive: 6, vib: [24, 90] });
+    },
+    shotgunRack() {
+      hiss(0.07, { vol: 0.3, filter: ['bandpass', 2600, 0, 3], drive: 3 }); note(160, 0.09, { type: 'square', vol: 0.12, slide: 60 });
+      hiss(0.09, { vol: 0.34, delay: 0.26, filter: ['bandpass', 1900, 0, 3], drive: 3 }); note(110, 0.14, { type: 'square', vol: 0.16, delay: 0.26, slide: 45 });
+      hiss(0.05, { vol: 0.12, delay: 0.5, filter: ['highpass', 5000, 0, 1] });
+    },
+    skaterDrop() {
+      hiss(0.5, { vol: 0.14, attack: 0.3, filter: ['bandpass', 700, 2600, 1.2] }); // a whoosh falling in
+      hiss(0.2, { vol: 0.35, delay: 0.5, filter: ['lowpass', 500, 90, 0.8] }); note(120, 0.25, { type: 'sine', vol: 0.3, delay: 0.5, slide: 40 }); // the board lands
+      hiss(0.7, { vol: 0.09, delay: 0.55, attack: 0.05, filter: ['bandpass', 1100, 1900, 3] }); // wheels rolling out
+    },
+    hairsprayFlame() {
+      hiss(0.5, { vol: 0.16, attack: 0.03, filter: ['highpass', 3200, 0, 0.7] });
+      note(180, 0.12, { type: 'square', vol: 0.06, delay: 0.1 }); // the lighter
+      hiss(0.9, { vol: 0.34, delay: 0.3, attack: 0.04, filter: ['lowpass', 1300, 220, 0.8], drive: 2 }); // whoomp
+      note(80, 0.8, { type: 'sawtooth', vol: 0.14, delay: 0.3, slide: 38, filter: ['lowpass', 300, 0, 1] });
+      hiss(1.2, { vol: 0.07, delay: 0.5, attack: 0.2, filter: ['bandpass', 2500, 1500, 0.5] });
+    },
+    whoosh(dur = 0.6, vol = 0.12) { hiss(dur, { vol, attack: dur * 0.5, filter: ['bandpass', 400, 2600, 1.1] }); },
+    riser(dur = 3, vol = 0.16) {
+      note(70, dur, { type: 'sawtooth', vol, slide: 700, attack: dur * 0.9, filter: ['lowpass', 300, 5000, 2], drive: 3 });
+      note(105, dur, { type: 'sawtooth', vol: vol * 0.6, slide: 1050, attack: dur * 0.9, detune: 14, filter: ['lowpass', 300, 5000, 2], drive: 3 });
+      hiss(dur, { vol: vol * 0.7, attack: dur * 0.95, filter: ['bandpass', 500, 7000, 1.5] });
+    },
+    // The big ones.
+    // A short dread stab: a low tritone cluster and a metal scrape.
+    stingHit() {
+      [55, 58.3, 77.8].forEach((f, i) => note(f, 1.5, { type: 'sawtooth', vol: 0.2, attack: 0.012, slide: f * 0.9, detune: i * 6, filter: ['lowpass', 700, 180, 1.5], drive: 3 }));
+      hiss(0.5, { vol: 0.3, filter: ['lowpass', 500, 90, 0.8] });
+      note(1830, 0.6, { type: 'sawtooth', vol: 0.025, slide: 1500, filter: ['bandpass', 1800, 0, 8] });
+    },
+    stingDread() { // a held, unresolving cluster that swells then drops away
+      [98, 103.8, 146.8, 155.6].forEach((f, i) => note(f, 3.2, { type: 'sawtooth', vol: 0.1, attack: 1.6, slide: f * 0.97, detune: i * 5, filter: ['lowpass', 500, 1400, 1], vib: [5, 14] }));
+      hiss(3, { vol: 0.07, attack: 1.6, filter: ['bandpass', 900, 300, 1] });
+    },
+    stingAlarm() { // two blaring klaxon pulses
+      for (let i = 0; i < 2; i++) { note(440, 0.32, { type: 'sawtooth', vol: 0.13, delay: i * 0.4, slide: 560, attack: 0.02, filter: ['lowpass', 2200, 0, 1], drive: 4 }); note(330, 0.32, { type: 'square', vol: 0.06, delay: i * 0.4, slide: 420 }); }
+      note(50, 0.9, { type: 'sine', vol: 0.3, slide: 30 });
+    },
+    stingFire() { hiss(1.4, { vol: 0.22, attack: 0.05, filter: ['bandpass', 1400, 600, 0.6], drive: 2 }); crackle(1.4, 30, 0.14); note(52, 1.2, { type: 'sawtooth', vol: 0.14, slide: 36, filter: ['lowpass', 220, 0, 1] }); },
+    stingSad() { [[196, 0], [233.1, 0], [155.6, 0.6]].forEach(([f, d]) => note(f, 2.4, { type: 'triangle', vol: 0.12, delay: d, attack: 0.3, filter: ['lowpass', 900, 0, 1], vib: [4, 12] })); },
+    // The Butcher: a cleaver ringing on a steel counter, then a low brass hit.
+    stingReveal() {
+      note(3040, 1.6, { type: 'sine', vol: 0.05, slide: 2960 }); note(1530, 1.6, { type: 'sine', vol: 0.05, slide: 1500 });
+      hiss(0.08, { vol: 0.4, filter: ['highpass', 2600, 0, 0.8], drive: 3 });
+      [41.2, 61.7, 87.3].forEach((f, i) => note(f, 2.4, { type: 'sawtooth', vol: 0.22, delay: 0.1, attack: 0.02, slide: f * 0.7, detune: i * 8, filter: ['lowpass', 900, 120, 1.6], drive: 4 }));
+      hiss(1.4, { vol: 0.3, delay: 0.1, filter: ['lowpass', 600, 60, 0.8] });
+    },
+    butcherRoar() {
+      note(150, 1.6, { type: 'sawtooth', vol: 0.3, slide: 58, attack: 0.05, filter: ['bandpass', 700, 260, 2.5], drive: 8, vib: [14, 90] });
+      note(75, 1.6, { type: 'square', vol: 0.18, slide: 36, attack: 0.05, filter: ['lowpass', 500, 0, 1], drive: 6 });
+      hiss(1.5, { vol: 0.24, attack: 0.04, filter: ['bandpass', 1100, 320, 1.1], drive: 5 });
+      note(40, 1.4, { type: 'sine', vol: 0.4, slide: 24 });
+    },
+    sizzle(dur = 3, vol = 0.08) { hiss(dur, { vol, attack: 0.3, filter: ['highpass', 3800, 0, 0.6] }); crackle(dur, 20, vol * 1.3); },
+    // MALL OF THE DEAD: reverse swell, a cluster slammed in, a sub drop and a bright cold shimmer.
+    titleSlam() {
+      hiss(0.9, { vol: 0.5, filter: ['lowpass', 900, 60, 0.7], drive: 3 });
+      note(110, 2.8, { type: 'sine', vol: 0.55, slide: 26 });
+      [[110, 0], [116.5, 4], [164.8, -3], [233.1, 6], [329.6, -6]].forEach(([f, dt]) => note(f, 3.2, { type: 'sawtooth', vol: 0.15, attack: 0.012, slide: f * 0.985, detune: dt, filter: ['lowpass', 2600, 500, 1.2], drive: 3 }));
+      hiss(2.4, { vol: 0.2, filter: ['highpass', 3000, 6000, 0.6], attack: 0.01 });
+      [880, 1318.5, 1760].forEach((f, i) => note(f, 2.4, { type: 'triangle', vol: 0.04, delay: 0.05 + i * 0.05, attack: 0.01 }));
+      note(55, 3.5, { type: 'sawtooth', vol: 0.18, delay: 0.1, filter: ['lowpass', 220, 80, 1.5], drive: 4 });
+    },
+    // A low cold bed that lives under the whole opening: two detuned drones that slowly open up.
+    introBed(dur = 40, vol = 0.12) {
+      [[55, 0], [55.4, 0], [82.4, 0], [58.3, 12]].forEach(([f, d], i) => note(f, dur - d, { type: 'sawtooth', vol: vol * (i === 2 ? 0.6 : 1), delay: d, attack: 4, filter: ['lowpass', 160, 520, 1.5], vib: [0.18 + i * 0.03, 10] }));
+      hiss(dur, { vol: vol * 0.35, attack: 5, filter: ['bandpass', 380, 900, 0.5] });
+    },
+    heartbeat(n = 6, gap = 0.78, vol = 0.3) { for (let i = 0; i < n; i++) { note(62, 0.18, { type: 'sine', vol, delay: i * gap, slide: 38 }); note(58, 0.2, { type: 'sine', vol: vol * 0.7, delay: i * gap + 0.17, slide: 34 }); } },
+
+    stopAll() {
+      if (!bus || !busCtx) return;
+      try { const t = busCtx.currentTime; bus.gain.cancelScheduledValues(t); bus.gain.setTargetAtTime(0, t, 0.04); } catch { /* context gone */ }
+      const old = bus; bus = null;
+      setTimeout(() => { try { old.disconnect(); } catch { /* ignore */ } }, 600);
+    },
+  };
+  return cue;
+}

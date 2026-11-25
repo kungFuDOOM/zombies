@@ -46,12 +46,12 @@ export const CHOICES = {
         toasts: ['Mall Cop respects your call.', 'The Food Court shutters locked down.'], effects: ['plan:lockdown'],
       },
       {
-        pick: 'goth', label: 'Blow the music PA. Lure them away.', speaker: 'mallGoth',
+        pick: 'goth', label: 'Crank the PA. Lure them away.', speaker: 'mallGoth',
         rel: { mallGoth: 2, mallCop: -1 }, flags: { outbreakPlan: 'lure' },
         toasts: ['Mall Goth will remember that.'], effects: ['plan:lure'],
       },
       {
-        pick: 'biker', label: 'Charge straight in.', speaker: 'biker',
+        pick: 'biker', label: 'Charge straight in!', speaker: 'biker',
         rel: { biker: 2, mallCop: -1 }, flags: { outbreakPlan: 'charge' },
         toasts: ['Biker will remember that.'], effects: ['plan:charge'],
       },
@@ -196,10 +196,10 @@ export function lastChoice(story, id) { return story.choices.find((c) => c.id ==
 export function foodCourtModifiers(story) {
   const plan = (story && story.flags.outbreakPlan) || 'none';
   switch (plan) {
-    case 'lockdown': return { plan, enemyKeep: 0.6, spawnRate: 0.75, wave: null, bonus: 'lockdown', lockShutter: true, line: { who: 'mallCop', text: 'Gates are sealed. Stay tight.' } };
-    case 'lure': return { plan, enemyKeep: 0.4, spawnRate: 0.9, wave: null, bonus: null, lockShutter: false, pa: true, line: { who: 'mallGoth', text: "They're chewing on the PA. Move!" } };
-    case 'charge': return { plan, enemyKeep: 1, spawnRate: 1.25, wave: { walker: 7, sprinter: 3, brute: 1 }, bonus: 'charge', lockShutter: false, line: { who: 'biker', text: "I said we go THROUGH 'em!" } };
-    case 'silence': return { plan, enemyKeep: 0.9, spawnRate: 1, wave: { walker: 4, sprinter: 2 }, bonus: null, lockShutter: false, line: { who: 'mallCop', text: '...Okay. Nobody had a plan. Great.' } };
+    case 'lockdown': return { plan, enemyKeep: 0.6, spawnRate: 0.75, wave: null, bonus: 'lockdown', lockShutter: true, line: { who: 'mallCop', text: "Gate's sealed. Nobody leaves without a receipt." } };
+    case 'lure': return { plan, enemyKeep: 0.4, spawnRate: 0.9, wave: null, bonus: null, lockShutter: false, pa: true, line: { who: 'mallGoth', text: "Hear that? They're slow-dancing with the PA. Move." } };
+    case 'charge': return { plan, enemyKeep: 1, spawnRate: 1.25, wave: { walker: 7, sprinter: 3, brute: 1 }, bonus: 'charge', lockShutter: false, line: { who: 'biker', text: "I said THROUGH 'em, not AROUND 'em! Rev it!" } };
+    case 'silence': return { plan, enemyKeep: 0.9, spawnRate: 1, wave: { walker: 4, sprinter: 2 }, bonus: null, lockShutter: false, line: { who: 'mallCop', text: 'No plan, no backup. Typical Friday. Stay tight.' } };
     default: return { plan: 'none', enemyKeep: 1, spawnRate: 1, wave: null, bonus: null, lockShutter: false, line: null };
   }
 }

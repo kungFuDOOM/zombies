@@ -5,18 +5,16 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildHero } from './heroes.js';
 import { buildMonster, BUILT_MONSTERS } from './monsters.js';
-import { dressSurvivor, dressZombie } from './charProps.js';
+import { dressSurvivor, dressZombie, dressShopper } from './charProps.js';
 
 export const MODEL_SCALE = 16; // KayKit metres -> game units (one tile = 32 units = 2 m)
 
 // Survivors and monsters are built in heroes.js / monsters.js on the bare rig from 'rig.glb'.
-const CHARACTERS = ['skeleton_mage'];
 export const HERO_CLASSES = ['biker', 'mallCop', 'skater', 'mallGoth', 'ray', 'clerk'];
 export const HERO_SCALE = 27; // adult heroes are ~1.75 m tall -> ~47 game units
-const PROPS = ['weapon_staff', 'chest', 'barrel', 'food_b'];
+const PROPS = ['barrel', 'food_b'];
 
 // Quaternius "Ultimate Modular Men / Women" characters (CC0, see assets/CREDITS.md): adult, ~7.5 heads
 // tall, all on one 62-joint 'CharacterArmature', baked to one vertex-coloured mesh each by
@@ -25,12 +23,12 @@ const PROPS = ['weapon_staff', 'chest', 'barrel', 'food_b'];
 // is a different pack with its own rig and clips.
 const NATIVE = {
   biker: 'ch_biker', mallCop: 'ch_mallCop', skater: 'ch_skater', mallGoth: 'ch_mallGoth',
-  z_walker: 'ch_zombie_walker', z_sprinter: 'ch_zombie_sprinter', z_brute: 'ch_zombie_brute', z_spitter: 'ch_zombie_spitter', giant: 'ch_giant',
+  z_walker: 'ch_zombie_walker', z_sprinter: 'ch_zombie_sprinter', z_brute: 'ch_zombie_brute', z_spitter: 'ch_zombie_spitter', z_shopper: 'ch_zombie_shopper', giant: 'ch_giant',
 };
 // Game units for the model's full bounding height (hair spikes and all).
-const NATIVE_HEIGHT = { biker: 50, mallCop: 47, skater: 47, mallGoth: 45, z_walker: 46, z_sprinter: 46, z_brute: 46, z_spitter: 43, giant: 150 };
+const NATIVE_HEIGHT = { biker: 50, mallCop: 47, skater: 47, mallGoth: 45, z_walker: 46, z_sprinter: 46, z_brute: 46, z_spitter: 43, z_shopper: 48, giant: 150 };
 export const NATIVE_SURVIVORS = ['biker', 'mallCop', 'skater', 'mallGoth'];
-const MODULAR = ['biker', 'mallCop', 'skater', 'mallGoth', 'z_walker', 'z_sprinter', 'z_brute', 'z_spitter'];
+const MODULAR = ['biker', 'mallCop', 'skater', 'mallGoth', 'z_walker', 'z_sprinter', 'z_brute', 'z_spitter', 'z_shopper'];
 const WOMEN = ['mallGoth', 'z_spitter'];
 export const ZOMBIE_VARIANT_TINT = [null, '#c4cdb0', '#e2c8a4'];
 
@@ -39,7 +37,7 @@ export const assets = { chars: {}, props: {}, clips: {}, survClips: {}, womenCli
 export async function loadAssets(onProgress = () => {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const names = [...CHARACTERS, ...PROPS, ...Object.values(NATIVE), 'anims_survivor', 'anims_women', 'anims', 'rig'];
+  const names = [...PROPS, ...Object.values(NATIVE), 'anims_survivor', 'anims_women', 'anims', 'rig'];
   let done = 0;
   const load = async (name) => {
     const gltf = await loader.loadAsync(`assets/models/${name}.glb`);
@@ -55,7 +53,6 @@ export async function loadAssets(onProgress = () => {}) {
       // bone scale tracks are constant; dropping them lets us re-proportion the skeletons
       for (const c of gltf.animations) { c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale')); assets.clips[c.name] = c; }
     }
-    else if (CHARACTERS.includes(name)) assets.chars[name] = prepareCharacter(gltf.scene);
     else assets.props[name] = prepareProp(gltf.scene);
     onProgress(++done / names.length);
   };
@@ -109,45 +106,6 @@ function prepareNative(key, gltf) {
 function prepareProp(scene) {
   scene.traverse((o) => {
     if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; }
-  });
-  return scene;
-}
-
-// Merge the character's skinned body parts into one mesh to keep draw calls low.
-function prepareCharacter(scene) {
-  const skinned = [];
-  scene.traverse((o) => { if (o.isSkinnedMesh) skinned.push(o); });
-  // keep eyes separate so monsters' eyes can glow
-  const mergeable = skinned.filter((m) => !/Eyes/i.test(m.name) && !m.userData.recolored);
-  if (mergeable.length > 1) {
-    try {
-      const skinned = mergeable;
-      const first = skinned[0];
-      const sameMat = skinned.every((m) => m.material === first.material);
-      const geos = skinned.map((m) => {
-        const g = m.geometry.clone();
-        // KayKit parts sit at identity under the armature; bake any local offset just in case
-        g.applyMatrix4(m.matrix);
-        for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'skinIndex', 'skinWeight'].includes(k)) g.deleteAttribute(k);
-        return g;
-      });
-      const merged = sameMat ? mergeGeometries(geos, false) : null;
-      if (merged) {
-        const mesh = new THREE.SkinnedMesh(merged, first.material);
-        mesh.name = 'Body';
-        first.parent.add(mesh);
-        mesh.bind(first.skeleton, first.bindMatrix);
-        skinned.forEach((m) => m.parent.remove(m));
-      }
-    } catch { /* keep separate meshes */ }
-  }
-  scene.traverse((o) => {
-    if (!o.isMesh) return;
-    o.castShadow = false;
-    o.frustumCulled = false;
-    // crisp texels to go with the pixelated rendering
-    const map = o.material && o.material.map;
-    if (map) { map.magFilter = THREE.NearestFilter; map.minFilter = THREE.NearestMipmapNearestFilter; map.needsUpdate = true; }
   });
   return scene;
 }
@@ -270,6 +228,22 @@ function zombieMaterial(m) {
   m.customProgramCacheKey = () => 'zombieRim';
 }
 
+const matPool = new Map();   // shared character materials (see Actor)
+const flashPool = new Map(); // base material -> { colour -> its hit-flash twin }
+function flashVariant(base, color) {
+  let byColor = flashPool.get(base);
+  if (!byColor) flashPool.set(base, byColor = new Map());
+  let m = byColor.get(color);
+  if (!m) {
+    m = base.clone();
+    m.userData = { ...base.userData };
+    m.emissive = new THREE.Color(color);
+    m.emissiveIntensity = 0.8;
+    byColor.set(color, m);
+  }
+  return m;
+}
+
 const undeadClips = new Map();
 // Additive shamble clip: `u` = { lean, head, reach, bend, sway, hitch, uneven }; sign = head tilt side.
 function undeadClip(u, sign, mod = false) {
@@ -301,9 +275,9 @@ function undeadClip(u, sign, mod = false) {
     : { hips: 'hips', spine: 'spine', chest: 'chest', head: 'head', ual: 'upperarml', uar: 'upperarmr', lal: 'lowerarml', lar: 'lowerarmr', ul: 'upperleg', ll: 'lowerleg' };
   const k = mod ? 0.55 : 1; // the adult rig folds at the waist more readily than the chibi kit
   track(B.hips, (ph) => [0.03 + hitch(ph) * 0.12 * k, lurch(ph) * 0.3, lurch(ph) * 0.45]);
-  track(B.spine, (ph) => [u.lean * 0.4 * k + hitch(ph) * 0.25 * k, 0, lurch(ph) * 0.55]);
-  track(B.chest, (ph) => [u.lean * 0.45 * k + hitch(ph) * 0.4 * k, lurch(ph) * 0.6, lurch(ph) * 0.7]);
-  track(B.head, (ph) => [u.head * 0.6 * k + 0.03 + hitch(ph) * 0.15 + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
+  track(B.spine, (ph) => [u.lean * 0.4 * k + hitch(ph) * 0.16 * k, 0, lurch(ph) * 0.55]);
+  track(B.chest, (ph) => [u.lean * 0.45 * k + hitch(ph) * 0.28 * k, lurch(ph) * 0.6, lurch(ph) * 0.7]);
+  track(B.head, (ph) => [u.head * 0.6 * k + 0.03 + hitch(ph) * 0.15 * k + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
   const un = u.uneven || 0.85;
   const armL = (ph) => u.reach + Math.sin(ph) * 0.2, armR = (ph) => u.reach * un + Math.sin(ph + 2) * 0.25 + hitch(ph) * 0.3;
   if (mod) {
@@ -365,10 +339,12 @@ export class Actor {
     }
     this.root.add(this.model);
     this.mats = [];
-    const matMap = new Map();
+    this.parts = []; // { mesh, base, flashed }: meshes sharing pooled materials (a crowd is a few materials, not one per zombie)
     this.model.traverse((o) => {
       if (!o.isMesh) return;
-      let m = matMap.get(o.material);
+      const eyes = !!(emissiveEyes && /Eyes/i.test(o.name));
+      const key = [o.material.uuid, tint || '', ghost || '', undead ? 'u' : '', eyes ? emissiveEyes : ''].join('|');
+      let m = matPool.get(key);
       if (!m) {
         m = o.material.clone();
         if (tint) m.color.multiply(new THREE.Color(tint));
@@ -378,19 +354,20 @@ export class Actor {
           m.color.set(m.emissive).lerp(new THREE.Color('#ffffff'), 0.8);
         }
         if (undead) zombieMaterial(m);
+        if (eyes) { m.emissive.set(emissiveEyes); m.emissiveIntensity = 2; }
         m.userData.e0 = m.emissive.clone();
         m.userData.ei0 = m.emissiveIntensity;
         m.userData.o0 = m.opacity;
         m.userData.t0 = m.transparent;
-        matMap.set(o.material, m);
-        this.mats.push(m);
+        matPool.set(key, m);
       }
       o.material = m;
-      if (emissiveEyes && /Eyes/i.test(o.name)) { m.emissive.set(emissiveEyes); m.emissiveIntensity = 2; m.userData.e0 = m.emissive.clone(); m.userData.ei0 = 2; }
+      this.parts.push({ mesh: o, base: m });
     });
     this.mixer = new THREE.AnimationMixer(this.model);
     if (this.nat && NATIVE_SURVIVORS.includes(this.nat.key)) dressSurvivor(this, this.nat.key);
     if (this.nat && zvariant && (charName === 'z_walker' || charName === 'z_sprinter')) dressZombie(this, zvariant);
+    if (this.nat && charName === 'z_shopper') dressShopper(this);
     if (this.undead && (!this.nat || MODULAR.includes(this.nat.key))) this.startUndead(); // additive shamble on the walk cycle
     this.baseName = null;
     this.baseAction = null;
@@ -512,14 +489,31 @@ export class Actor {
     const on = amount > 0;
     if (!on && !this.flashing) return;
     this.flashing = on;
-    for (const m of this.mats) {
+    for (const m of this.mats) { // private materials (weapon props, or a faded actor's own copies)
       if (on) { m.emissive.set(color); m.emissiveIntensity = 0.8; }
       else { m.emissive.copy(m.userData.e0); m.emissiveIntensity = m.userData.ei0; }
     }
+    if (this.ownMats) return;
+    // otherwise swap to a pooled flash variant of the shared material
+    for (const pt of this.parts) pt.mesh.material = on ? flashVariant(pt.base, color) : pt.base;
+  }
+
+  // fading needs a material of its own: the first fade takes private copies of the shared ones
+  ownMaterials() {
+    if (this.ownMats) return;
+    this.ownMats = true;
+    const own = new Map();
+    for (const pt of this.parts) {
+      let m = own.get(pt.base);
+      if (!m) { m = pt.base.clone(); m.userData = { ...pt.base.userData }; own.set(pt.base, m); this.mats.push(m); }
+      pt.mesh.material = m;
+    }
+    this.flashing = false;
   }
 
   fade(opacity) {
-    if (this.opacity === opacity) return;
+    if (this.opacity === opacity || (opacity >= 1 && this.opacity === undefined)) return;
+    this.ownMaterials();
     this.opacity = opacity;
     for (const m of this.mats) {
       m.transparent = opacity < 1 || m.userData.t0;
