@@ -6,6 +6,9 @@ import * as THREE from 'three';
 import { TILE, VIEW_W, VIEW_H, WORLD_VIEW_W, WORLD_VIEW_H, POWERUPS, LOBBED, BLAST, ENEMIES } from './config.js';
 import { T } from './level.js';
 import { buildMall, WALL_H, neonSignTexture } from './mall3d.js';
+import { setUndeadQuality } from './undead.js';
+import { disposeTree, keep } from './gpu.js';
+import { installSelfLitMask } from './selflit.js';
 import { assets, Actor, cloneProp, MODEL_SCALE, HERO_SCALE } from './assets.js';
 import { glowTexture, glowSprite, buildBoss, buildExit, buildProjectile, buildMarker, buildItem, heroColor } from './models.js';
 
@@ -15,14 +18,25 @@ const CAM_OFFSET = new THREE.Vector3(0, 280, 330);
 const CAM_LOOK_Y = 42; // look a little above the floor so wall signs are framed
 const MAX_PARTICLES = 900;
 // Phones get fewer dynamic lights; each one costs on every pixel.
-const LOW_POWER = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
-const TORCH_LIGHTS = LOW_POWER ? 4 : 8;
-// Graphics quality: phones start on Low (no post pass, no shadows, no rim light), desktops on High; the player's choice is saved
+// Handheld = phones and tablets, including an iPad with a trackpad/mouse (iPadOS reports itself as "MacIntel" with touch points, and
+// a trackpad makes the primary pointer "fine"). Real desktops (no touch, or a touch laptop that isn't a tablet/phone UA) stay High.
+export function isHandheld() {
+  if (typeof navigator === 'undefined' || typeof matchMedia === 'undefined') return false;
+  const ua = navigator.userAgent || '', pts = navigator.maxTouchPoints || 0;
+  const ipadOS = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && pts > 1);
+  const mobileUA = /Android|iPhone|iPod|Mobile|Tablet/i.test(ua);
+  return matchMedia('(pointer: coarse)').matches || ipadOS || (pts > 0 && mobileUA && matchMedia('(any-pointer: coarse)').matches);
+}
+const LOW_POWER = isHandheld();
+const TORCH_LIGHTS = LOW_POWER ? 3 : 8;
+// Graphics quality: phones and tablets start on Low (no post pass, no shadows, no rim light), desktops on High; the player's saved choice always wins
 export function defaultQuality() {
   try { const q = localStorage.getItem('motd-quality'); if (q === 'low' || q === 'high') return q; } catch { /* storage unavailable */ }
   return LOW_POWER ? 'low' : 'high';
 }
 const S = MODEL_SCALE;
+// Debug perf isolation (localStorage 'motd-perf' = norender | noenemy | nolights | nolevel | nodispose); empty in normal play
+const PERF = (() => { try { return localStorage.getItem('motd-perf') || ''; } catch { return ''; } })();
 
 function hash(x, y) {
   let h = (x * 374761393 + y * 668265263) | 0;
@@ -42,10 +56,10 @@ export const HERO_STYLE = {
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
 export const ENEMY_STYLE = {
   // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
-  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1.1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.22, head: 0.18, reach: 1.3, bend: 0.2, sway: 0.18, hitch: 0.2, rate: 0.9, hunch: 0.42, armY: -0.02, spread: 0.15 } },
-  sprinter: { model: 'z_sprinter', slim: 0.92, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 1.05, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.2, head: 0.14, reach: 1.0, bend: 0.5, sway: 0.24, hitch: 0.2, rate: 2.0, uneven: 0.75, hunch: 0.45, armY: 0.05, spread: 0.2, flail: 0.9 } },
-  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.5, wide: 1.2, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.2, head: 0.18, reach: 1.05, bend: 0.25, sway: 0.22, hitch: 0.14, rate: 0.7, stomp: 0.045, drag: 0.4, hunch: 0.34, armY: -0.12, spread: 0.3 } },
-  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.12, undead: { lean: 1.3, head: 1.0, reach: 1.9, bend: 0.3, sway: 0.18, hitch: 0.25, rate: 1.2, retch: 0.8 } },
+  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1.1, vis: 1.22, bulk: 1.08, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.22, head: 0.18, reach: 1.3, bend: 0.2, sway: 0.18, hitch: 0.2, rate: 0.9, hunch: 0.42, armY: -0.02, spread: 0.15 } },
+  sprinter: { model: 'z_sprinter', slim: 0.98, vis: 1.22, bulk: 1.06, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 1.05, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.2, head: 0.14, reach: 1.0, bend: 0.5, sway: 0.24, hitch: 0.2, rate: 2.0, uneven: 0.75, hunch: 0.45, armY: 0.05, spread: 0.2, flail: 0.9 } },
+  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.5, vis: 1.12, wide: 1.2, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.2, head: 0.18, reach: 1.05, bend: 0.25, sway: 0.22, hitch: 0.14, rate: 0.7, stomp: 0.045, drag: 0.4, hunch: 0.34, armY: -0.12, spread: 0.3 } },
+  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.12, vis: 1.2, bulk: 1.12, undead: { lean: 0.35, head: 0.25, reach: 1.1, bend: 0.3, sway: 0.18, hitch: 0.25, rate: 0.85, retch: 0.8, hunch: 0.62, armY: -0.32, spread: 0.06 } },
   // The Grim Shopper: an upright, unhurried undead mall manager (ch_zombie_shopper, dressed in charProps.dressShopper)
   death: { model: 'z_shopper', single: true, tint: '#dfe4e2', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.3, scale: 1.2, undead: { lean: 0.08, head: 0.1, reach: 0.45, bend: 0.15, sway: 0.06, hitch: 0.08, rate: 0.6, hunch: 0.06, armY: -0.55, spread: 0.12 } },
 };
@@ -54,7 +68,9 @@ export class Renderer3D {
   constructor(canvas) {
     // Rendered at a reduced resolution and scaled up with hard pixel edges for a chunky,
     // retro look (see setPixelation); antialiasing would only smear the pixels.
+    installSelfLitMask(); // before any material compiles (High's grade pass reads the self-lit mask from the target alpha)
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+    this.renderer.setClearColor(0x000000, 1); // alpha 1 = lit (see selflit.js)
     this.canvas = canvas;
     this.setPixelation(1);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -74,7 +90,8 @@ export class Renderer3D {
     shc.left = -280; shc.right = 280; shc.top = 280; shc.bottom = -280; shc.near = 100; shc.far = 1300;
     this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 1.2;
     this.post = null;
-    this.quality = null;
+    this.quality = null;   // what the player picked (uniform-driven parts apply at once)
+    this.structQ = null;   // what the lights / shadows / level materials were built for (applies at the next level build: changing them recompiles every material)
 
     this.torchLights = [];
     for (let i = 0; i < TORCH_LIGHTS; i++) {
@@ -91,6 +108,7 @@ export class Renderer3D {
     this.exitLight = new THREE.PointLight('#60c0ff', 0, 220, 1);
     this.scene.add(this.exitLight);
     this.cineLights = [0, 1].map(() => { const l = new THREE.PointLight('#ffffff', 0, 300, 1); this.scene.add(l); return l; }); // (cutscene key lights: made up front so the first cutscene doesn't recompile every material)
+    this.cineLow = this.torchLights.slice(-2);
     this.cineFog = new THREE.Fog('#0a0610', 300, 1200);
 
     const pg = new THREE.BufferGeometry();
@@ -115,6 +133,7 @@ export class Renderer3D {
     sctx.fillRect(0, 0, 64, 64);
     this.shadowGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     this.shadowMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false });
+    keep(this.shadowGeo); keep(this.shadowMat); keep(this.shadowMat.map);
 
     this.views = new Map();
     this.corpses = [];
@@ -140,18 +159,31 @@ export class Renderer3D {
   }
 
   // 'low' (phones: the plain forward render) or 'high' (rim light, hero/boss shadows, colour-grade pass).
+  // Switching never recompiles mid-play: the zombie gore is a uniform branch and the grade pass is its own small program (compiled up
+  // front). What changes the light count / shadow state of every material (rim light, shadow map, the Low level materials) is applied
+  // at the next level build, where a recompile is hidden by the load; the toast says so.
   setQuality(q) {
     q = q === 'high' ? 'high' : 'low';
     if (q === this.quality) return this.qualityLabel();
     this.quality = q;
     const high = q === 'high';
+    setUndeadQuality(!high); // Low zombies skip the gore maths (a uniform)
+    if (high && !this.post) { this.post = this.makePost(); this.resizePost(); this.renderer.compile(this.post.scene, this.post.cam); }
+    this.postOn = high;
+    if (!this.levelGroup) this.applyStructure(); // nothing built yet (boot): free to apply now
+    return this.qualityLabel() + (this.structQ !== q ? ' (shadows & lights on next area)' : '');
+  }
+  // The compile-affecting half of a quality choice. Light COUNT stays constant for a whole level: lights are never toggled mid-play.
+  applyStructure() {
+    const high = this.quality === 'high';
+    if (this.structQ === this.quality) return;
+    this.structQ = this.quality;
     this.renderer.shadowMap.enabled = high;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.sun.castShadow = high;
-    if (high) { this.scene.add(this.rim, this.rim.target); this.post = this.post || this.makePost(); this.resizePost(); }
-    else { this.scene.remove(this.rim, this.rim.target); }
-    this.postOn = high;
-    return this.qualityLabel();
+    if (high) this.scene.add(this.rim, this.rim.target); else this.scene.remove(this.rim, this.rim.target);
+    this.cineLights.forEach((l) => { l.visible = high; }); // Low: the cutscene lights borrow two torch lights instead (see cineSlots)
+    this.exitLight.visible = high;                         // Low: the exit pad glows by itself; no extra light in every pixel
   }
   qualityLabel() { return this.quality === 'high' ? 'Graphics: HIGH' : 'Graphics: LOW'; }
 
@@ -166,7 +198,7 @@ export class Renderer3D {
       fragmentShader: `uniform sampler2D tDiffuse; uniform vec3 uLift; uniform vec3 uGain; uniform float uGamma; uniform float uSat; uniform float uVig;
         varying vec2 vUv;
         void main() {
-          vec3 raw = texture2D(tDiffuse, vUv).rgb, c = raw;
+          vec3 c = texture2D(tDiffuse, vUv).rgb;
           c = pow(max(c * uGain + uLift, 0.0), vec3(1.0 / uGamma));
           float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
           c = mix(vec3(l), c, uSat);
@@ -174,11 +206,9 @@ export class Renderer3D {
           c *= 1.0 - uVig * smoothstep(0.28, 0.78, length(d));
           gl_FragColor = vec4(c, 1.0);
           #include <tonemapping_fragment>
-          // self-lit pixels (neon bands/signs, eye glows: toneMapped:false materials) are bright and saturated or pure white:
-          // keep them un-tonemapped so ACES doesn't dull them. Lit surfaces rarely reach this.
-          float mx = max(raw.r, max(raw.g, raw.b)), mn = min(raw.r, min(raw.g, raw.b));
-          float glow = smoothstep(0.6, 0.85, (mx - mn) / max(mx, 1e-3)) * smoothstep(0.45, 0.8, mx) + smoothstep(0.96, 1.0, mn);
-          gl_FragColor.rgb = mix(gl_FragColor.rgb, min(c, vec3(1.0)), clamp(glow, 0.0, 1.0));
+          // self-lit pixels (neon, signs, screens, eye glows, additive glows) wrote alpha 0 into the target (selflit.js): keep them
+          // un-tonemapped so ACES doesn't dull them. Explicit marking, no colour thresholds.
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, min(c, vec3(1.0)), 1.0 - clamp(texture2D(tDiffuse, vUv).a, 0.0, 1.0));
           #include <colorspace_fragment>
         }`,
       depthTest: false, depthWrite: false,
@@ -194,6 +224,9 @@ export class Renderer3D {
   }
   // one frame of `scene` through the camera: straight to the canvas on Low, via the grade pass on High
   draw(scene, camera) {
+    if (PERF === 'norender') return;
+    if (PERF === 'nolights') scene.traverse((o) => { if (o.isPointLight) o.visible = false; });
+    if (PERF === 'nolevel' && this.levelGroup) this.levelGroup.visible = false;
     if (this.postOn && this.post) {
       const r = this.renderer;
       r.setRenderTarget(this.post.rt);
@@ -202,6 +235,9 @@ export class Renderer3D {
       r.render(this.post.scene, this.post.cam);
     } else this.renderer.render(scene, camera);
   }
+
+  // take something out of the scene and free its GPU resources (shared / pooled ones are keep()-marked and survive)
+  release(root) { this.scene.remove(root); if (PERF !== 'nodispose') disposeTree(root); }
 
   blob(parent, size) {
     const m = new THREE.Mesh(this.shadowGeo, this.shadowMat);
@@ -259,21 +295,47 @@ export class Renderer3D {
   }
 
   buildLevel(g) {
-    if (this.levelGroup) this.scene.remove(this.levelGroup);
+    if (this.levelGroup) { this.scene.remove(this.levelGroup); if (PERF !== 'nodispose') this.lastDispose = disposeTree(this.levelGroup); } // free the old level's geometries / materials / canvas textures
+    this.lightPlayers = Math.max(1, Math.min(4, g.allPlayers().length)); // Low: one light per player, fixed for the whole level
+    this.applyStructure(); // a pending quality change (shadows, rim light, light set) lands here, hidden by the load
+    this.playerLights.forEach((l, i) => { l.visible = this.quality === 'high' || i < this.lightPlayers; }); // count fixed for the whole level
+    const gone = [...this.views.values()].map((v) => v.root).concat(this.corpses.map((c) => c.root), [...this.markers.values()]);
     for (const [, v] of this.views) this.scene.remove(v.root);
     this.views.clear();
     for (const c of this.corpses) this.scene.remove(c.root);
     this.corpses = [];
     for (const [, m] of this.markers) this.scene.remove(m);
     this.markers.clear();
+    if (PERF !== 'nodispose') for (const r of gone) disposeTree(r); // (after the removals: character geometry / pooled materials are keep()-marked and survive)
 
     const group = new THREE.Group();
     this.levelGroup = group;
     this.level = g.level;
     this.scene.add(group);
     buildMall(this, g, group);
+    if (this.structQ !== 'high') this.lambertLevel(group);
     group.traverse((o) => { if (o.isInstancedMesh) o.receiveShadow = true; }); // floor tiles take the hero / boss shadows (High only)
     this.addBloodSmears(g, group);
+  }
+
+  // Low: PBR Standard materials cost the most per pixel on a phone GPU and the retro look doesn't need the specular. Swap them for
+  // Lambert twins (same colour / map / emissive; metals are darkened a little like Standard's no-environment metal diffuse would be).
+  lambertLevel(group) {
+    const twins = new Map();
+    group.traverse((o) => {
+      if (!o.isMesh || o.isSkinnedMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+      const m = o.material;
+      let t = twins.get(m);
+      if (!t) {
+        t = new THREE.MeshLambertMaterial();
+        THREE.Material.prototype.copy.call(t, m); // every base field (blending, depth, polygonOffset, side, opacity, ...)
+        t.color.copy(m.color).multiplyScalar(1 - 0.5 * m.metalness);
+        t.map = m.map; t.emissive.copy(m.emissive); t.emissiveIntensity = m.emissiveIntensity; t.emissiveMap = m.emissiveMap;
+        t.flatShading = m.flatShading; t.vertexColors = m.vertexColors;
+        twins.set(m, t);
+      }
+      o.material = t;
+    });
   }
 
   // Old blood on the terrazzo: a handful of flat smears and pools on random floor tiles, in one
@@ -312,7 +374,7 @@ export class Renderer3D {
   }
 
   setAmbient(spec) {
-    if (this.ambient) { this.scene.remove(this.ambient.points); this.ambient = null; }
+    if (this.ambient) { this.scene.remove(this.ambient.points); this.ambient.points.geometry.dispose(); this.ambient.points.material.dispose(); this.ambient = null; }
     if (!spec) return;
     const n = Math.round(spec.count * (LOW_POWER ? 0.6 : 1));
     const pos = new Float32Array(n * 3), seed = new Float32Array(n * 4);
@@ -376,11 +438,13 @@ export class Renderer3D {
     const vi = st.undead && !st.single ? Math.floor(e.phase * 1000) % 3 : 0;
     const vr = st.undead && !st.single ? ((Math.floor(e.phase * 7919) % 100) / 100 - 0.5) * 0.18 : 0;
     const a = new Actor(vi ? `${st.model}${vi}` : st.model, { tint: st.tint, ghost: st.ghost, emissiveEyes: st.eyes, undead: st.undead ? { ...st.undead } : null });
-    a.model.scale.setScalar((a.nat ? a.unit : a.adult ? HERO_SCALE : S) * st.scale * (1 + vr));
+    const vis = st.vis || 1; // visual-only size-up (hitboxes come from config.ENEMIES; lineup/intro framing keeps using st.scale)
+    a.model.scale.setScalar((a.nat ? a.unit : a.adult ? HERO_SCALE : S) * st.scale * vis * (1 + vr));
+    if (st.bulk) { a.model.scale.x *= st.bulk; a.model.scale.z *= st.bulk; }
     if (st.slim) a.model.scale.x *= st.slim;
     if (st.wide) a.model.scale.x *= st.wide;
     if (st.weapon) a.attach(st.weapon, 'handslot.r');
-    if (!st.float) this.blob(a.root, 30 * st.scale);
+    if (!st.float) this.blob(a.root, 30 * st.scale * vis);
     a.base(st.undead ? st.walk : 'Idle', st.undead ? st.idleSpeed : 1);
     if (e.fromGen && !st.float) a.play('Spawn_Ground', { timeScale: 2.2 });
     return { kind: 'enemy', root: a.root, actor: a, style: st };
@@ -640,15 +704,15 @@ export class Renderer3D {
       // slain monsters collapse and sink instead of popping out of existence
       if (v.creature && !obj.vanish && v.root.visible) {
         this.corpses.push({ ...v, t: 0 }); // beasts keel over
-        if (this.corpses.length > 40) this.scene.remove(this.corpses.shift().root);
+        if (this.corpses.length > 40) this.release(this.corpses.shift().root);
       } else if ((v.kind === 'enemy' || v.kind === 'boss') && v.actor && !obj.vanish && v.root.visible) {
         v.actor.flash(0);
         v.actor.die(v.kind === 'boss' ? 'Death_B' : 'Death_A');
         if (v.style && v.style.undead) this.spawnGibs(v.root.position.x, v.root.position.z, v.style.scale, obj.type);
         this.corpses.push({ ...v, t: 0 });
-        if (this.corpses.length > 40) this.scene.remove(this.corpses.shift().root); // bounded, whatever happens
-      } else this.scene.remove(v.root);
-      if (v.ward) this.scene.remove(v.ward, ...v.stars);
+        if (this.corpses.length > 40) this.release(this.corpses.shift().root); // bounded, whatever happens
+      } else this.release(v.root);
+      if (v.ward) { this.scene.remove(v.ward, ...v.stars); this.release(v.ward); v.stars.forEach((o) => this.release(o)); }
     }
     this.updateGibs(dt);
     this.corpses = this.corpses.filter((c) => {
@@ -656,7 +720,7 @@ export class Renderer3D {
       if (c.creature) c.creature.rotation.z = Math.min(Math.PI / 2, c.t * 6) * (c.root.id % 2 ? 1 : -1);
       else c.actor.update(dt);
       if (c.t > 1.3) c.root.position.y -= dt * 25;
-      if (c.t > 2.4) { this.scene.remove(c.root); return false; }
+      if (c.t > 2.4) { this.release(c.root); return false; }
       return true;
     });
 
@@ -669,7 +733,7 @@ export class Renderer3D {
       mk.position.set(pr.tx, 1.5, pr.ty);
       mk.scale.setScalar((0.4 + 0.6 * (pr.t / pr.T)) * (BLAST[pr.kind] || 28) / 24); // as wide as what lands there
     }
-    for (const [pr, mk] of this.markers) if (!seenM.has(pr)) { this.scene.remove(mk); this.markers.delete(pr); }
+    for (const [pr, mk] of this.markers) if (!seenM.has(pr)) { this.release(mk); this.markers.delete(pr); }
 
     this.syncLights(g, t, tx, tz);
     this.syncParticles(g);
@@ -701,7 +765,7 @@ export class Renderer3D {
     }
     if (v.dead) {
       // continued: fresh actor so the animation state resets
-      this.scene.remove(v.root);
+      this.release(v.root);
       Object.assign(v, this.makeHero(p), { dead: false });
       this.scene.add(v.root);
     }
@@ -763,7 +827,7 @@ export class Renderer3D {
     const a = v.actor;
     const st = v.style;
     v.root.position.set(e.x, st.float ? 6 + Math.sin(g.time * 4 + e.phase) * 3 : 0, e.y);
-    const visible = this.near(e.x, e.y);
+    const visible = PERF !== 'noenemy' && this.near(e.x, e.y);
     v.root.visible = visible;
     if (!visible) return;
     const [p] = g.nearestPlayer(e);
@@ -793,7 +857,7 @@ export class Renderer3D {
     }
     if (e.hurt > 0 && !v.wasHurt) { // a blow connects: squash punch and a red spurt (visual only)
       v.punch = 0.14;
-      if (st.undead) this.hitSpray(e.x, e.y, st.scale);
+      if (st.undead) this.hitSpray(e.x, e.y, st.scale * (st.vis || 1));
     }
     if (e.hurt > 0 && !v.wasHurt && !a.busy) a.play('Hit_B', { upper: true, timeScale: 2.2 });
     v.wasHurt = e.hurt > 0;
@@ -981,11 +1045,15 @@ export class Renderer3D {
 
   // The cinematography a cutscene shot asks for on top of the set's own lighting: key / rim lights on the
   // subject, a tighter fog so the background falls away behind them (the depth cue), a dimmer ambient.
+  // The two cutscene key lights: High has dedicated lights; Low borrows the two farthest torch lights (the light count never changes).
+  cineSlots() { return this.structQ === 'high' ? this.cineLights : this.cineLow; }
   applyCine(cc, t, dt) {
     const lights = cc && cc.lights ? cc.lights : [];
-    this.cineLights.forEach((l, i) => {
+    this.cineHeld = false;
+    this.cineSlots().forEach((l, i) => {
       const d = lights[i];
-      if (!d) { l.intensity += (0 - l.intensity) * Math.min(1, dt * 10); return; }
+      if (!d) { if (this.structQ === 'high') l.intensity += (0 - l.intensity) * Math.min(1, dt * 10); else if (lights.length) l.intensity = 0; return; } // (Low: the torch sync owns it again)
+      this.cineHeld = true;
       l.color.set(d.color);
       l.position.set(d.x, d.y, d.z);
       const flick = 1 + (d.flick || 0) * (Math.sin(t * 23 + i * 5) * 0.5 + Math.sin(t * 41 + i) * 0.35 + (Math.sin(t * 7.3) > 0.9 ? -0.9 : 0));
@@ -1008,7 +1076,9 @@ export class Renderer3D {
     const sorted = this.torches
       .map((tc) => ({ tc, d: (tc.x - cx) ** 2 + (tc.z - cz) ** 2 }))
       .sort((a, b) => a.d - b.d);
+    const lent = this.cineHeld && this.structQ !== 'high' ? this.torchLights.length - 2 : this.torchLights.length; // (Low: a cutscene has the last two)
     this.torchLights.forEach((l, i) => {
+      if (i >= lent) return;
       const s = sorted[i];
       if (!s || s.d > 800 * 800) { l.intensity = 0; return; }
       l.position.set(s.tc.x, s.tc.y ?? 46, s.tc.z + 10);
@@ -1100,6 +1170,8 @@ export class Renderer3D {
     camera.position.set(0, 70, 420);
     camera.lookAt(0, 50, 0);
     scene.add(new THREE.HemisphereLight('#fff0f8', '#4a2a7a', 1.7));
+    const fill = new THREE.DirectionalLight('#fff4ea', 0.9); fill.position.set(0, 120, 500); scene.add(fill); // front fill so faces read
+    const rimL = new THREE.DirectionalLight('#ffb070', 0.6); rimL.position.set(0, 200, -300); scene.add(rimL); // warm rim from behind
     const key = new THREE.DirectionalLight('#ffe8f4', 1.5);
     key.position.set(-150, 300, 400);
     scene.add(key);

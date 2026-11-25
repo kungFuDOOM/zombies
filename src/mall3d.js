@@ -7,9 +7,10 @@ import * as THREE from 'three';
 import { TILE } from './config.js';
 import { T, FOOD_COURT, WINGS } from './level.js';
 import { glowSprite } from './models.js';
+import { keep } from './gpu.js';
 
 export const WALL_H = 52;
-const SHARED = {}; // textures / geometry / materials reused across level rebuilds (not re-created per level)
+const SHARED = {}; // (every value is keep()-marked so a level rebuild's dispose leaves it alone) // textures / geometry / materials reused across level rebuilds (not re-created per level)
 
 const hashN = (x, y, k = 0) => {
   let h = (x * 374761393 + y * 668265263 + k * 2246822519) | 0;
@@ -153,12 +154,12 @@ export function buildMall(r, g, group) {
     }
   }
   // shared scuffed-terrazzo map: near-white so the checker instance colours stay in charge (built once)
-  const terrazzo = SHARED.terrazzo || (SHARED.terrazzo = canvasTex(128, 128, (ctx, cw, ch) => {
+  const terrazzo = SHARED.terrazzo || (SHARED.terrazzo = keep(canvasTex(128, 128, (ctx, cw, ch) => {
     ctx.fillStyle = '#f4f4f4'; ctx.fillRect(0, 0, cw, ch);
     for (let i = 0; i < 90; i++) { const v = 200 + Math.floor(hashN(i, 7) * 55); ctx.fillStyle = `rgba(${v},${v},${v},0.55)`; ctx.beginPath(); ctx.ellipse(hashN(i, 8) * cw, hashN(i, 9) * ch, 1 + hashN(i, 10) * 3, 1 + hashN(i, 11) * 2, hashN(i, 12) * 3, 0, Math.PI * 2); ctx.fill(); }
     for (let i = 0; i < 14; i++) { ctx.strokeStyle = 'rgba(120,120,130,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); const x = hashN(i, 13) * cw, y = hashN(i, 14) * ch; ctx.moveTo(x, y); ctx.lineTo(x + 8 + hashN(i, 15) * 22, y + (hashN(i, 16) - 0.5) * 10); ctx.stroke(); }
     ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, cw, ch); // grout line
-  }));
+  })));
   const tileMat = new THREE.MeshStandardMaterial({ color: '#ffffff', map: terrazzo, roughness: 0.5, metalness: 0.05, emissive: '#ffffff', emissiveIntensity: 0.03 });
   tileMat.emissiveMap = null;
   r.instancedPrim(group, new THREE.PlaneGeometry(S, S), tileMat, floors);
@@ -202,14 +203,14 @@ export function buildMall(r, g, group) {
     }
   }
   // 90s pastel panel gradient (lighter up top) with a chair-rail line; instance tint stays per tile
-  const panel = SHARED.panel || (SHARED.panel = canvasTex(8, 64, (ctx, cw, ch) => {
+  const panel = SHARED.panel || (SHARED.panel = keep(canvasTex(8, 64, (ctx, cw, ch) => {
     const gr = ctx.createLinearGradient(0, 0, 0, ch); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, '#e4dff0'); gr.addColorStop(1, '#bdb6cc');
     ctx.fillStyle = gr; ctx.fillRect(0, 0, cw, ch);
     ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, ch * 0.62, cw, 2);
-  }));
+  })));
   panel.anisotropy = 1;
   r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', map: panel, roughness: 0.7, emissive: '#1a2a1a', emissiveIntensity: 0.2 }), walls);
-  const S_ = (k, f) => SHARED[k] || (SHARED[k] = f());
+  const S_ = (k, f) => SHARED[k] || (SHARED[k] = keep(f()));
   r.instancedPrim(group, S_('boxG', () => new THREE.BoxGeometry(1, 1, 1)), S_('boardM', () => new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.25, metalness: 0.6 })), boards);
   {
     // decor: one instanced draw per prop shape (shared materials, no lights, no collision)

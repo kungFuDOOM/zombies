@@ -9,6 +9,7 @@ const args = process.argv.slice(2);
 const arg = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : d; };
 const prefix = arg('prefix', 'shots');
 const quality = arg('quality', '');
+const perf = arg('perf', '');
 const only = arg('only', '') ? arg('only').split(',') : null;
 const OUT = '/workspace/motd-shots';
 mkdirSync(OUT, { recursive: true });
@@ -30,6 +31,7 @@ async function open(ctxOpts) {
   const ctx = await browser.newContext(ctxOpts);
   await ctx.addInitScript(() => { try { localStorage.setItem('motd-intro-seen', '1'); } catch {} });
   if (quality) await ctx.addInitScript((q) => { try { localStorage.setItem('motd-quality', q); } catch {} }, quality);
+  if (perf) await ctx.addInitScript((q) => { try { localStorage.setItem('motd-perf', q); } catch {} }, perf);
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)); });
@@ -38,14 +40,30 @@ async function open(ctxOpts) {
   await page.waitForFunction(() => window.__motd && window.__motd.state && window.__motd.state !== 'loading', null, { timeout: 90000 });
   return { ctx, page, errors };
 }
-async function fps(page, ms = 3000) {
+// FPS: 2 s warm-up, then the median of 3 windows of ~5 s each (headless SwiftShader is noisy).
+async function fpsWindow(page, ms) {
   return page.evaluate((ms) => new Promise((res) => { let n = 0; const t0 = performance.now(); const f = (t) => { n++; if (t - t0 < ms) requestAnimationFrame(f); else res(+(n / ((t - t0) / 1000)).toFixed(1)); }; requestAnimationFrame(f); }), ms);
+}
+async function fps(page) {
+  await sleep(2000);
+  const w = [];
+  for (let i = 0; i < 3; i++) w.push(await fpsWindow(page, 5000));
+  return { fps: [...w].sort((a, b) => a - b)[1], windows: w };
+}
+// draw calls per frame (averaged over 20 frames; autoReset off so the post pass doesn't hide the scene's calls) + active quality
+async function gfxInfo(page) {
+  return page.evaluate(() => new Promise((res) => {
+    const r3 = window.__motd.r3d; const info = r3.renderer.info; const ar = info.autoReset; info.autoReset = false; info.reset();
+    let n = 0; const f = () => { if (++n < 20) requestAnimationFrame(f); else { const o = { quality: r3.quality, drawCalls: Math.round(info.render.calls / 20), triangles: Math.round(info.render.triangles / 20), geometries: info.memory.geometries }; info.autoReset = ar; res(o); } };
+    requestAnimationFrame(f);
+  }));
 }
 async function record(name, page, errors, extra = {}) {
   const f = await fps(page);
+  const gi = await gfxInfo(page);
   await page.screenshot({ path: `${OUT}/${prefix}-${name}.png` });
-  report[name] = { fps: f, consoleErrors: errors.length, errors: errors.slice(0, 3), ...extra };
-  console.log(name, report[name].fps, 'fps', errors.length, 'errors');
+  report[name] = { fps: f.fps, fpsWindows: f.windows, ...gi, consoleErrors: errors.length, errors: errors.slice(0, 3), ...extra };
+  console.log(name, report[name].fps, 'fps', `[${gi.quality}]`, gi.drawCalls, 'calls', errors.length, 'errors');
 }
 // title -> select -> ready -> tutorial level (a real game with a player)
 async function intoPlay(page, mobile) {
@@ -82,12 +100,13 @@ if (want('horde') || want('select') || want('zombies-lineup') || want('butcher')
     // add all four survivors to the select screen
     await page.evaluate(() => { const s = window.__motd.slots; const cls = ['biker', 'mallCop', 'skater', 'mallGoth']; cls.forEach((c, i) => { s[i] = { source: i ? 'pad' + i : (s[0] && s[0].source) || 'kb', cls: c, ready: false }; }); });
     await sleep(1500);
+    for (let i = 0; i < +arg('burst', 0); i++) { await page.screenshot({ path: `${OUT}/${prefix}-select-b${i}.png`, clip: { x: 100, y: 120, width: 270, height: 320 } }); await sleep(1100); }
     await record('select', page, errors, { state: await page.evaluate(() => window.__motd.state) });
     await page.evaluate(() => { const s = window.__motd.slots; s.length = 1; });
   }
   await ctx.close();
 }
-if (want('horde') || want('butcher')) {
+if (want('horde') || want('butcher') || want('butcher-front')) {
   const { ctx, page, errors } = await open({ viewport: { width: 1280, height: 720 } });
   await intoPlay(page, false);
   if (want('horde')) {
@@ -100,6 +119,14 @@ if (want('horde') || want('butcher')) {
     const info = await page.evaluate(() => { const g = window.__motd.game; const p = g.players.find(Boolean); if (g.boss) { p.x = g.boss.x - 170; p.y = g.boss.y; p.invuln = 1e9; p.hp = 1e9; g.boss.cd = 99; g.boss.cd2 = 99; g.boss.cd3 = 99; } return { boss: !!g.boss, state: window.__motd.state }; });
     await sleep(2500);
     await record('butcher', page, errors, info);
+  }
+  if (want('butcher-front')) {
+    // the Butcher turns to face the nearest player, so put the player BELOW him on screen (camera looks from +y) and his pig face points at us
+    await page.evaluate(`(async()=>{ const g = window.__motd.game; g.startLevel(2); })()`);
+    await sleep(1500);
+    const info = await page.evaluate(() => { const g = window.__motd.game; const p = g.players.find(Boolean); if (g.boss) { p.x = g.boss.x; p.y = g.boss.y + 150; p.invuln = 1e9; p.hp = 1e9; g.boss.cd = 99; g.boss.cd2 = 99; g.boss.cd3 = 99; } return { boss: !!g.boss, state: window.__motd.state }; });
+    await sleep(3000);
+    await record('butcher-front', page, errors, info);
   }
   await ctx.close();
 }
@@ -114,6 +141,7 @@ for (const [name, vp] of [['phone-portrait', { width: 390, height: 844 }], ['pho
   const { ctx, page, errors } = await open({ viewport: vp, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
   await intoPlay(page, true);
   await page.evaluate(SETUP); await sleep(1500);
+  if (arg('tris', '')) console.log(JSON.stringify(await page.evaluate(() => { const o = {}; window.__motd.r3d.scene.traverse((m) => { if (m.isMesh && m.visible) { const k = (m.isSkinnedMesh ? 'skin' : m.geometry.index ? 'idx' : 'raw') ; const n = (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; o[k] = (o[k] || 0) + n; if (m.isSkinnedMesh) o.skinVerts = (o.skinVerts || 0) + m.geometry.attributes.position.count; } }); return o; })));
   await record(name, page, errors);
   await ctx.close();
 }

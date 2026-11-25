@@ -28,7 +28,7 @@
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { prune, dedup, resample, meshopt } from '@gltf-transform/functions';
-import { MeshoptEncoder } from 'meshoptimizer';
+import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -36,6 +36,10 @@ const src = process.argv[2];
 if (!src) { console.error('usage: node tools/build-characters.mjs <dir-with-glbs> [chars]'); process.exit(1); }
 const out = new URL('../assets/models/', import.meta.url).pathname;
 await MeshoptEncoder.ready;
+await MeshoptSimplifier.ready;
+MeshoptSimplifier.useExperimentalFeatures = true;
+// ONLY=Casual,Farmer limits the rebuild to those specs (the rest of assets/models stays byte-identical)
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
 
 // ---------- colour helpers ----------
@@ -84,17 +88,17 @@ const SPECS = {
     },
   },
   Casual: { // Walker: gaunt dead shopper
-    out: 'ch_zombie_walker', drop: [[/Head$/, 'Hair']], // bald and rotting: the pack's hair read as a sporty tuft
+    out: 'ch_zombie_walker', simplify: 0.5, drop: [[/Head$/, 'Hair']], // bald and rotting: the pack's hair read as a sporty tuft
     colors: { Skin: '#aab69c', Skin_Darker: '#76816b', LightBrown: '#d8d2c0', LightBlue: '#7a8ea4', White: '#e2dac8', Red_Dark: '#8a3a34', Hair: '#2a2218', Eye: '#fff6a0', Eyebrows: '#2a2218' },
     undead: { cloth: 0.1, wounds: 1.4, bib: 1 },
   },
   Farmer: { // Sprinter: emaciated, jaundiced, torn overalls (hat dropped)
-    out: 'ch_zombie_sprinter', drop: [[/Head$/, 'Beige'], [/Head$/, 'Red']],
+    out: 'ch_zombie_sprinter', simplify: 0.5, drop: [[/Head$/, 'Beige'], [/Head$/, 'Red']],
     colors: { Skin: '#bcb890', Brown: '#a8764c', 'Beige@Body': '#e6dcae', LightBlue: '#b04434', Brown2: '#7a6048', Eye: '#ffd0a0', Eyebrows: '#2a2218' },
     undead: { cloth: 0.1, wounds: 1.6, bib: 1 },
   },
   Hoodie: { // Brute: grey slab of meat in a torn dark hoodie
-    out: 'ch_zombie_brute', drop: [[/Head$/, 'Hair']],
+    out: 'ch_zombie_brute', simplify: 0.5, drop: [[/Head$/, 'Hair']],
     colors: { Skin: '#92a3a8', Purple: '#56608a', LightBlue: '#3e4e72', White: '#d8d8d0', Hair: '#1c1c20', Eye: '#ffc890', Eyebrows: '#1c1c20' },
     undead: { cloth: 0.1, wounds: 1.8, bib: 1.15 },
   },
@@ -104,7 +108,7 @@ const SPECS = {
     undead: { cloth: 0.15, wounds: 0.35 },
   },
   AnimatedWoman2: { // Spitter: toxic-green skin, cream smock
-    out: 'ch_zombie_spitter',
+    out: 'ch_zombie_spitter', simplify: 0.5,
     colors: { Skin: '#a8b88a', White: '#ece2c6', Orange: '#d8d0a4', Grey: '#6a6a58', Hair_Blond: '#8a9a46', Hair_Brown: '#3a4018', Brown: '#a8d860' },
     undead: { cloth: 0.1, wounds: 1.1, goo: true, bib: 0.9 },
   },
@@ -206,6 +210,34 @@ async function build(name, spec) {
     }
   }
 
+  // Phones are vertex-bound (software skinning on weak GPUs): decimate the horde bodies. The bake leaves every hard edge as
+  // split vertices, which the simplifier can't collapse, so weld by position, simplify that, then give every surviving corner
+  // the attributes (normal, colour, skin) of the original copy whose normal best matches the new face. Part borders stay locked.
+  if (spec.simplify) {
+    const nv = P.length / 3, before = I.length / 3, key = (v) => `${P[v * 3].toFixed(6)},${P[v * 3 + 1].toFixed(6)},${P[v * 3 + 2].toFixed(6)}`;
+    const wmap = new Map(), WP = [], copies = [], w = new Array(nv);
+    for (let v = 0; v < nv; v++) { const k = key(v); let id = wmap.get(k); if (id === undefined) { id = wmap.size; wmap.set(k, id); WP.push(P[v * 3], P[v * 3 + 1], P[v * 3 + 2]); copies.push([]); } w[v] = id; copies[id].push(v); }
+    const WI = Uint32Array.from(I, (v) => w[v]);
+    const [si] = MeshoptSimplifier.simplify(WI, Float32Array.from(WP), 3, Math.floor(WI.length * spec.simplify / 3) * 3, 0.03, ['LockBorder']);
+    const used = new Map(); const nP = [], nN = [], nJ = [], nW = [], nC = [], nI = [];
+    for (let t = 0; t < si.length; t += 3) {
+      const ids = [si[t], si[t + 1], si[t + 2]];
+      const p0 = ids.map((id) => [WP[id * 3], WP[id * 3 + 1], WP[id * 3 + 2]]);
+      const e1 = p0[1].map((x, i) => x - p0[0][i]), e2 = p0[2].map((x, i) => x - p0[0][i]);
+      const fn = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      const fl = Math.hypot(...fn) || 1;
+      for (const id of ids) {
+        let best = copies[id][0], bd = -2;
+        for (const v of copies[id]) { const d = (N[v * 3] * fn[0] + N[v * 3 + 1] * fn[1] + N[v * 3 + 2] * fn[2]) / fl; if (d > bd) { bd = d; best = v; } }
+        let k = used.get(best);
+        if (k === undefined) { k = used.size; used.set(best, k); const v = best; nP.push(P[v * 3], P[v * 3 + 1], P[v * 3 + 2]); nN.push(N[v * 3], N[v * 3 + 1], N[v * 3 + 2]); nJ.push(J[v * 4], J[v * 4 + 1], J[v * 4 + 2], J[v * 4 + 3]); nW.push(W[v * 4], W[v * 4 + 1], W[v * 4 + 2], W[v * 4 + 3]); nC.push(C[v * 3], C[v * 3 + 1], C[v * 3 + 2]); }
+        nI.push(k);
+      }
+    }
+    for (const [arr, rep] of [[P, nP], [N, nN], [J, nJ], [W, nW], [C, nC], [I, nI]]) { arr.length = 0; for (const x of rep) arr.push(x); }
+    console.log(`  simplified ${before} -> ${I.length / 3} tris, ${nv} -> ${P.length / 3} verts`);
+  }
+
   // one mesh, one primitive, one material: a single draw call per character
   const acc = (type, arr, Ctor) => doc.createAccessor().setType(type).setArray(new Ctor(arr)).setBuffer(buffer);
   const material = doc.createMaterial('Character').setBaseColorFactor([1, 1, 1, 1]).setMetallicFactor(0).setRoughnessFactor(0.85);
@@ -228,7 +260,7 @@ async function build(name, spec) {
 
 // optional 2nd argument: 'chars' rebuilds the characters only (leaves the shared animation libraries as they are)
 const charsOnly = process.argv[3] === 'chars';
-for (const [name, spec] of Object.entries(SPECS)) await build(name, spec);
+for (const [name, spec] of Object.entries(SPECS)) if (!ONLY || ONLY.includes(name)) await build(name, spec);
 if (charsOnly) process.exit(0);
 
 // ---------- the shared animation libraries: the pack's clips on a bare armature ----------

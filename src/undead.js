@@ -10,15 +10,16 @@ import * as THREE from 'three';
 // tint: skin/cloth multiplier after desaturation; bruise/blood: patch colours; gore: how much of the
 // body is soaked; holeA (chest) / holeB (back): [cx, cy, rx, ry] in height-normalised model space.
 export const UNDEAD_LOOK = {
-  z_walker: { tint: '#b4c0a4', bruise: '#4a3058', blood: '#6a0808', gore: 1.0, holeA: [0.02, 0.71, 0.085, 0.08], holeB: [-0.02, 0.71, 0.075, 0.1], eye: '#ffd21a', glow: '#ffc800' },
-  z_sprinter: { tint: '#c0b8a0', bruise: '#5a2a38', blood: '#8a0c0c', gore: 1.2, holeA: [-0.025, 0.69, 0.08, 0.085], holeB: [0.025, 0.7, 0.07, 0.1], eye: '#ff3030', glow: '#ff1a1a' },
-  z_brute: { tint: '#a8b4b4', bruise: '#3a2850', blood: '#6a0808', gore: 1.3, holeA: [0.0, 0.70, 0.1, 0.09], holeB: [0.03, 0.7, 0.085, 0.11], eye: '#ff8a10', glow: '#ff6a00' },
-  z_spitter: { tint: '#b4cc88', bruise: '#3a4a20', blood: '#5a7a10', gore: 0.9, holeA: [0.0, 0.68, 0.07, 0.07], holeB: [0.0, 0.7, 0.06, 0.09], eye: '#9aff20', glow: '#7aff00' },
-  z_shopper: { tint: '#c8d0c8', bruise: '#40304a', blood: '#6a0808', gore: 0.5, holeA: [0.0, 0.7, 0.05, 0.05], holeB: [0.0, 0.55, 0.04, 0.04], eye: '#ff2a1a', glow: '#ff2a1a' },
+  z_walker: { tint: '#b4c0a4', bruise: '#4a3058', blood: '#6a0808', gore: 1.0, holeA: [0.02, 0.71, 0.085, 0.08], holeB: [-0.02, 0.71, 0.075, 0.1], eye: '#ffd21a', glow: '#ffc800', rim: '#c4ff20', rimK: 1.7 },
+  z_sprinter: { tint: '#c0b8a0', bruise: '#5a2a38', blood: '#8a0c0c', gore: 1.2, holeA: [-0.025, 0.69, 0.08, 0.085], holeB: [0.025, 0.7, 0.07, 0.1], eye: '#ff3030', glow: '#ff1a1a', rim: '#ff3a24' },
+  z_brute: { tint: '#a8b4b4', bruise: '#3a2850', blood: '#6a0808', gore: 1.3, holeA: [0.0, 0.70, 0.1, 0.09], holeB: [0.03, 0.7, 0.085, 0.11], eye: '#ff8a10', glow: '#ff6a00', rim: '#ff8a1c' },
+  z_spitter: { tint: '#b4cc88', bruise: '#3a4a20', blood: '#5a7a10', gore: 0.9, holeA: [0.0, 0.68, 0.07, 0.07], holeB: [0.0, 0.7, 0.06, 0.09], eye: '#9aff20', glow: '#7aff00', rim: '#6aff1a' },
+  z_shopper: { tint: '#c8d0c8', bruise: '#40304a', blood: '#6a0808', gore: 0.5, holeA: [0.0, 0.7, 0.05, 0.05], holeB: [0.0, 0.55, 0.04, 0.04], eye: '#ff2a1a', glow: '#ff2a1a', rim: '#b0c0ff' },
 };
 
 const GLSL_FUNCS = /* glsl */`
 uniform vec3 uBase; uniform float uH; uniform vec3 uTint; uniform vec3 uBruise; uniform vec3 uBlood;
+uniform vec3 uRim; uniform float uRimK;
 uniform vec4 uHoleA; uniform vec4 uHoleB; uniform float uSeed; uniform float uGore;
 varying vec3 vUPos;
 float uHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -63,6 +64,20 @@ const GLSL_GORE = /* glsl */`
 }
 `;
 
+// Quality: Low skips the noise-heavy gore maths (the baked vertex colours already carry the wounds). It is a uniform
+// (one value shared by every zombie material, so flash / fade copies follow too) branched on in the shader: switching
+// quality mid-game never recompiles anything.
+const uLowQ = { value: 0 };
+export function setUndeadQuality(low) { uLowQ.value = low ? 1 : 0; }
+const RIM_K = 0.7;
+const TINT_ONLY = /* glsl */`
+{
+  vec3 c = diffuseColor.rgb;
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  diffuseColor.rgb = mix(vec3(lum), c, 0.9) * mix(vec3(1.0), uTint, 0.45);
+}
+`;
+
 // Dress a pooled zombie material (once) with the look of its type. `geo` supplies the model-space box.
 export function undeadMaterial(m, type, geo, variant = 0) {
   const look = UNDEAD_LOOK[type] || UNDEAD_LOOK.z_walker;
@@ -79,21 +94,24 @@ export function undeadMaterial(m, type, geo, variant = 0) {
     uHoleB: { value: new THREE.Vector4(...look.holeB) },
     uSeed: { value: variant * 3.7 + (type.length % 5) },
     uGore: { value: look.gore },
+    uRim: { value: new THREE.Color(look.rim || '#d8f040').convertSRGBToLinear() },
+    uRimK: { value: RIM_K * (look.rimK || 1) },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u);
+    sh.uniforms.uLowQ = uLowQ;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', 'varying vec3 vUPos;\n#include <common>')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUPos = position;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\n${GLSL_FUNCS}`)
-      .replace('#include <color_fragment>', `#include <color_fragment>\n${GLSL_GORE}`)
+      .replace('#include <common>', `#include <common>\nuniform float uLowQ;\n${GLSL_FUNCS}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>\nif (uLowQ > 0.5) ${TINT_ONLY} else ${GLSL_GORE}`)
       .replace('#include <opaque_fragment>',
         `float zr = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
          outgoingLight += diffuseColor.rgb * 0.55; // self-lit in proportion to its own colour: pale skin and dark red blood both keep their contrast
-         outgoingLight += vec3(0.45, 0.6, 0.5) * pow(zr, 3.0) * 0.28;
+         outgoingLight += uRim * pow(zr, 2.2) * uRimK; // the per-type soft rim glow (glow, not an outline): yellow-green / red / orange / acid
          #include <opaque_fragment>`);
   };
-  m.customProgramCacheKey = () => 'undeadGore';
-  m.userData.hook = m.onBeforeCompile; m.userData.hookKey = 'undeadGore'; // Material.clone() drops both: assets.js re-applies them to flash / fade copies
+  m.customProgramCacheKey = () => 'undead';
+  m.userData.hook = m.onBeforeCompile; m.userData.hookKeyFn = m.customProgramCacheKey; // Material.clone() drops both: assets.js re-applies them to flash / fade copies
 }

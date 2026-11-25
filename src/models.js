@@ -3,12 +3,13 @@
 
 import * as THREE from 'three';
 import { buildBossRig } from './bossModels.js';
+import { keep } from './gpu.js';
 
 // ---------- shared helpers ----------
 
 const geoCache = new Map();
 function geo(key, make) {
-  if (!geoCache.has(key)) geoCache.set(key, make());
+  if (!geoCache.has(key)) geoCache.set(key, keep(make())); // (cached forever: never disposed with a level)
   return geoCache.get(key);
 }
 const G = {
@@ -174,7 +175,7 @@ export function lavaTexture(kind = 'lava') {
 let webTex = null;
 export function webTexture() {
   if (webTex) return webTex;
-  webTex = canvasTex(128, (ctx, s) => {
+  webTex = keep(canvasTex(128, (ctx, s) => {
     ctx.clearRect(0, 0, s, s);
     ctx.strokeStyle = 'rgba(235,235,240,0.85)';
     ctx.lineWidth = 1.2;
@@ -185,28 +186,28 @@ export function webTexture() {
       for (let i = 0; i <= 8; i++) { const a = (i / 8) * Math.PI * 2; const x = c + Math.cos(a) * r, y = c + Math.sin(a) * r; if (i) ctx.quadraticCurveTo(c + Math.cos(a - 0.4) * r * 0.9, c + Math.sin(a - 0.4) * r * 0.9, x, y); else ctx.moveTo(x, y); }
       ctx.stroke();
     }
-  }, false);
+  }, false));
   return webTex;
 }
 
 let glowTex = null;
 export function glowTexture() {
   if (glowTex) return glowTex;
-  glowTex = canvasTex(64, (ctx, s) => {
+  glowTex = keep(canvasTex(64, (ctx, s) => {
     const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
     g.addColorStop(0, 'rgba(255,255,255,1)');
     g.addColorStop(0.3, 'rgba(255,255,255,0.5)');
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, s, s);
-  }, false);
+  }, false));
   return glowTex;
 }
 
 let swirlTex = null;
 export function swirlTexture() { // the emergency-exit pad: a green glow ringed with hazard chevrons
   if (swirlTex) return swirlTex;
-  swirlTex = canvasTex(128, (ctx, s) => {
+  swirlTex = keep(canvasTex(128, (ctx, s) => {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, s, s);
     ctx.translate(s / 2, s / 2);
@@ -218,7 +219,7 @@ export function swirlTexture() { // the emergency-exit pad: a green glow ringed 
       ctx.fillStyle = i % 2 ? 'rgba(220,255,230,0.85)' : 'rgba(10,60,30,0.85)';
       ctx.beginPath(); ctx.arc(0, 0, s * 0.46, i * Math.PI / 6, (i + 1) * Math.PI / 6); ctx.arc(0, 0, s * 0.36, (i + 1) * Math.PI / 6, i * Math.PI / 6, true); ctx.fill();
     }
-  }, false);
+  }, false));
   return swirlTex;
 }
 

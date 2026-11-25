@@ -182,7 +182,7 @@ function butcher() {
   prop(B, 'belly', G.sph(11, 10), wound, [22, by + 4, 32], [0, 0.3, 0.2], [1, 1.2, 0.35]);
   for (let i = 0; i < 3; i++) prop(B, 'belly', G.box(1.6, 12, 1.4), X.bone, [18 + i * 4, by + 4, 36], [0, 0, 0.1]);
   for (let i = 0; i < 3; i++) prop(B, 'belly', G.cyl(1.6, 1.6, 14, 6), m('#c07070'), [20 + i * 3, by - 10 - i * 2, 34], [0, 0, 0.3]);
-  for (let i = 0; i < 4; i++) prop(B, 'chest', G.box(2.4, 8 + i * 3, 1), fresh, [-14 + i * 7, cy + 16 - i * 2, 28.4]);
+  for (let i = 0; i < 4; i++) prop(B, 'chest', G.box(2.4, 6 + i * 2, 1), fresh, [-14 + i * 7, cy + 4 - i * 2, 28.4]);
   // meat hooks rising off his back with sausage links and order tickets
   const hookM = m('#6a6e78', { metalness: 0.7 });
   for (const [x, h] of [[-16, 26], [0, 38], [16, 26]]) {
@@ -194,24 +194,27 @@ function butcher() {
   // THE PIG-MASCOT CHEF: a cracked fibreglass pig head (the food court's "Chef Porko" mascot) with the cook's angry eyes glowing
   // out of it, tusks, a snout, floppy ears and a tall, filthy chef's hat
   const hy = B.S.pos('head').y, hz = B.S.pos('head').z;
-  const pig = m('#f2a2ac', { roughness: 0.5 }), pigD = m('#d8788a', { roughness: 0.5 }), hat = m('#f6f2e6', { roughness: 0.6 }), hatD = m('#cfc6ae', { roughness: 0.8 }), dark = m('#241c18');
+  const pig = m('#f2a2ac', { roughness: 0.5 }), pigD = m('#d8788a', { roughness: 0.5 }), hat = m('#f6f2e6', { roughness: 0.6 }), hatD = m('#cfc6ae', { roughness: 0.8 }), pigL = m('#f6b4be', { roughness: 0.5 }), hotM = m('#ffffff', { emissive: '#fff4c0', emissiveIntensity: 2.4 }), dark = m('#241c18');
   prop(B, 'head', G.sph(20, 18), pig, [0, hy + 6, hz], [0, 0, 0], [1.1, 1.02, 1.02]);                       // the big round head
   prop(B, 'head', G.cyl(10, 11.5, 11, 14), pigD, [0, hy + 0.5, hz + 20], [Math.PI / 2, 0, 0], [1, 1, 0.85]);   // snout
-  for (const sx of [-1, 1]) prop(B, 'head', G.sph(1.9, 8), dark, [sx * 4, hy + 0.5, hz + 26.5], [0, 0, 0], [1, 1.5, 0.6]); // nostrils
+  prop(B, 'head', G.cyl(9, 9, 1.4, 14), pigL, [0, hy + 0.5, hz + 24.6], [Math.PI / 2, 0, 0]);                           // lighter snout face
+  for (const sx of [-1, 1]) prop(B, 'head', G.sph(2.5, 8), dark, [sx * 4.2, hy + 0.8, hz + 25.6], [0, 0, 0], [1, 1.5, 0.55]); // nostrils
   for (const sx of [-1, 1]) {
     prop(B, 'head', G.cone(8, 17, 4), pig, [sx * 17, hy + 22, hz - 3], [-0.3, Math.PI / 4, sx * -0.55], [1, 1, 0.45]);     // floppy ears
     prop(B, 'head', G.cone(4.6, 11, 4), pigD, [sx * 17.4, hy + 21, hz - 1.5], [-0.3, Math.PI / 4, sx * -0.55], [1, 1, 0.4]);
-    prop(B, 'head', G.sph(3.2, 8), X.eye, [sx * 8.5, hy + 10, hz + 17], [0, 0, 0], [1.3, 0.8, 0.7]);                      // small, angry, glowing eyes
-    prop(B, 'head', G.box(10, 2.6, 2.4), dark, [sx * 8.5, hy + 14.2, hz + 18], [0, 0, sx * -0.4]);                       // heavy brow
+    prop(B, 'head', G.sph(4.2, 8), dark, [sx * 8.5, hy + 10, hz + 16.4], [0, 0, 0], [1.35, 0.95, 0.5]);                    // dark socket, so the eye reads as a clean dot
+    prop(B, 'head', G.sph(3.1, 8), X.eye, [sx * 8.5, hy + 10, hz + 18], [0, 0, 0], [1.2, 0.85, 0.6]);                      // small, angry, glowing eyes
+    prop(B, 'head', G.sph(1.3, 6), hotM, [sx * 8.5, hy + 10, hz + 20], [0, 0, 0]);                                // hot core
+    prop(B, 'head', G.box(11, 2.8, 2.4), dark, [sx * 8.5, hy + 14.2, hz + 18.6], [0, 0, sx * -0.4]);                      // heavy brow
     prop(B, 'jaw', G.cone(2.4, 11, 5), X.bone, [sx * 8, hy - 6, hz + 20], [-0.2, 0, sx * 0.12]);                         // tusks
   }
-  prop(B, 'head', G.box(14, 4, 1.6), X.blood, [0, hy - 3, hz + 27], [0, 0, 0]);                              // blood smeared on the snout
+  prop(B, 'head', G.box(7, 1.8, 1.2), X.blood, [-3, hy - 6.2, hz + 25.2], [0, 0, 0.1]);                      // a small blood smear under the snout
   prop(B, 'jaw', G.box(15, 3, 6), pigD, [0, hy - 8, hz + 15]);                                               // lower lip
   // the chef's hat (toque): band, tall pleated stack, puffy crown, grease and blood
   prop(B, 'head', G.cyl(16, 16.5, 6, 18), hatD, [0, hy + 21, hz - 1]);
   prop(B, 'head', G.cyl(14.5, 15.5, 16, 18), hat, [0, hy + 32, hz - 1]);
   prop(B, 'head', G.sph(17, 14), hat, [0, hy + 45, hz - 1], [0, 0, 0], [1, 0.8, 1]);
-  prop(B, 'head', G.box(6, 14, 1), X.blood, [-6, hy + 30, hz + 15]);
+  prop(B, 'head', G.box(5, 9, 1), X.blood, [-7, hy + 35, hz + 14.6]);                                        // (up on the hat, clear of the face)
   prop(B, 'head', G.box(9, 3, 1), hatD, [6, hy + 24, hz + 15.4]);
   // the cleaver, scaled up on the long right arm
   const cl = 'handR', hp = B.S.pos('handR'), cx = hp.x + 6, cyh = hp.y, cz = hp.z + 24;

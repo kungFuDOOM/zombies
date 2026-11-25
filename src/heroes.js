@@ -3,8 +3,10 @@
 // bones of a shared rig (from the CC0 KayKit pack) so every KayKit animation drives it.
 // The rig's bones are re-positioned to adult lengths; bone-local Y always runs along a bone.
 
+import { keep } from './gpu.js';
 import * as THREE from 'three';
 import { skinCtx, loft, addSurfaces } from './mesh.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ---------- rig proportions (metres) ----------
 
@@ -66,7 +68,7 @@ function canvasTex(key, w, h, draw) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.NearestFilter;
-  texCache.set(key, t);
+  texCache.set(key, keep(t));
   return t;
 }
 
@@ -359,7 +361,7 @@ function cached(key, make) {
   if (!geoCache.has(key)) {
     const g = make();
     if (!g.attributes.color) bakeAO(g, 'vertical');
-    geoCache.set(key, g);
+    geoCache.set(key, keep(g)); // (cached for good: never disposed with a level)
   }
   return geoCache.get(key);
 }
@@ -707,7 +709,7 @@ function chainsaw(hand) {
   // Chunky on purpose: a fat orange engine block, a front grab handle, and a SHORT wide bar ringed
   // with big teeth on every face, so on the title/select showcase it can't be mistaken for a rifle.
   const g = new THREE.Group();
-  const orange = mat('#ff6a1a', { roughness: 0.45, emissive: '#a02800', emissiveIntensity: 0.35 });
+  const orange = mat('#ff6a1a', { roughness: 0.45, emissive: '#c03000', emissiveIntensity: 0.5 });
   const steel = metal('#d8dde8'), dark = mat('#17171c'), tooth = metal('#f2f4f8');
   add(g, roundedBox(0.3), orange, [0, 0.1, 0], [0, 0, 0], [0.2, 0.3, 0.22]);        // engine housing
   add(g, box(), dark, [0, 0.1, 0.116], [0, 0, 0], [0.12, 0.12, 0.02]);               // intake grille
@@ -715,13 +717,18 @@ function chainsaw(hand) {
   add(g, torus(0.07, 0.016), dark, [0, 0.31, 0], [0, Math.PI / 2, 0]);               // top handle loop
   add(g, torus(0.065, 0.016), dark, [0, -0.1, 0], [0, Math.PI / 2, 0]);              // rear handle
   add(g, box(), dark, [0, 0.22, 0.13], [0, 0, 0], [0.03, 0.18, 0.03]);               // front guard
-  add(g, box(), steel, [0, 0.44, 0], [0, 0, 0], [0.05, 0.4, 0.13]);                  // the bar
-  add(g, cylinder(1, 1), steel, [0, 0.64, 0], [0, 0, Math.PI / 2], [0.065, 0.065, 0.05]); // bar tip
-  for (let i = 0; i < 8; i++) {
+  add(g, box(), steel, [0, 0.5, 0], [0, 0, 0], [0.05, 0.52, 0.14]);                  // the bar (longer)
+  add(g, cylinder(1, 1), steel, [0, 0.76, 0], [0, 0, Math.PI / 2], [0.07, 0.07, 0.05]); // bar tip
+  for (const sz of [-1, 1]) add(g, box(), dark, [0, 0.5, sz * 0.072], [0, 0, 0], [0.055, 0.5, 0.012]); // dark chain stripe down each edge
+  // the chain's teeth: one merged mesh instead of ~30 little boxes (a draw call each)
+  const teeth = [];
+  const tb = (pos, sc) => { const t = new THREE.BoxGeometry(1, 1, 1); t.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion(), new THREE.Vector3(...sc))); teeth.push(t); };
+  for (let i = 0; i < 10; i++) {
     const y = 0.26 + i * 0.05;
-    for (const sz of [-1, 1]) add(g, box(), tooth, [0, y, sz * 0.078], [0, 0, 0], [0.04, 0.026, 0.03]); // teeth, both long edges
-    add(g, box(), tooth, [(i % 2 ? 1 : -1) * 0.034, y, 0], [0, 0, 0], [0.026, 0.026, 0.1]);
+    for (const sz of [-1, 1]) tb([0, y, sz * 0.078], [0.04, 0.026, 0.03]); // teeth, both long edges
+    tb([(i % 2 ? 1 : -1) * 0.034, y, 0], [0.026, 0.026, 0.1]);
   }
+  g.add(new THREE.Mesh(mergeGeometries(teeth), tooth));
   g.rotation.x = -0.35; // cocked up off the forearm so the saw shows its side
   hand.add(g);
   return g;

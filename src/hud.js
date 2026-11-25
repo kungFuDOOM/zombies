@@ -547,7 +547,7 @@ export function selectShowcase(slots, time) {
   for (let s = 0; s < MAX_PLAYERS; s++) {
     const slot = slots[s];
     const cls = slot ? slot.cls : prev[s];
-    out.push({ cls, sx: SEL_X0 + s * (SEL_W + SEL_GAP) + SEL_W / 2, sy: SEL_Y + 262, scale: slot ? 1.75 : 1.55, turn: time * (slot ? 0.9 : 0.6) + s, walk: false, cheer: !!(slot && slot.ready) });
+    out.push({ cls, sx: SEL_X0 + s * (SEL_W + SEL_GAP) + SEL_W / 2, sy: SEL_Y + 262, scale: slot ? 1.58 : 1.45, turn: Math.sin(time * 0.7 + s) * 0.4, /* a sway, not a spin: held weapons stay in their own card */ walk: false, cheer: !!(slot && slot.ready) });
   }
   return out;
 }

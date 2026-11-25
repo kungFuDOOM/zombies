@@ -9,6 +9,7 @@ import { buildHero } from './heroes.js';
 import { buildMonster, BUILT_MONSTERS } from './monsters.js';
 import { dressSurvivor, dressZombie, dressShopper, dressUndead } from './charProps.js';
 import { undeadMaterial } from './undead.js';
+import { keepTree, keep } from './gpu.js';
 
 export const MODEL_SCALE = 16; // KayKit metres -> game units (one tile = 32 units = 2 m)
 
@@ -54,11 +55,11 @@ export async function loadAssets(onProgress = () => {}) {
       // bone scale tracks are constant; dropping them lets us re-proportion the skeletons
       for (const c of gltf.animations) { c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale')); assets.clips[c.name] = c; }
     }
-    else assets.props[name] = prepareProp(gltf.scene);
+    else assets.props[name] = keepTree(prepareProp(gltf.scene)); // (props are instanced into every level: never disposed with one)
     onProgress(++done / names.length);
   };
   await Promise.all(names.map(load));
-  for (const [key, gltf] of Object.entries(assets.nativeLoaded || {})) assets.chars[key] = prepareNative(key, gltf);
+  for (const [key, gltf] of Object.entries(assets.nativeLoaded || {})) assets.chars[key] = keepTree(prepareNative(key, gltf));
   assets.nativeLoaded = null;
   assets.ready = true;
 }
@@ -71,13 +72,13 @@ function buildHeroes(scene) {
   for (const cls of HERO_CLASSES) {
     const rig = SkeletonUtils.clone(scene);
     rig.userData.adult = buildHero(cls, rig);
-    assets.chars[cls] = rig;
+    assets.chars[cls] = keepTree(rig);
   }
   // the realms' humanoid monsters (monsters.js), built the same way
   for (const type of BUILT_MONSTERS) {
     const rig = SkeletonUtils.clone(scene);
     rig.userData.adult = buildMonster(type, rig);
-    assets.chars[`m_${type}`] = rig;
+    assets.chars[`m_${type}`] = keepTree(rig);
   }
 }
 
@@ -227,7 +228,7 @@ function zombieMaterial(m) {
        #include <opaque_fragment>`);
   };
   m.customProgramCacheKey = () => 'zombieRim';
-  m.userData.hook = m.onBeforeCompile; m.userData.hookKey = 'zombieRim';
+  m.userData.hook = m.onBeforeCompile; m.userData.hookKeyFn = m.customProgramCacheKey;
 }
 
 // Material.clone() does not copy onBeforeCompile / customProgramCacheKey: put the zombie shader back on flash and fade copies
@@ -235,9 +236,8 @@ function zombieMaterial(m) {
 function keepHook(m) {
   const h = m.userData.hook;
   if (!h) return;
-  const key = m.userData.hookKey;
   m.onBeforeCompile = h;
-  m.customProgramCacheKey = () => key;
+  m.customProgramCacheKey = m.userData.hookKeyFn;
 }
 
 const matPool = new Map();   // shared character materials (see Actor)
@@ -250,6 +250,7 @@ function flashVariant(base, color) {
     m = base.clone();
     m.userData = { ...base.userData };
     keepHook(m);
+    keep(m);
     m.emissive = new THREE.Color(color);
     m.emissiveIntensity = 0.8;
     byColor.set(color, m);
@@ -389,7 +390,7 @@ export class Actor {
         m.userData.ei0 = m.emissiveIntensity;
         m.userData.o0 = m.opacity;
         m.userData.t0 = m.transparent;
-        matPool.set(key, m);
+        matPool.set(key, keep(m));
       }
       o.material = m;
       this.parts.push({ mesh: o, base: m });
