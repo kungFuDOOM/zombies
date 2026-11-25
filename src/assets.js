@@ -18,28 +18,34 @@ export const HERO_CLASSES = ['biker', 'mallCop', 'skater', 'mallGoth', 'ray', 'c
 export const HERO_SCALE = 27; // adult heroes are ~1.75 m tall -> ~47 game units
 const PROPS = ['weapon_staff', 'chest', 'barrel', 'food_b'];
 
-// Hand-modelled Quaternius "Zombie Apocalypse Kit" characters (CC0, see assets/CREDITS.md), baked to
-// vertex colours by tools/build-characters.mjs. Survivors share one animation library; each zombie
-// carries its own clips.
+// Quaternius "Ultimate Modular Men / Women" characters (CC0, see assets/CREDITS.md): adult, ~7.5 heads
+// tall, all on one 62-joint 'CharacterArmature', baked to one vertex-coloured mesh each by
+// tools/build-characters.mjs. Survivors AND zombies share the clip libraries (anims_survivor.glb for
+// the men; the women's rest pose differs, so anims_women.glb). Mulchmaw ('giant', Ultimate Monsters)
+// is a different pack with its own rig and clips.
 const NATIVE = {
   biker: 'ch_biker', mallCop: 'ch_mallCop', skater: 'ch_skater', mallGoth: 'ch_mallGoth',
-  z_walker: 'ch_zombie_walker', z_brute: 'ch_zombie_brute', z_spitter: 'ch_zombie_spitter', giant: 'ch_giant',
+  z_walker: 'ch_zombie_walker', z_sprinter: 'ch_zombie_sprinter', z_brute: 'ch_zombie_brute', z_spitter: 'ch_zombie_spitter', giant: 'ch_giant',
 };
-const NATIVE_HEIGHT = { biker: 49, mallCop: 47, skater: 46, mallGoth: 47, z_walker: 45, z_brute: 44, z_spitter: 42, giant: 150 };
+// Game units for the model's full bounding height (hair spikes and all).
+const NATIVE_HEIGHT = { biker: 50, mallCop: 47, skater: 47, mallGoth: 45, z_walker: 46, z_sprinter: 46, z_brute: 46, z_spitter: 43, giant: 150 };
 export const NATIVE_SURVIVORS = ['biker', 'mallCop', 'skater', 'mallGoth'];
+const MODULAR = ['biker', 'mallCop', 'skater', 'mallGoth', 'z_walker', 'z_sprinter', 'z_brute', 'z_spitter'];
+const WOMEN = ['mallGoth', 'z_spitter'];
 export const ZOMBIE_VARIANT_TINT = [null, '#c4cdb0', '#e2c8a4'];
 
-export const assets = { chars: {}, props: {}, clips: {}, survClips: {}, ready: false };
+export const assets = { chars: {}, props: {}, clips: {}, survClips: {}, womenClips: {}, ready: false };
 
 export async function loadAssets(onProgress = () => {}) {
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const names = [...CHARACTERS, ...PROPS, ...Object.values(NATIVE), 'anims_survivor', 'anims', 'rig'];
+  const names = [...CHARACTERS, ...PROPS, ...Object.values(NATIVE), 'anims_survivor', 'anims_women', 'anims', 'rig'];
   let done = 0;
   const load = async (name) => {
     const gltf = await loader.loadAsync(`assets/models/${name}.glb`);
-    if (name === 'anims_survivor') {
-      for (const c of gltf.animations) { c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale')); assets.survClips[c.name] = c; }
+    if (name === 'anims_survivor' || name === 'anims_women') {
+      const lib = name === 'anims_women' ? assets.womenClips : assets.survClips;
+      for (const c of gltf.animations) { c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale')); lib[c.name] = c; }
       onProgress(++done / names.length); return;
     }
     const nat = Object.keys(NATIVE).find((k) => NATIVE[k] === name);
@@ -82,7 +88,7 @@ function prepareNative(key, gltf) {
   const scene = gltf.scene;
   scene.userData.native = key;
   const clips = new Map();
-  const src = NATIVE_SURVIVORS.includes(key) ? Object.values(assets.survClips) : gltf.animations;
+  const src = !MODULAR.includes(key) ? gltf.animations : Object.values(WOMEN.includes(key) ? assets.womenClips : assets.survClips);
   for (const c of src) {
     c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale'));
     clips.set(c.name, c);
@@ -151,9 +157,11 @@ export function cloneProp(name) {
 }
 
 // ---------- monster proportions ----------
-// The CC0 skeletons are chibi (the head is nearly half their height), so each is
-// re-proportioned at spawn by scaling bones along their length (bone-local Y), with hands
-// and feet scaled back so weapons stay their normal size.
+// Only for the KayKit skeleton (the skeleton_mage fallback): its proportions are chibi (the head is
+// nearly half their height), so it is re-proportioned at spawn by scaling bones along their length
+// (bone-local Y), with hands and feet scaled back so weapons stay their normal size. The adult
+// Quaternius characters (survivors and zombies) must NOT go through this: they are never built on
+// the KayKit rig, so Actor skips it for them.
 const BUILDS = {
   monster: { head: 0.55, spine: 1.2, chest: [1.08, 1.1, 1.05], leg: 1.75, legW: 1.08, arm: 1.4, armW: 1.05 },
 };
@@ -183,32 +191,38 @@ const LOWER = /^(root|hips|upperleg|lowerleg|foot|toes|kneeIK|control|heelIK|IK)
 const variantCache = new Map();
 const AXIS_Z = new THREE.Vector3(0, 0, 1);
 
-// Game clip names -> Quaternius clip names. Per character overrides win.
+// Game clip names -> Modular-pack clip names (anims_survivor.glb / anims_women.glb). Per-character overrides win.
+// Ranged and one-handed "casts" borrow Gun_Shoot / Punch_Right; unmapped names (Spawn_Ground...) just don't play.
 const NATIVE_CLIPS = {
-  Idle: 'Idle', '2H_Melee_Idle': 'Idle', Idle_Combat: 'Idle', Running_A: 'Run', Running_B: 'Run', Running_C: 'Run',
-  Walking_A: 'Walk', Walking_D_Skeletons: 'Walk', '1H_Melee_Attack_Chop': 'Slash', '1H_Melee_Attack_Slice_Diagonal': 'Slash',
-  '1H_Melee_Attack_Stab': 'Stab', '2H_Melee_Attack_Chop': 'Slash', '2H_Melee_Attack_Slice': 'Slash', '2H_Melee_Attack_Spinning': 'Slash',
-  Unarmed_Melee_Attack_Punch_A: 'Punch', Throw: 'Punch', Spellcast_Shoot: 'Stab', Spellcast_Long: 'Wave', Spellcast_Raise: 'Wave',
-  '2H_Ranged_Shoot': 'Punch', '1H_Ranged_Shoot': 'Punch', Hit_A: 'HitReact', Hit_B: 'HitReact', Death_A: 'Death', Death_B: 'Death',
-  Death_C_Skeletons: 'Death', Cheer: 'Wave', Dodge_Forward: 'Jump',
+  Idle: 'Idle', '2H_Melee_Idle': 'Idle_Sword', Idle_Combat: 'Idle', Running_A: 'Run', Running_B: 'Run', Running_C: 'Run',
+  Walking_A: 'Walk', Walking_D_Skeletons: 'Walk', '1H_Melee_Attack_Chop': 'Punch_Right', '1H_Melee_Attack_Slice_Diagonal': 'Sword_Slash',
+  '1H_Melee_Attack_Stab': 'Punch_Left', '2H_Melee_Attack_Chop': 'Sword_Slash', '2H_Melee_Attack_Slice': 'Sword_Slash', '2H_Melee_Attack_Spinning': 'Sword_Slash',
+  Unarmed_Melee_Attack_Punch_A: 'Punch_Right', Throw: 'Punch_Right', Spellcast_Shoot: 'Punch_Right', Spellcast_Long: 'Interact', Spellcast_Raise: 'Wave',
+  '2H_Ranged_Shoot': 'Gun_Shoot', '1H_Ranged_Shoot': 'Gun_Shoot', Hit_A: 'HitRecieve', Hit_B: 'HitRecieve_2', Death_A: 'Death', Death_B: 'Death',
+  Death_C_Skeletons: 'Death', Cheer: 'Wave', Dodge_Forward: 'Roll',
 };
 const NATIVE_OVERRIDE = {
-  mallCop: { '2H_Melee_Idle': 'Idle_Gun', Running_C: 'Run_Gun', '2H_Ranged_Shoot': 'Idle_Gun' },
-  biker: { '2H_Melee_Idle': 'Idle_Gun', '2H_Melee_Attack_Chop': 'Slash', '2H_Melee_Attack_Spinning': 'Run_Slash' },
-  mallGoth: { Spellcast_Long: 'Yes' },
-  z_walker: { Running_C: 'Run_Arms', '1H_Melee_Attack_Stab': 'Punch', Walking_D_Skeletons: 'Walk' },
-  z_brute: { '2H_Melee_Attack_Chop': 'Punch' },
-  z_spitter: { Walking_D_Skeletons: 'Walk', Idle: 'Idle_Attack' },
+  // right arm out front for the whole gun class: Idle_Gun_Pointing / Run_Shoot / Idle_Gun_Shoot all hold the barrel level
+  mallCop: { '2H_Melee_Idle': 'Idle_Gun_Pointing', Running_C: 'Run_Shoot', '2H_Ranged_Shoot': 'Idle_Gun_Shoot', '1H_Melee_Attack_Stab': 'Punch_Right' },
+  biker: { '2H_Melee_Idle': 'Idle_Sword', '2H_Melee_Attack_Chop': 'Sword_Slash', '2H_Melee_Attack_Spinning': 'Sword_Slash' },
+  skater: { '2H_Melee_Idle': 'Idle_Sword', '1H_Melee_Attack_Slice_Diagonal': 'Sword_Slash' },
+  mallGoth: { Idle: 'Idle_Gun_Pointing', Running_C: 'Run_Shoot', Spellcast_Long: 'Idle_Gun_Pointing', '1H_Melee_Attack_Stab': 'Punch_Right' },
+  z_walker: { '1H_Melee_Attack_Stab': 'Punch_Left' },
+  z_sprinter: { '1H_Melee_Attack_Stab': 'Punch_Left' },
+  z_brute: { '2H_Melee_Attack_Chop': 'Punch_Right' },
   giant: { Walking_A: 'Walk', Running_A: 'Run', Idle: 'Idle', Hit_B: 'HitRecieve', Hit_A: 'HitRecieve', Death_A: 'Death', '2H_Melee_Attack_Chop': 'Attack', Spellcast_Shoot: 'Attack', Spellcast_Raise: 'Attack', Spellcast_Long: 'Attack', Cheer: 'Jump' },
 };
-const NATIVE_LOWER = /^(Root|Body|Hips|UpperLeg|LowerLeg|Foot|PoleTarget)/;
+// Giant keeps its own rig and clip names (Ultimate Monsters), so its overrides replace the Modular defaults wholesale.
+const NATIVE_OWN = new Set(['giant']);
+// Lower-body tracks of the Modular rig (sanitised node names: "UpperLeg.L" -> "UpperLegL"; PT = leg pole targets).
+const NATIVE_LOWER = /^(Root|Body|Hips|UpperLeg|LowerLeg|Foot|PT|PoleTarget)/;
 
 function clipVariant(name, part, adult = 0, nat = null) {
   const key = `${nat ? nat.key : ''}:${name}:${part}:${adult}`;
   if (variantCache.has(key)) return variantCache.get(key);
   let base;
   if (nat) {
-    const n = (NATIVE_OVERRIDE[nat.key] || {})[name] || NATIVE_CLIPS[name];
+    const n = (NATIVE_OVERRIDE[nat.key] || {})[name] || (NATIVE_OWN.has(nat.key) ? name : NATIVE_CLIPS[name]);
     base = nat.clips.get(n);
     if (!base) { variantCache.set(key, null); return null; }
     if (part !== 'full') {
@@ -258,8 +272,8 @@ function zombieMaterial(m) {
 
 const undeadClips = new Map();
 // Additive shamble clip: `u` = { lean, head, reach, bend, sway, hitch, uneven }; sign = head tilt side.
-function undeadClip(u, sign) {
-  const key = JSON.stringify(u) + sign;
+function undeadClip(u, sign, mod = false) {
+  const key = JSON.stringify(u) + sign + (mod ? 'M' : '');
   if (undeadClips.has(key)) return undeadClips.get(key);
   const N = 16, dur = 2.4, times = [], E = new THREE.Euler(), Q = new THREE.Quaternion();
   const tracks = [];
@@ -277,27 +291,46 @@ function undeadClip(u, sign) {
   const hit = u.hitch || 0.3;
   const hitch = (ph) => Math.max(0, Math.sin(ph * 2)) ** 3 * hit; // a wet catch in the stride: the spine folds
   const lurch = (ph) => Math.sin(ph) * u.sway * 1.8 + Math.sin(ph * 2 + 1.3) * u.sway * 0.9;
-  track('hips', (ph) => [0.03 + hitch(ph) * 0.12, lurch(ph) * 0.3, lurch(ph) * 0.45]);
-  track('spine', (ph) => [u.lean * 0.4 + hitch(ph) * 0.25, 0, lurch(ph) * 0.55]);
-  track('chest', (ph) => [u.lean * 0.45 + hitch(ph) * 0.4, lurch(ph) * 0.6, lurch(ph) * 0.7]);
-  track('head', (ph) => [u.head * 0.6 + 0.03 + hitch(ph) * 0.15 + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
+  // Bone names and axes differ between the two rigs. KayKit (hips/spine/...): x pitches forward, arms
+  // reach on -x. Modular ('CharacterArmature'): the torso/head x axis is the left-right axis (positive
+  // pitches forward), and the arms' z axis points out of the shoulder, so reach is -z on the left arm
+  // and +z on the right. The Modular Hips/Abdomen bind frames are twisted ~27 deg, so they only get
+  // light sway. Track names are the loader's sanitised node names ("UpperArm.L" -> "UpperArmL").
+  const B = mod
+    ? { hips: 'Hips', spine: 'Abdomen', chest: 'Torso', head: 'Head', ual: 'UpperArmL', uar: 'UpperArmR', lal: 'LowerArmL', lar: 'LowerArmR', ul: 'UpperLeg', ll: 'LowerLeg' }
+    : { hips: 'hips', spine: 'spine', chest: 'chest', head: 'head', ual: 'upperarml', uar: 'upperarmr', lal: 'lowerarml', lar: 'lowerarmr', ul: 'upperleg', ll: 'lowerleg' };
+  const k = mod ? 0.55 : 1; // the adult rig folds at the waist more readily than the chibi kit
+  track(B.hips, (ph) => [0.03 + hitch(ph) * 0.12 * k, lurch(ph) * 0.3, lurch(ph) * 0.45]);
+  track(B.spine, (ph) => [u.lean * 0.4 * k + hitch(ph) * 0.25 * k, 0, lurch(ph) * 0.55]);
+  track(B.chest, (ph) => [u.lean * 0.45 * k + hitch(ph) * 0.4 * k, lurch(ph) * 0.6, lurch(ph) * 0.7]);
+  track(B.head, (ph) => [u.head * 0.6 * k + 0.03 + hitch(ph) * 0.15 + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
   const un = u.uneven || 0.85;
-  track('upperarml', (ph) => [-(u.reach + Math.sin(ph) * 0.2), 0.1, -0.05]);
-  track('upperarmr', (ph) => [-(u.reach * un + Math.sin(ph + 2) * 0.25 + hitch(ph) * 0.3), -0.1, 0.05]);
-  track('lowerarml', (ph) => [-u.bend - Math.max(0, Math.sin(ph * 2)) * 0.25, 0, 0]);
-  track('lowerarmr', (ph) => [-u.bend * 1.4 - Math.max(0, Math.sin(ph * 2 + 1)) * 0.3, 0, 0]);
-  const dl = sign > 0 ? 'r' : 'l'; // which leg drags is random per zombie (the head tilts the other way)
-  track(`upperleg${dl}`, (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.18 * (u.drag ?? 1), 0, 0.06 * (u.drag ?? 1)]);
-  track(`lowerleg${dl}`, (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.22 * (u.drag ?? 1), 0, 0]);
+  const armL = (ph) => u.reach + Math.sin(ph) * 0.2, armR = (ph) => u.reach * un + Math.sin(ph + 2) * 0.25 + hitch(ph) * 0.3;
+  if (mod) {
+    const r = u.reach < 1 ? 1 : 0.75; // the adult arm is long: reach a little less than the chibi's
+    track(B.ual, (ph) => [0, 0.1, -armL(ph) * r]);
+    track(B.uar, (ph) => [0, -0.1, armR(ph) * r]);
+    track(B.lal, (ph) => [0, 0, -(u.bend + Math.max(0, Math.sin(ph * 2)) * 0.25) * 0.8]);
+    track(B.lar, (ph) => [0, 0, (u.bend * 1.4 + Math.max(0, Math.sin(ph * 2 + 1)) * 0.3) * 0.8]);
+  } else {
+    track(B.ual, (ph) => [-armL(ph), 0.1, -0.05]);
+    track(B.uar, (ph) => [-armR(ph), -0.1, 0.05]);
+    track(B.lal, (ph) => [-u.bend - Math.max(0, Math.sin(ph * 2)) * 0.25, 0, 0]);
+    track(B.lar, (ph) => [-u.bend * 1.4 - Math.max(0, Math.sin(ph * 2 + 1)) * 0.3, 0, 0]);
+  }
+  const dl = sign > 0 ? 'R' : 'L'; // which leg drags is random per zombie (the head tilts the other way)
+  const dlk = mod ? dl : dl.toLowerCase();
+  track(`${B.ul}${dlk}`, (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.18 * (u.drag ?? 1), 0, 0.06 * (u.drag ?? 1)]);
+  track(`${B.ll}${dlk}`, (ph) => [Math.max(0, Math.sin(ph + 0.5)) * 0.22 * (u.drag ?? 1), 0, 0]);
   if (u.retch) { // spitters: a wet heave, head and chest pitching forward
     const pulse = (ph) => Math.max(0, Math.sin(ph * 1.0 + 0.4)) ** 8 * u.retch;
-    track('chest', (ph) => [pulse(ph) * 0.4, 0, 0]);
-    track('head', (ph) => [pulse(ph) * 0.4, 0, 0]);
+    track(B.chest, (ph) => [pulse(ph) * 0.4, 0, 0]);
+    track(B.head, (ph) => [pulse(ph) * 0.4, 0, 0]);
   }
-  if (u.stomp) { // brutes: the whole body drops on each footfall (additive hips position)
-    const vals = [];
-    for (let i = 0; i <= N; i++) { const ph = (i / N) * Math.PI * 2; vals.push(0, -Math.abs(Math.sin(ph * 2)) * u.stomp, 0); }
-    tracks.push(new THREE.VectorKeyframeTrack('hips.position', times, vals));
+  if (u.stomp) { // brutes: the whole body drops on each footfall (additive position track on the hips / body root)
+    const vals = [], sc = mod ? 0.015 : 1; // the Modular rig's bone units are ~1/70 of the kit's
+    for (let i = 0; i <= N; i++) { const ph = (i / N) * Math.PI * 2; vals.push(0, -Math.abs(Math.sin(ph * 2)) * u.stomp * sc, 0); }
+    tracks.push(new THREE.VectorKeyframeTrack(`${mod ? 'Body' : 'hips'}.position`, times, vals));
   }
   const clip = new THREE.AnimationClip(`undead:${key}`, dur, tracks, THREE.AdditiveAnimationBlendMode);
   undeadClips.set(key, clip);
@@ -357,8 +390,8 @@ export class Actor {
     });
     this.mixer = new THREE.AnimationMixer(this.model);
     if (this.nat && NATIVE_SURVIVORS.includes(this.nat.key)) dressSurvivor(this, this.nat.key);
-    if (this.nat && zvariant && charName === 'z_walker') dressZombie(this, zvariant);
-    if (this.undead && !this.nat) this.startUndead(); // Quaternius zombies bring their own shamble
+    if (this.nat && zvariant && (charName === 'z_walker' || charName === 'z_sprinter')) dressZombie(this, zvariant);
+    if (this.undead && (!this.nat || MODULAR.includes(this.nat.key))) this.startUndead(); // additive shamble on the walk cycle
     this.baseName = null;
     this.baseAction = null;
     this.baseMode = 'full';
@@ -459,7 +492,7 @@ export class Actor {
   startUndead() {
     const u = this.undead;
     this.tiltDir = Math.random() < 0.5 ? 1 : -1;
-    const clip = undeadClip(u, this.tiltDir);
+    const clip = undeadClip(u, this.tiltDir, !!(this.nat && MODULAR.includes(this.nat.key)));
     const act = this.mixer.clipAction(clip);
     act.setLoop(THREE.LoopRepeat, Infinity).play();
     act.time = Math.random() * clip.duration;

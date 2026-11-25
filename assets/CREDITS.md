@@ -1,9 +1,10 @@
 # Asset credits
 
-All 3D models and animations in `assets/models/` come from free packs by **Kay Lousberg**
-([kaylousberg.com](https://kaylousberg.com)), released under
+The 3D models and animations in `assets/models/` come from free packs, all released under
 **Creative Commons Zero (CC0 1.0)**: free for personal, educational and commercial use, no
-attribution required (credited here anyway, with thanks).
+attribution required (credited here anyway, with thanks). The KayKit packs (dungeon, heroes and
+props) are by **Kay Lousberg** ([kaylousberg.com](https://kaylousberg.com)); the characters are by
+**Quaternius** (see below).
 
 | Pack | Used for |
 |---|---|
@@ -14,29 +15,33 @@ attribution required (credited here anyway, with thanks).
 
 ## Characters (survivors, zombies, Mulchmaw)
 
-The four survivors, the zombies and Mulchmaw are hand-modelled, rigged and animated characters by
-**Quaternius** ([quaternius.com](https://quaternius.com)), from the **Zombie Apocalypse Kit** and the
-**Ultimate Monsters** pack. Quaternius' pack pages state **CC0 1.0** (public domain,
-[Zombie Apocalypse Kit](https://quaternius.com/packs/zombieapocalypsekit.html)). The files were fetched
-from poly.pizza's mirror of the packs (direct download, no login). poly.pizza labels two of them
-(Zombie Chubby, Zombie Arm) *CC-BY 3.0* instead, so they are credited as if BY applied: "Zombie Chubby" and
-"Zombie Arm" by Quaternius, via poly.pizza.
+The survivors and zombies are rigged, animated characters by **Quaternius**
+([quaternius.com](https://quaternius.com)), from the **Ultimate Modular Men** and **Ultimate Modular
+Women** packs (February 2022), released under **CC0 1.0**:
+[Ultimate Modular Men](https://quaternius.com/packs/ultimatemodularcharacters.html) and
+[Ultimate Modular Women](https://quaternius.com/packs/ultimatemodularwomen.html). The files were
+fetched from poly.pizza (direct GLB download, no login). Mulchmaw is the "Giant" from Quaternius'
+**Ultimate Monsters** pack, also CC0.
 
-| Model (source) | Used for |
-|---|---|
-| Matt ([poly.pizza/m/66kQ4dBBC7](https://poly.pizza/m/66kQ4dBBC7)) | Biker |
-| Sam ([poly.pizza/m/UcLErL2W37](https://poly.pizza/m/UcLErL2W37)) | Mall Cop |
-| Shaun ([poly.pizza/m/eJFT9MxzOM](https://poly.pizza/m/eJFT9MxzOM)) | Skater, and the survivors' shared animation library |
-| Lis ([poly.pizza/m/gjuwleUT1U](https://poly.pizza/m/gjuwleUT1U)) | Mall Goth |
-| Zombie Basic ([poly.pizza/m/VlXjG0N8Eg](https://poly.pizza/m/VlXjG0N8Eg)) | Walker and Sprinter (tint and slimming) |
-| Zombie Arm ([poly.pizza/m/KaVJET0WHx](https://poly.pizza/m/KaVJET0WHx)) | Brute |
-| Zombie Chubby ([poly.pizza/m/22K0aSZkHV](https://poly.pizza/m/22K0aSZkHV)) | Spitter |
-| Giant ([poly.pizza/m/BldaiPtyJa](https://poly.pizza/m/BldaiPtyJa), Ultimate Monsters) | Mulchmaw (wing 6 boss) |
+| Model | Source | Used for |
+|---|---|---|
+| Men's Punk | [poly.pizza/m/BTALZymknF](https://poly.pizza/m/BTALZymknF) | Biker |
+| Men's Worker | [poly.pizza/m/Yg2bQZO6Hj](https://poly.pizza/m/Yg2bQZO6Hj) | Mall Cop (hard hat dropped) |
+| Men's Beach | [poly.pizza/m/DojKLcO34E](https://poly.pizza/m/DojKLcO34E) | Skater |
+| Women's Punk | [poly.pizza/m/djXoqejw6w](https://poly.pizza/m/djXoqejw6w) | Mall Goth |
+| Men's Casual | [poly.pizza/m/kZ3DmIoGip](https://poly.pizza/m/kZ3DmIoGip) | Walker |
+| Men's Farmer | [Ultimate Modular Men](https://quaternius.com/packs/ultimatemodularcharacters.html) | Sprinter (hat dropped) |
+| Men's Hoodie | [Ultimate Modular Men](https://quaternius.com/packs/ultimatemodularcharacters.html) | Brute |
+| Women's Casual (AnimatedWoman2) | [Ultimate Modular Women](https://quaternius.com/packs/ultimatemodularwomen.html) | Spitter |
+| Giant | [poly.pizza/m/BldaiPtyJa](https://poly.pizza/m/BldaiPtyJa) (Ultimate Monsters) | Mulchmaw (wing 6 boss) |
 
-`tools/build-characters.mjs` bakes the kit's swatch texture into recoloured vertex colours (outfits
-re-coloured to the Mall of the Dead looks, wounds painted on the undead), strips the kit's weapons,
-and meshopt-compresses the result. Caps, shades, bandana, skirt and the weapons are attached in code
-(`src/charProps.js`).
+Every model above is CC0. The Men's Punk rig and clips are the shared survivor animation library
+(`anims_survivor.glb`), and the Women's Punk clips are `anims_women.glb`.
+
+`tools/build-characters.mjs` converts each pack's flat-colour materials into vertex colours (outfits
+recoloured to the Mall of the Dead looks, wounds painted on the undead), strips the clips into shared
+animation libraries, and meshopt-compresses the result. Caps, shades, bandana, skirt, shoe overlays and
+weapons are attached in code (`src/charProps.js`).
 
 The earlier files were converted with `npm run build-assets -- <dir-with-the-four-repos>` (see
 `tools/build-assets.mjs`): unused meshes and animations are stripped, one shared animation

@@ -1,12 +1,25 @@
-// Outfits and weapons for the four survivors, attached to the bones of their hand-modelled
-// Quaternius bodies (the bodies themselves are recoloured at build time, tools/build-characters.mjs).
+// Outfits and weapons for the four survivors, attached to the bones of their Quaternius "Ultimate
+// Modular" adult bodies (the bodies themselves are recoloured at build time, tools/build-characters.mjs).
+// The Modular clips swing the RIGHT arm for guns, swords and punches, so every weapon is held on
+// Wrist.R. The Mall Cop's own moustache and the Biker's bandana-over-bald-head come from the bodies
+// (the Worker's hard hat and the Punk's mohawk are dropped at build time), so only the cap, shades
+// and bandana are added here.
 // Props are built in "prop metres" (1.75 m adult, the same builders heroes.js always used) inside a
 // holder that cancels the rig's 100x armature scale.
 
 import * as THREE from 'three';
 import { kit } from './heroes.js';
 
-const { mat, metal, add, box, sphere, cap, cylinder, cone, roundedBox, torus, chainsaw, shotgun, spikedBat, hairspray, boombox } = kit;
+const { mat, metal, add, box, sphere, cap, cylinder, cone, roundedBox, chainsaw, shotgun, spikedBat, hairspray, boombox } = kit;
+const WEAPON = { // Wrist.R holder transforms (see DRESS); tuned against Idle_Sword / Idle_Gun / Gun_Shoot / Sword_Slash
+  // Melee weapons hang off the right fist (Idle_Sword: arm down, fingers down): a +0.95 rad turn about the
+  // wrist's outward z axis swings the blade/bar from "down" to "forward and down", and the slash then arcs naturally.
+  biker: { pos: [0, 0.05, 0], rot: [0, 0, 0.95], scale: 0.95 },
+  // Gun class: the right arm is held straight out front (fingers forward), so the barrel just runs along the hand.
+  mallCop: { pos: [0, 0.04, 0], rot: [0, 0, 0], scale: 1.0 },
+  skater: { pos: [0, 0.05, 0], rot: [0, 0, 1.05], scale: 1.05 },
+  mallGoth: { pos: [0, 0.04, 0], rot: [0, 0, 0], scale: 1.0 },
+};
 const PROP_UNIT = 33; // world units per prop metre (a touch over life size so weapons read at gameplay distance)
 
 function holder(actor, boneName, { pos = [0, 0, 0], rot = [0, 0, 0], scale = 1 } = {}) {
@@ -21,7 +34,7 @@ function holder(actor, boneName, { pos = [0, 0, 0], rot = [0, 0, 0], scale = 1 }
 }
 
 // ---- accessories (head-local: +Y up, +Z forward, head centre ~ (0, hy, 0)) ----
-const HEAD = { y: 0.2, r: 0.2, zf: 0.2 };
+const HEAD = { y: 0.2, r: 0.2, zf: 0.2, top: 0.3, hw: 0.25 };
 
 // Measure the head of this body (bone-local, converted to prop metres) so accessories fit any of the models.
 function measureHead(actor) {
@@ -46,6 +59,8 @@ function measureHead(actor) {
   HEAD.r = ((box.max.x - box.min.x) / 2) / k * 0.8;
   HEAD.zf = box.max.z / k;
   HEAD.zc = ((box.min.z + box.max.z) / 2) / k;
+  HEAD.top = box.max.y / k;                       // crown of the skull (hair included)
+  HEAD.hw = (box.max.x - box.min.x) / 2 / k;      // true half-width
 }
 
 function shades(g, color = '#101018', rim = '#101018', w = 1.5, aviator = false) {
@@ -66,53 +81,75 @@ function bandana(g) {
   add(g, sphere(8), red, [0, y + r * 0.42, zc - r * 1.05], [0, 0, 0], [r * 0.28, r * 0.28, r * 0.28]);
 }
 
+// Police peaked cap: navy band + tall crown, flared top, gold badge and a shiny black visor. Placed from the skull top
+// (HEAD.top) so it sits ON the head however the body's hair is shaped.
 function copCap(g) {
-  const { y, r, zc, zf } = HEAD;
-  const navy = mat('#16254a'), band = mat('#0c0f1a'), gold = metal('#e8c040');
-  add(g, cylinder(1, 1, 18), navy, [0, y + r * 0.62, zc], [0, 0, 0], [r * 1.08, r * 0.5, r * 1.1]);
-  add(g, cylinder(1, 1, 18), navy, [0, y + r * 0.9, zc + r * 0.04], [0.1, 0, 0], [r * 1.18, r * 0.1, r * 1.2]); // overhanging crown
-  add(g, cylinder(1, 1, 18), band, [0, y + r * 0.46, zc], [0, 0, 0], [r * 1.1, r * 0.14, r * 1.12]);
-  add(g, box(), band, [0, y + r * 0.5, zf + r * 0.05], [0.25, 0, 0], [r * 1.1, r * 0.06, r * 0.6]);                   // visor
-  add(g, box(), gold, [0, y + r * 0.72, zf + r * 0.0], [0, 0, 0], [r * 0.3, r * 0.3, r * 0.06]);                     // cap badge
+  const { top, hw, zc, zf } = HEAD;
+  const navy = mat('#1b2f66', { roughness: 0.6 }), band = mat('#080a12', { roughness: 0.35 }), gold = metal('#f0c840');
+  const y0 = top - hw * 0.72;                   // bottom edge of the cap, just above the brows
+  add(g, cylinder(1, 1, 20), band, [0, y0 + hw * 0.1, zc], [0, 0, 0], [hw * 1.16, hw * 0.24, hw * 1.2]);            // hat band
+  add(g, cylinder(1, 1, 20), navy, [0, y0 + hw * 0.5, zc], [0, 0, 0], [hw * 1.14, hw * 0.62, hw * 1.18]);           // crown
+  add(g, cylinder(1, 1, 20), navy, [0, y0 + hw * 0.86, zc + hw * 0.04], [0.08, 0, 0], [hw * 1.32, hw * 0.14, hw * 1.36]); // flared top
+  add(g, box(), band, [0, y0 + hw * 0.0, zf + hw * 0.12], [0.22, 0, 0], [hw * 1.0, hw * 0.07, hw * 0.62]);           // visor
+  add(g, box(), gold, [0, y0 + hw * 0.5, zf + hw * 0.05], [0, 0, 0], [hw * 0.34, hw * 0.34, hw * 0.1]);            // cap badge
+  add(g, box(), gold, [0, y0 + hw * 0.13, zf + hw * 0.1], [0, 0, 0], [hw * 0.8, hw * 0.05, hw * 0.1]);              // gold cord
 }
 
-function moustache(g) {
-  const { y, r, zf } = HEAD, m = mat('#1a120c');
-  add(g, box(), m, [0, y - r * 0.52, zf + r * 0.02], [0, 0, 0], [r * 0.95, r * 0.2, r * 0.16]);
-  for (const s of [-1, 1]) add(g, box(), m, [s * r * 0.55, y - r * 0.68, zf - r * 0.1], [0, 0, s * 0.5], [r * 0.4, r * 0.12, r * 0.15]);
+// A backwards cap for the Skater: crown and brim to the rear, a hot-pink button and a green front panel.
+function backCap(g) {
+  const { top, hw, zc } = HEAD;
+  const pink = mat('#ff5ad0', { roughness: 0.7 }), green = mat('#38c870', { roughness: 0.7 });
+  const y0 = top - hw * 0.9;
+  add(g, cap(), pink, [0, y0, zc], [0, 0, 0], [hw * 1.18, hw * 1.25, hw * 1.24]);                                // crown dome (covers the hair)
+  add(g, cylinder(1, 1, 20), pink, [0, y0 - hw * 0.02, zc], [0, 0, 0], [hw * 1.15, hw * 0.16, hw * 1.21]);        // band
+  add(g, box(), green, [0, y0 + hw * 0.36, zc - hw * 1.0], [0.25, 0, 0], [hw * 0.62, hw * 0.46, hw * 0.07]);      // the cap's front panel, which now faces backwards
+  add(g, box(), pink, [0, y0 - hw * 0.04, zc - hw * 1.28], [0.12, 0, 0], [hw * 1.0, hw * 0.07, hw * 0.75]);       // the brim, at the back of the head
+  add(g, sphere(8), green, [0, y0 + hw * 0.92, zc], [0, 0, 0], [hw * 0.14, hw * 0.14, hw * 0.14]);               // button
 }
 
-function skirt(g) {
-  const black = mat('#101016', { roughness: 0.9 });
-  const flare = new THREE.CylinderGeometry(0.17, 0.3, 0.3, 14, 1, true);
-  const m = add(g, flare, new THREE.MeshStandardMaterial({ color: '#101016', roughness: 0.9, side: THREE.DoubleSide, vertexColors: false, flatShading: true }), [0, -0.1, 0], [0, 0, 0], [1, 1, 0.95]);
-  m.geometry = flare;
-  add(g, torus(0.17, 0.012), mat('#ff2ea6', { emissive: '#ff2ea6', emissiveIntensity: 0.5 }), [0, 0.04, 0], [Math.PI / 2, 0, 0]); // pink belt
-  void black;
+// High-tops for the Skater (the Beach body only has flip-flops): white sock, white shoe with a pink stripe and toe cap.
+// Built in each foot bone's frame: +Y toe-ward, -Z up (the sole is at +Z), X across.
+function highTops(a) {
+  for (const side of ['L', 'R']) {
+    const h = holder(a, 'Foot' + side); if (!h) continue;
+    const white = mat('#f4f4f4', { roughness: 0.7 }), pink = mat('#ff5ad0', { roughness: 0.6 }), sole = mat('#e6e6e6', { roughness: 0.9 }), dark = mat('#1a1a22');
+    add(h, cylinder(1, 1, 14), white, [0, -0.01, -0.13], [Math.PI / 2, 0, 0], [0.056, 0.14, 0.056]);                       // crew sock
+    add(h, roundedBox(0.4), white, [0, 0.07, -0.05], [0, 0, 0], [0.105, 0.3, 0.1]);                                     // shoe body
+    add(h, roundedBox(0.4), white, [0, -0.015, -0.11], [0, 0, 0], [0.098, 0.115, 0.12]);                                // the high collar around the ankle
+    add(h, roundedBox(0.4), pink, [0, 0.0, -0.16], [0, 0, 0], [0.102, 0.04, 0.035]);                                    // collar trim
+    add(h, roundedBox(0.4), sole, [0, 0.075, 0.0], [0, 0, 0], [0.11, 0.315, 0.03]);                                      // sole
+    add(h, roundedBox(0.4), pink, [0, 0.195, -0.045], [0, 0, 0], [0.108, 0.07, 0.07]);                                  // toe cap
+    add(h, box(), dark, [0, 0.105, -0.101], [0, 0, 0], [0.06, 0.12, 0.012]);                                            // tongue/laces
+    for (const sx of [-1, 1]) add(h, box(), pink, [sx * 0.053, 0.06, -0.06], [0, 0, 0], [0.01, 0.15, 0.03]);           // side stripes
+  }
 }
 
+// holder rot/pos are per weapon: the weapon's +Y (barrel / bar / bat length) sits on the wrist's local axes.
 const DRESS = {
   biker(a) {
-    a.model.scale.x *= 1.22; a.model.scale.z *= 1.12; a.model.scale.y *= 1.04; // burly
+    a.model.scale.x *= 1.12; a.model.scale.z *= 1.1; a.model.scale.y *= 1.03; // burly, taller than the rest
     const h = holder(a, 'Head'); if (h) { bandana(h); shades(h, '#0a0a10', '#0a0a10', 1.6); }
-    const w = holder(a, a.hand, { pos: [0, 0.05, 0], rot: [1.9, 0, 0], scale: 1.15 }); if (w) chainsaw(w);
+    const w = holder(a, a.hand, WEAPON.biker); if (w) chainsaw(w);
   },
   mallCop(a) {
-    const h = holder(a, 'Head'); if (h) { copCap(h); shades(h, '#4a5a68', '#e8c040', 1.5, true); moustache(h); }
-    const w = holder(a, a.hand, { scale: 1.0 }); if (w) shotgun(w);
+    // the Worker body already has a moustache (and its hard hat was dropped at build time): cap + aviators only
+    const h = holder(a, 'Head'); if (h) { copCap(h); shades(h, '#4a5a68', '#e8c040', 1.5, true); }
+    const w = holder(a, a.hand, WEAPON.mallCop); if (w) shotgun(w);
   },
   skater(a) {
-    const w = holder(a, a.hand, { rot: [2.1, 0, 0], scale: 1.1 }); if (w) spikedBat(w);
+    const h = holder(a, 'Head'); if (h) backCap(h);
+    highTops(a);
+    const w = holder(a, a.hand, WEAPON.skater); if (w) spikedBat(w);
   },
   mallGoth(a) {
-    const w = holder(a, a.hand, { rot: [2.0, 0, 0], scale: 1.1 }); if (w) hairspray(w);
-    const t = holder(a, 'Torso', { pos: [0, 0.1, 0] }); if (t) boombox(t, { chest: 0.15, chestD: 1 });
-    const s = holder(a, 'Hips', { pos: [0, 0, 0] }); if (s) skirt(s);
+    // PunkF's ripped black legs already read as her skirt/ripped look: no extra skirt
+    const w = holder(a, a.hand, WEAPON.mallGoth); if (w) hairspray(w);
+    const t = holder(a, 'Torso', { pos: [0, 0.02, 0] }); if (t) boombox(t, { chest: 0.1, chestD: 1 });
   },
 };
 
 export function dressSurvivor(actor, cls) {
-  actor.hand = 'Middle1.L'; // the kit's own weapons hang off this bone
+  actor.hand = 'Wrist.R'; // the Modular clips swing the right arm for guns, swords and punches
   measureHead(actor);
   DRESS[cls](actor);
 }
