@@ -57,3 +57,10 @@ arcade-announcer treatment with ffmpeg. Regenerate them with `tools/voice-lines.
 `tools/build-voice.py` (instructions at the top of that file) after changing any line.
 
 No assets from other games (art, models, audio, levels) are used.
+
+## Music and sound
+
+All music is **original to this project**: it is composed as data in `src/music-data.js` and
+synthesized live with Web Audio by `src/music.js` (no samples, no recordings, nothing
+downloaded). The sound effects in `src/audio.js` are synthesized the same way. No third-party
+audio is included.
