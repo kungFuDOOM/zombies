@@ -104,6 +104,44 @@ export const sfx = {
   exit() { [262, 330, 392, 523, 659, 784].forEach((f, i) => tone(f, 0.15, { type: 'triangle', vol: 0.12, delay: i * 0.08 })); },
   join() { tone(659, 0.08, { vol: 0.1 }); tone(988, 0.15, { vol: 0.1, delay: 0.08 }); },
   select() { tone(880, 0.05, { type: 'triangle', vol: 0.1 }); },
+  // The Deep-Fry Butcher's roar: a rough, rumbling growl (detuned saws with a fast wobble through a
+  // sweeping low-pass), a hiss of frying oil, and a sub-bass thump. All synthesized here.
+  roar() {
+    if (!ctx || muted || !throttle('roar', 600)) return;
+    const t0 = ctx.currentTime, dur = 1.5;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(0.5, t0 + 0.12);
+    out.gain.setValueAtTime(0.5, t0 + 0.7);
+    out.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.Q.value = 6;
+    lp.frequency.setValueAtTime(260, t0);
+    lp.frequency.exponentialRampToValueAtTime(1500, t0 + 0.35);
+    lp.frequency.exponentialRampToValueAtTime(320, t0 + dur);
+    const shaper = ctx.createWaveShaper(); // grit
+    const curve = new Float32Array(256);
+    for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(x * 3); }
+    shaper.curve = curve;
+    lp.connect(shaper).connect(out).connect(master);
+    const wob = ctx.createOscillator(); // the throat's rattle
+    const wobAmt = ctx.createGain();
+    wob.frequency.value = 26; wobAmt.gain.value = 14;
+    wob.connect(wobAmt);
+    for (const [mult, type] of [[1, 'sawtooth'], [1.51, 'sawtooth'], [0.5, 'square']]) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(95 * mult, t0);
+      o.frequency.linearRampToValueAtTime(150 * mult, t0 + 0.3);
+      o.frequency.exponentialRampToValueAtTime(58 * mult, t0 + dur);
+      wobAmt.connect(o.frequency);
+      o.connect(lp);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    }
+    wob.start(t0); wob.stop(t0 + dur + 0.05);
+    noise(dur, { vol: 0.35, freq: 1800 });
+    tone(48, 0.5, { type: 'sine', vol: 0.4, slide: 30 });
+  },
   boss() { tone(70, 1.2, { type: 'sawtooth', vol: 0.25, slide: 40 }); noise(1.2, { vol: 0.2, freq: 300 }); },
 };
 

@@ -17,24 +17,24 @@ const CSS = `
   border: 2px solid rgba(255,230,170,0.35); background: rgba(0,0,0,0.18); display: none; pointer-events: none; }
 #touch .knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
   background: rgba(255,220,140,0.45); border: 2px solid rgba(255,240,200,0.7); }
-#touch .hint { position: absolute; left: 6%; bottom: 8%; color: rgba(255,230,170,0.45); font: bold 13px sans-serif; pointer-events: none; }
+#touch .hint { position: absolute; left: max(6%, env(safe-area-inset-left)); bottom: max(8%, env(safe-area-inset-bottom)); color: rgba(255,230,170,0.45); font: bold 13px sans-serif; pointer-events: none; }
 #touch .btn { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; pointer-events: auto;
   font: bold 13px 'Trebuchet MS', sans-serif; color: #fff; text-shadow: 0 1px 2px #000; border: 2px solid rgba(255,255,255,0.55); }
 #touch .btn.down { filter: brightness(1.6); transform: scale(0.93); }
 #touch .btn.pulse { animation: tpulse 0.5s ease-in-out 6 alternate; }
 @keyframes tpulse { from { box-shadow: 0 0 0 0 rgba(255,255,255,0.9); } to { box-shadow: 0 0 0 16px rgba(255,255,255,0); transform: scale(1.12); } }
 #touch .face { font-size: 26px; }
-#touch .attack { width: 92px; height: 92px; right: calc(5% + 58px); bottom: 10%; background: rgba(40,170,50,0.6); font-size: 32px; }
-#touch .magic { width: 64px; height: 64px; right: 5%; bottom: calc(10% + 76px); background: rgba(225,40,40,0.6); }
-#touch .turbo { width: 64px; height: 64px; right: calc(5% + 144px); bottom: calc(10% + 76px); background: rgba(30,110,230,0.6); }
-#touch .ybtn { width: 64px; height: 64px; right: calc(5% + 72px); bottom: calc(10% + 142px); background: rgba(240,190,20,0.65); }
-#touch.menu .face { opacity: 0.4; transform: scale(0.7); }
-#touch.menu .btn.down { transform: scale(0.62); }
-#touch.hidden .face, #touch.hidden .hint { display: none; }
-#touch .small { width: 46px; height: 46px; top: 10px; font-size: 18px; background: rgba(0,0,0,0.35); }
-#touch .pause { right: 12px; }
-#touch .mute { right: 66px; }
-#rotate { position: fixed; inset: 0; z-index: 20; display: none; background: #000; color: #f2c14e; font: bold 22px Georgia, serif;
+#touch .attack { width: 92px; height: 92px; right: max(calc(5% + 58px), env(safe-area-inset-right)); bottom: max(10%, env(safe-area-inset-bottom)); background: rgba(40,170,50,0.6); font-size: 32px; }
+#touch .magic { width: 64px; height: 64px; right: max(5%, env(safe-area-inset-right)); bottom: max(calc(10% + 76px), env(safe-area-inset-bottom)); background: rgba(225,40,40,0.6); }
+#touch .turbo { width: 64px; height: 64px; right: max(calc(5% + 144px), env(safe-area-inset-right)); bottom: max(calc(10% + 76px), env(safe-area-inset-bottom)); background: rgba(30,110,230,0.6); }
+#touch .ybtn { width: 64px; height: 64px; right: max(calc(5% + 72px), env(safe-area-inset-right)); bottom: max(calc(10% + 142px), env(safe-area-inset-bottom)); background: rgba(240,190,20,0.65); }
+#touch.hidden .zone, #touch.hidden .face, #touch.hidden .hint, #touch.hidden .small { display: none; }
+#touch.paused .zone, #touch.paused .face, #touch.paused .hint, #touch.paused .mute { display: none; }
+#touch.paused .pause { width: 64px; height: 64px; font-size: 26px; background: rgba(240,190,20,0.65); }
+#touch .small { width: 46px; height: 46px; top: max(10px, env(safe-area-inset-top)); font-size: 18px; background: rgba(0,0,0,0.35); }
+#touch .pause { right: max(12px, env(safe-area-inset-right)); }
+#touch .mute { right: max(66px, calc(env(safe-area-inset-right) + 54px)); }
+#rotate { position: fixed; inset: 0; z-index: 20; display: none; pointer-events: auto; cursor: pointer; background: #000; color: #f2c14e; font: bold 22px Georgia, serif;
   flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; }
 #rotate small { margin-top: 28px; color: #b8a888; font: 15px sans-serif; text-decoration: underline; }
 @media (orientation: portrait) { body.handheld:not(.rotate-ok) #rotate { display: flex; } }
@@ -65,19 +65,31 @@ export class TouchControls {
     const rotate = document.createElement('div');
     rotate.id = 'rotate';
     rotate.innerHTML = 'Turn your phone sideways to play<small>or tap here to play anyway</small>';
-    rotate.addEventListener('pointerdown', (e) => { e.preventDefault(); document.body.classList.add('rotate-ok'); });
+    const dismiss = (e) => { e.preventDefault(); document.body.classList.add('rotate-ok'); };
+    rotate.addEventListener('pointerdown', dismiss);
+    rotate.addEventListener('click', dismiss);
     document.body.appendChild(rotate);
     if (IS_HANDHELD) document.body.classList.add('handheld');
     this.root = root;
     this.stickEl = root.querySelector('.stick');
     this.knobEl = root.querySelector('.knob');
     this.hintEl = root.querySelector('.hint');
+    this.pauseEl = root.querySelector('.pause');
+    this.setMode('hidden'); // nothing on screen until a state asks for it
 
-    const show = () => {
+    // show the controls (no gesture needed: a phone has them from the start)
+    const activate = () => {
       if (this.active) return;
       this.active = true;
       root.classList.add('on');
       document.body.classList.add('touching');
+    };
+    // a real touch: also report the first one once (sound and fullscreen need a user gesture)
+    let fired = false;
+    const show = () => {
+      activate();
+      if (fired) return;
+      fired = true;
       onFirstTouch(IS_HANDHELD);
     };
     const hide = () => {
@@ -90,7 +102,8 @@ export class TouchControls {
       for (const b of Object.keys(this.held)) this.held[b] = false;
     };
     window.addEventListener('touchstart', show, { passive: true });
-    if (IS_HANDHELD) show();
+    window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') show(); }, true);
+    if (IS_HANDHELD) activate();
     // a touchscreen laptop: typing on the keyboard puts the on-screen controls away
     else window.addEventListener('keydown', hide);
     // keep the page from scrolling, zooming or bouncing
@@ -146,11 +159,15 @@ export class TouchControls {
     }
   }
 
-  // 'play' keeps the full joystick and diamond; 'menu' shrinks and fades the face buttons
-  // (they still work); 'hidden' removes them so titles and cutscenes stay readable.
+  // 'play' shows the joystick and diamond; 'paused' shows only a single resume button;
+  // anything else ('hidden': titles, menus, cutscenes) shows nothing, and menus are tapped directly.
   setMode(mode) {
-    this.root.classList.toggle('menu', mode === 'menu');
-    this.root.classList.toggle('hidden', mode === 'hidden');
+    const paused = mode === 'paused', play = mode === 'play';
+    this.root.classList.toggle('paused', paused);
+    this.root.classList.toggle('hidden', !play && !paused);
+    this.pauseEl.textContent = paused ? '▶' : 'II';
+    this.pauseEl.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+    if (!play) { this.stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 }; this.stickEl.style.display = 'none'; }
   }
 
   // Make a button throb for a few seconds to draw the eye to it.

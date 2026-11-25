@@ -207,7 +207,7 @@ export class Game {
     });
     this.camX = this.camTargetX(); this.camY = this.camTargetY();
     this.updateFlow();
-    if (L.info.isBoss) sfx.boss();
+    if (L.info.isBoss) { sfx.boss(); sfx.roar(); }
   }
 
   spawnPoint(i) {

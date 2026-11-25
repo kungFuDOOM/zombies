@@ -73,6 +73,7 @@ function phaseChange(g, e, ph) {
   e.speed = e.baseSpeed * (ph === 3 ? 1.3 : 1.12);
   g.shake = Math.max(g.shake, 14);
   g.flash = 0.5;
+  sfx.roar();
   sfx.explode();
   g.text(e.x, e.y - 60, ph === 3 ? 'DEEP-FRIED FURY!' : 'HOT OIL!', '#ff6040', 2);
   g.burst(e.x, e.y, '#ff6040', 40, 220);

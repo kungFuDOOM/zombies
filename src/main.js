@@ -16,7 +16,7 @@ import { Renderer3D } from './render3d.js';
 import { Intro } from './intro.js';
 import { loadAssets } from './assets.js';
 import { startLineup, renderLineup, lineupActive } from './lineup.js';
-import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawIntro, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
+import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, selectCardAt, drawTouchButtons, touchButtonAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawIntro, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
 import { unlockedClasses, loadSave, writeSave, newSave, hasProgress, isUnlocked, levelNumber, nextStage, completeLevel, SHOP, buy, STORY, wingOpen, REALMS } from './campaign.js';
 import { levelInfo, WINGS } from './level.js';
 import { applyChoice, resetWing1, writeStory, recap, hubRayPresent } from './story.js';
@@ -74,6 +74,28 @@ window.addEventListener('pointerdown', (e) => {
 }, true);
 let game = null;
 let state = 'loading';
+const touching = () => document.body.classList.contains('touching');
+// On-canvas buttons for touch screens (the A/B/X/Y diamond is hidden on every menu).
+function touchButtons() {
+  if (!touching()) return [];
+  const back = (label) => ({ id: 'back', label, x: 16, y: 16, w: 150, h: 44 });
+  const bottom = (id, label) => ({ id, label, x: VIEW_W / 2 - 150, y: VIEW_H - 66, w: 300, h: 46 });
+  switch (state) {
+    case 'story': return [back('SKIP')];
+    case 'select': case 'realm': return [back('BACK')];
+    case 'shop': return [back('DONE')];
+    case 'confirm': return [
+      { id: 'yes', label: 'START OVER', x: VIEW_W / 2 - 250, y: 440, w: 230, h: 52 },
+      { id: 'no', label: 'KEEP MY GAME', x: VIEW_W / 2 + 20, y: 440, w: 230, h: 52 },
+    ];
+    case 'gameover': return [bottom('back', 'RETREAT TO THE HUB')];
+    case 'paused': return game && !(net && net.role === 'guest') ? [bottom('quit', game.level && game.level.tutorial ? 'SKIP ORIENTATION' : 'SAVE & QUIT TO TITLE')] : [];
+    default: return [];
+  }
+}
+// The on-canvas button tapped this frame, if any; screenTap() is a tap on bare screen (touch only).
+const tapBtn = () => { const b = touchButtons(); return b.length ? taps.map((t) => touchButtonAt(b, t.x, t.y)).find(Boolean) || null : null; };
+const screenTap = () => touching() && taps.length > 0 && !tapBtn();
 let loadProgress = 0;
 let loadError = null;
 loadAssets((p) => (loadProgress = p)).then(() => {
@@ -156,7 +178,7 @@ function setState(s) {
   if (s === 'stats' && recordsTab === 3) loadGlobal();
   if (s === 'gameover' || s === 'recap') offerPending = true;
   state = s; stateT = 0;
-  if (input.touch) input.touch.setMode(s === 'play' || s === 'paused' ? 'play' : s === 'title' || s === 'cutscene' || s === 'intro' ? 'hidden' : 'menu');
+  if (input.touch) input.touch.setMode(s === 'play' ? 'play' : s === 'paused' ? 'paused' : 'hidden'); // menus are tapped on the canvas itself
 }
 
 // A second player on the same keyboard joins with the 2 key: player 1 keeps WASD (and the
@@ -209,8 +231,8 @@ function updateStory(dt) {
   story.t += dt;
   const line = story.lines[story.idx];
   const shown = Math.floor(story.t * 45);
-  const any = (b) => input.firstPressed(b) || (b === 'attack' && input.anyStart());
-  if (anyBack()) { stopVoice(); story.next(); return; }
+  const any = (b) => input.firstPressed(b) || (b === 'attack' && (input.anyStart() || screenTap()));
+  if (anyBack() || tapBtn() === 'back') { stopVoice(); story.next(); return; }
   if (any('attack')) {
     if (shown < line.length) { story.t = line.length / 45 + 0.01; return; }
     story.idx++;
@@ -327,8 +349,9 @@ function updateRecords() {
 
 function updateConfirm() {
   // wiping the save: the host's own players only
-  if (input.firstPressed('attack', [...input.remote.keys()])) { save = newSave(); writeSave(save); toast = { text: 'A new shift begins', t: 2, local: true }; setState('title'); }
-  else if (input.sources().some((id) => !isNet(id) && backPressed(id))) setState('title');
+  const tb = tapBtn();
+  if (tb === 'yes' || input.firstPressed('attack', [...input.remote.keys()])) { save = newSave(); writeSave(save); toast = { text: 'A new shift begins', t: 2, local: true }; setState('title'); }
+  else if (tb === 'no' || input.sources().some((id) => !isNet(id) && backPressed(id))) setState('title');
 }
 
 // ---------- hero select ----------
@@ -345,6 +368,26 @@ function updateSelect(dt) {
     const hit = selectArrowAt(t.x, t.y);
     const s = hit && slots[hit.slot];
     if (s && !s.ready) { initAudio(); cycleClass(s, hit.dir); countdown = null; }
+    else if (!hit && touching()) { // touch: tap the middle of a card to join / ready up / un-ready
+      const ci = selectCardAt(t.x, t.y);
+      if (ci < 0 || tapBtn()) continue;
+      initAudio();
+      const c = slots[ci];
+      if (!c) {
+        if (!usedSources().includes('kb') && !slots.some((q) => q && q.source === 'kb1')) {
+          slots[ci] = { source: 'kb', cls: nextFreeClass(slots.filter(Boolean).map((q) => q.cls)), ready: false };
+          sfx.join(); countdown = null;
+        }
+      } else if (!isNet(c.source)) {
+        c.ready = !c.ready; countdown = null;
+        if (c.ready) { sfx.join(); say(CLASSES_NAME(c.cls), `pick${ci}`, 500); }
+      }
+    }
+  }
+  if (tapBtn() === 'back') {
+    if (slots.some((q) => q && q.ready)) { for (const q of slots) if (q) q.ready = false; countdown = null; }
+    else { for (let i = 0; i < slots.length; i++) slots[i] = null; unsplitKeyboard(slots); setState('title'); }
+    return;
   }
   const full = slots.filter(Boolean).length >= MAX_PLAYERS;
   if (!full && splitKeyboard(slots)) {
@@ -473,7 +516,7 @@ function updateRealmPick() {
   }
   if (partyPressed('up')) { realmPick.realm = Math.max(0, realmPick.realm - 1); sfx.select(); }
   if (partyPressed('down')) { realmPick.realm = Math.min(REALMS - 1, realmPick.realm + 1); sfx.select(); }
-  if (partyBack()) { setState('play'); return; }
+  if (partyBack() || tapBtn() === 'back') { setState('play'); return; }
   if (enter || partyPressed('attack')) {
     const { realm } = realmPick;
     if (!wingOpen(realm)) { sfx.hurt(); toast = { text: `${WINGS[realm].name}: LOCKED. Coming soon.`, t: 2.2 }; return; }
@@ -884,7 +927,7 @@ function updatePlay(dt) {
 }
 
 function updateLevelClear() {
-  if (stateT > 1 && (input.firstPressed('attack') || stateT > 8)) {
+  if (stateT > 1 && (input.firstPressed('attack') || screenTap() || stateT > 8)) {
     for (const p of game.allPlayers()) {
       if (!p.alive) { p.alive = true; p.hp = Math.floor(p.def.hp / 2); }
     }
@@ -895,7 +938,7 @@ function updateLevelClear() {
 
 // The "Your Choices" recap after the wing's boss: attack to return to the Security Room.
 function updateRecap() {
-  if (!promptHeld && stateT > 1.2 && (input.firstPressed('attack') || input.anyStart() || input.key('Space') || input.key('Enter'))) {
+  if (!promptHeld && stateT > 1.2 && (input.firstPressed('attack') || input.anyStart() || screenTap() || input.key('Space') || input.key('Enter'))) {
     for (const p of game.allPlayers()) { if (!p.alive) { p.alive = true; p.hp = Math.floor(p.def.hp / 2); } }
     persist();
     openHub();
@@ -928,6 +971,7 @@ function updateShop() {
     } else if (backPressed(p.source)) c.done = false;
     allDone = allDone && c.done;
   }
+  if (tapBtn() === 'back') for (const p of ps) if (!isNet(p.source)) (shop[p.slot] || (shop[p.slot] = { idx: 0, done: false })).done = true;
   if (allDone && stateT > 0.5) { persist(); setState('play'); }
 }
 
@@ -940,14 +984,14 @@ function shopBuy(p, c) {
 
 function updateGameOver() {
   if (stateT < 1.5 || promptHeld) return;
-  if (input.firstPressed('attack')) {
+  if (tapBtn() !== 'back' && (input.firstPressed('attack') || screenTap())) {
     // Continue: everyone revives and the level restarts, without the points scored on it.
     for (const p of game.allPlayers()) {
       p.alive = true; p.hp = p.def.hp; p.score = p.stageStart ?? p.score; p.keys = 0;
     }
     game.startLevel(game.levelNum);
     setState('play');
-  } else if (anyBack()) {
+  } else if (anyBack() || tapBtn() === 'back') {
     for (const p of game.allPlayers()) { p.alive = true; p.hp = p.def.hp; p.keys = 0; p.score = p.stageStart ?? p.score; }
     openHub();
   }
@@ -987,7 +1031,7 @@ function render() {
     drawTitle(ctx, stateT, topScores(), hasProgress(save) ? save.progress : null, !net && state === 'title', titleControls, skipCutscenes);
     if (titleFade) { if (stateT > 0.7) titleFade = false; else { ctx.fillStyle = `rgba(0,0,0,${1 - stateT / 0.7})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); } }
     if (guest) drawOverlay(ctx, `ROOM ${showCode(net.code)}`, ['Connected! Waiting for the host to start...', `Press ${btn('attack')} to join the party`], '#8fe0ff');
-    if (state === 'confirm') drawOverlay(ctx, 'NEW GAME?', ['Your saved survivors, upgrades and story choices will be lost.', '', `${btn('attack')}: start over        ${btn('back')}: keep my game`], '#ffb060');
+    if (state === 'confirm') drawOverlay(ctx, 'NEW GAME?', ['Your saved survivors, upgrades and story choices will be lost.', '', touching() ? '' : `${btn('attack')}: start over        ${btn('back')}: keep my game`], '#ffb060');
   } else if (state === 'stats') {
     r3d.renderShowcase(titleShowcase(stateT), stateT);
     drawRecords(ctx, stateT, stats.data, save.progress, save.heroes, unlockedClasses(save.progress), recordsTab, (r) => stats.isRecent(r), globalBoard, isMineRow);
@@ -1020,12 +1064,14 @@ function render() {
       controls: showControls && input.lastDevice !== 'touch' && state === 'play',
     });
     if (state === 'paused') {
-      const resume = { touch: 'Tap Y to resume', pad: 'Press Start to resume', keys: 'Press Esc to resume' }[input.lastDevice];
+      const resume = { touch: 'Tap the ▶ button to resume', pad: 'Press Start to resume', keys: 'Press Esc to resume' }[input.lastDevice];
       const quit = input.lastDevice === 'keys' ? 'Q' : btn('magic');
+      const tq = touching();
       const lines = [resume];
       if (guest) lines.push('(only the host can quit)');
+      else if (tq) lines.push(game.level.tutorial ? 'Use the button below to skip the orientation' : 'Use the button below to save and quit');
       else lines.push(game.level.tutorial ? `${quit}: skip the orientation` : `${quit}: save and quit to title`);
-      if (!guest) lines.push(`${input.lastDevice === 'keys' ? 'K' : 'Title'}: SKIP CUTSCENES — ${skipCutscenes ? 'ON (default picks: Mall Cop lockdown, save Ray)' : 'off'}`);
+      if (!guest && !tq) lines.push(`${input.lastDevice === 'keys' ? 'K' : 'Title'}: SKIP CUTSCENES — ${skipCutscenes ? 'ON (default picks: Mall Cop lockdown, save Ray)' : 'off'}`);
       if (input.lastDevice === 'keys') lines.push('M: mute   N: music   V: announcer   TAB: minimap   X: pixel size');
       drawOverlay(ctx, 'PAUSED', [...lines, `${game.info.stageName} — ${game.theme.name}`]);
     } else if (state === 'levelclear') {
@@ -1040,14 +1086,15 @@ function render() {
         const extra = r ? ` · bonus +${fmtPts(r.clear + r.time + r.flawless)}${r.flawless ? ' (no deaths!)' : ''}` : '';
         lines.push(`${p.name}: ${fmtPts(p.score)} pts${extra}`);
       }
-      if (stateT > 1) lines.push('', `Press ${btn('attack')} to enter the kitchen`);
+      if (stateT > 1) lines.push('', touching() ? 'Tap to enter the kitchen' : `Press ${btn('attack')} to enter the kitchen`);
       drawOverlay(ctx, 'FOOD COURT CLEARED', lines, '#8fe0ff');
     } else if (state === 'gameover') {
       const lines = game.allPlayers().map((p) => { const r = stats.rankOf(p); return `${p.name}: level ${p.lvl} · ${p.score} pts${r ? ` · #${r} on the leaderboard!` : ''}`; });
-      lines.push('', `${btn('attack')}: continue (restart this level)`, `${btn('back')}: retreat to the hub`);
+      if (touching()) lines.push('', 'Tap the screen: continue (restart this level)'); else lines.push('', `${btn('attack')}: continue (restart this level)`, `${btn('back')}: retreat to the hub`);
       drawOverlay(ctx, 'GAME OVER', lines, '#ff6050');
     }
   }
+  drawTouchButtons(ctx, touchButtons());
   drawStoryToasts(ctx, storyToasts);
   if (toast) {
     ctx.font = 'bold 16px sans-serif';
@@ -1122,7 +1169,7 @@ function frame(now) {
       if (input.key('Escape') || input.key('KeyP') || startPressed()) setState('play');
       // quit: Q on the keyboard (Esc resumes), B on a gamepad, B on the touch screen
       // (online guests can pause and resume, but only the host's own players can quit)
-      else if (input.key('KeyQ') || partySources().some((src) => !isNet(src) && (!isKb(src) || input.lastDevice === 'touch') && input.get(src).pressed.magic)) {
+      else if (input.key('KeyQ') || (tapBtn() === 'quit') || partySources().some((src) => !isNet(src) && (!isKb(src) || input.lastDevice === 'touch') && input.get(src).pressed.magic)) {
         if (game.level.tutorial) finishTutorial(true);
         else { persist(); game = null; setState('title'); }
       } else if (input.key('KeyK')) {

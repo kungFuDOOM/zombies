@@ -161,7 +161,7 @@ function drawPanel(ctx, g, slot) {
   outlined(ctx, `$${p.gold}`, x + PANEL_W - 12, y + 36, '#ffe070', '#000', 3);
 
   // inventory: flashbangs
-  const iy = y + 50;
+  const iy = y + 43;
   let ix = x + 150;
   // the flashbang key, as a little key cap, so players know they have one and how to use it
   const mk = btn('magic', p.source);
@@ -175,7 +175,7 @@ function drawPanel(ctx, g, slot) {
     ctx.fillText(mk.toUpperCase(), ix - 7.5, iy + 3.5);
   }
   for (let i = 0; i < Math.min(p.potions, 3); i++) drawPotionIcon(ctx, ix + i * 11, iy);
-  if (p.potions > 3) { ctx.font = `bold 10px ${SANS}`; ctx.textAlign = 'left'; outlined(ctx, `x${p.potions}`, ix + 32, iy + 4, '#8aa0ff', '#000', 2); }
+  if (p.potions > 3) { ctx.font = `bold 10px ${SANS}`; ctx.textAlign = 'left'; outlined(ctx, `x${p.potions}`, ix + 36, iy + 4, '#8aa0ff', '#000', 2); }
 
   // turbo bar
   const bx = x + 136, by = y + 62, bw = PANEL_W - 148, bh = 7;
@@ -252,10 +252,10 @@ function drawBossBar(ctx, g) {
 
 // The current lesson in the Training Grounds, in a box at the top of the screen.
 function drawTutorial(ctx, g, tut) {
-  const w = 452, x = (VIEW_W - w) / 2, y = 10;
+  const w = 456, x = (VIEW_W - w) / 2, y = 10; // clear of the P1 / P2 panels at either side
   ctx.font = `15px ${SANS}`;
-  const rows = wrap(ctx, tut.text, w - 28);
-  const h = 47 + rows.length * 19;
+  const rows = wrap(ctx, tut.text, w - 56);
+  const h = 56 + rows.length * 19;
   frame(ctx, x, y, w, h, tut.done ? '#60e060' : '#f2c14e');
   ctx.textAlign = 'center';
   ctx.font = `bold 12px ${SANS}`;
@@ -266,7 +266,7 @@ function drawTutorial(ctx, g, tut) {
   rows.forEach((r, i) => outlined(ctx, r, VIEW_W / 2, y + 56 + i * 19, '#f4ead0', '#000', 3));
   if (g.banner && g.banner.t > 0) {
     // the level-name banner still shows, lower down, when training starts
-    drawBanner(ctx, g);
+    drawBanner(ctx, g, y + h);
   }
 }
 
@@ -311,13 +311,13 @@ function drawControlsBar(ctx, maxW) {
   }
 }
 
-function drawBanner(ctx, g) {
+function drawBanner(ctx, g, top = 0) {
   if (!g.banner) return;
   // fades out over its last half second, and sits near the top so it stays off the play area
   const a = Math.min(1, g.banner.t / 0.5) * 0.85;
   ctx.globalAlpha = Math.max(0, a);
   ctx.textAlign = 'center';
-  const y = 96; // below the boss health bar (y 8 to 48), still well above the play area
+  const y = Math.max(96, top + 58); // below the boss health bar (y 8 to 48), still well above the play area
   const grad = ctx.createLinearGradient(0, y - 46, 0, y + 30);
   grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(0.5, 'rgba(0,0,0,0.55)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grad;
@@ -582,6 +582,35 @@ export function selectArrowAt(x, y) {
   return null;
 }
 
+// Which hero-select card (0-3) a tap at (x, y) lands on, or -1.
+export function selectCardAt(x, y) {
+  for (let s = 0; s < MAX_PLAYERS; s++) {
+    const cx = SEL_X0 + s * (SEL_W + SEL_GAP);
+    if (x >= cx && x <= cx + SEL_W && y >= SEL_Y && y <= SEL_Y + SEL_H) return s;
+  }
+  return -1;
+}
+
+// On-canvas buttons for touch screens, where the Xbox face buttons are hidden on menus.
+// Each is { id, label, x, y, w, h }; main.js decides which ones a screen has.
+export function drawTouchButtons(ctx, btns) {
+  for (const b of btns) {
+    ctx.save();
+    roundRect(ctx, b.x, b.y, b.w, b.h, 8);
+    ctx.fillStyle = 'rgba(10,6,28,0.82)';
+    ctx.fill();
+    ctx.strokeStyle = '#f2c14e'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.font = `bold 16px ${SANS}`;
+    outlined(ctx, b.label, b.x + b.w / 2, b.y + b.h / 2 + 6, '#ffe9a8', '#000', 3);
+    ctx.restore();
+  }
+}
+export function touchButtonAt(btns, x, y) {
+  const b = btns.find((q) => x >= q.x - 6 && x <= q.x + q.w + 6 && y >= q.y - 6 && y <= q.y + q.h + 6);
+  return b ? b.id : null;
+}
+
 export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -593,7 +622,7 @@ export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
   outlined(ctx, 'CHOOSE YOUR SURVIVOR', VIEW_W / 2, 66, tg, '#1a0a00', 6);
   ctx.font = `13px ${SANS}`;
   const help = document.body.classList.contains('touching')
-    ? 'Tap ◀ ▶ to change survivor · ATTACK: ready · FLASHBANG: back'
+    ? 'Tap ◀ ▶ to change survivor · tap the middle of the card: ready'
     : `Left/Right or click ◀ ▶: choose · ${btn('attack')}: ready · ${btn('back')}: back`;
   outlined(ctx, help, VIEW_W / 2, 92, '#e0d4b8', '#000', 3);
 
@@ -621,9 +650,9 @@ export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
       ctx.font = `12px ${SANS}`;
       wrap(ctx, pd.blurb, SEL_W - 24).slice(0, 2).forEach((ln, li) => outlined(ctx, ln, x + SEL_W / 2, y + 326 + li * 14, '#c8b890', '#000', 3));
       ctx.font = `bold 15px ${SANS}`;
-      if (Math.floor(time * 2) % 2) outlined(ctx, 'PRESS A TO JOIN', x + SEL_W / 2, y + 360, '#e8d8a8', '#000', 3);
+      if (Math.floor(time * 2) % 2) outlined(ctx, document.body.classList.contains('touching') ? 'TAP TO JOIN' : 'PRESS A TO JOIN', x + SEL_W / 2, y + 360, '#e8d8a8', '#000', 3);
       ctx.font = `12px ${SANS}`;
-      outlined(ctx, 'on a gamepad,', x + SEL_W / 2, y + 384, '#a89878', '#000', 2);
+      outlined(ctx, document.body.classList.contains('touching') ? '' : 'on a gamepad,', x + SEL_W / 2, y + 384, '#a89878', '#000', 2);
       if (!document.body.classList.contains('touching')) outlined(ctx, 'or press 2 to share the keyboard', x + SEL_W / 2, y + 402, '#a89878', '#000', 2);
       continue;
     }
@@ -786,7 +815,7 @@ export function drawRealmPick(ctx, time, progress, pick) {
   });
   ctx.textAlign = 'center';
   ctx.font = `13px ${SANS}`;
-  const help = device === 'touch' ? `Tap a wing, tap again to enter     ${btn('back')}: back` : `Up/Down: choose     ${btn('attack')}: enter     ${btn('back')}: back`;
+  const help = device === 'touch' ? 'Tap a wing, tap again to enter' : `Up/Down: choose     ${btn('attack')}: enter     ${btn('back')}: back`;
   outlined(ctx, help, VIEW_W / 2, MD_Y + 62 + WINGS.length * (MD_ROW + 6) + 30, '#e0d4f8', '#000', 3);
 }
 
@@ -1302,16 +1331,20 @@ function drawChapterCard(ctx, c, time) {
     outlined(ctx, 'GUARDIAN', VIEW_W / 2 + 3, cy - 52, '#ff7a50', '#000', 3);
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
-  ctx.translate(VIEW_W / 2, cy);
-  ctx.scale(scale, scale);
   ctx.shadowColor = c0;
   ctx.shadowBlur = 24 + Math.sin(time * 9) * 5;
   const px = c.boss ? 62 : 54;
   ctx.font = `bold ${px}px ${SERIF}`;
   // type that tracks in from wide: letters settle together
-  if ('letterSpacing' in ctx) ctx.letterSpacing = `${Math.round((1 - easeOut(age / 0.7)) * 14 + 1)}px`;
+  const track = 'letterSpacing' in ctx ? Math.round((1 - easeOut(age / 0.7)) * 14 + 1) : 0;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${track}px`;
   let w = ctx.measureText(c.title).width;
+  // size the type so it fits settled (the measure includes the tracking), then cap the slam
+  // scale so the title stays inside the screen even at the start of the slam
   if (w > VIEW_W - 120) { ctx.font = `bold ${Math.floor(px * (VIEW_W - 120) / w)}px ${SERIF}`; w = ctx.measureText(c.title).width; }
+  const fitScale = Math.min(scale, (VIEW_W - 48) / Math.max(1, w));
+  ctx.translate(VIEW_W / 2 + track / 2 * fitScale, cy); // the trailing letter gap would pull it left
+  ctx.scale(fitScale, fitScale);
   const fill = ctx.createLinearGradient(0, -px * 0.8, 0, px * 0.2);
   fill.addColorStop(0, '#ffffff'); fill.addColorStop(0.55, c.boss ? '#ffe9b0' : '#ffe0f4'); fill.addColorStop(1, c.boss ? '#ff9a30' : '#ff8ad0');
   outlined(ctx, c.title, 0, 0, fill, c0, 8);
@@ -1452,7 +1485,7 @@ export function drawStoryToasts(ctx, toasts) {
     ctx.globalAlpha = Math.max(0, Math.min(1, a));
     ctx.font = `bold 17px ${SERIF}`;
     const w = ctx.measureText(t.text).width + 36;
-    const x = 18, y = 46 + i * 44;
+    const x = 18, y = 98 + i * 44; // below the P1 panel (y 10 to 88)
     ctx.fillStyle = 'rgba(10,6,28,0.84)';
     roundRect(ctx, x, y, w, 34, 5);
     ctx.fill();

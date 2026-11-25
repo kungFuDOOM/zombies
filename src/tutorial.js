@@ -25,13 +25,13 @@ const STEPS = [
   {
     title: 'ATTACK',
     button: 'attack',
-    text: (b) => `Press ${b('attack')} to fight back. Every survivor fights a little differently. Take down the walkers!`,
+    text: (b, dev) => `${dev === 'touch' ? 'Tap' : 'Press'} ${b('attack')} to fight back. Every survivor fights a little differently. Take down the walkers!`,
     start: (g) => { for (const [dx, dy] of [[2, -3], [3, 0], [2, 3]]) g.spawnEnemy('walker', (cx(1) + dx + 0.5) * TILE, (M + dy + 0.5) * TILE); },
     done: (g) => g.enemies.length === 0,
   },
   {
     title: 'SPAWNERS',
-    text: (b) => `Zombies keep pouring out of spawners: shutters, vents and escalators. Attack this one with ${b('attack')} until it breaks!`,
+    text: (b) => `Zombies keep pouring out of spawners: shutters, vents and escalators. Hit this one with ${b('attack')} until it breaks!`,
     start: (g) => g.addGenerator('walker', cx(2) + 3, M),
     done: (g) => g.gens.length === 0 && g.enemies.length === 0,
   },
@@ -44,7 +44,7 @@ const STEPS = [
   {
     title: 'FLASHBANG',
     button: 'magic',
-    text: (b) => `Too many zombies? Grab a flashbang and press ${b('magic')} to throw it. It hits every zombie on the screen!`,
+    text: (b, dev) => `Too many zombies? Grab a flashbang and ${dev === 'touch' ? 'tap' : 'press'} ${b('magic')} to throw it. It hits every zombie on the screen!`,
     start: (g) => {
       for (let i = 0; i < 12; i++) {
         const a = (i / 12) * Math.PI * 2;
