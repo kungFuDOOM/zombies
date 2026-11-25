@@ -62,7 +62,7 @@ export function drawCine(ctx, v, time, h) {
 }
 
 // The dialogue box: dark translucent panel in the game's style, speaker name in their colour, wrapped text typed on.
-function drawDialog(ctx, v, barPx, s, h) {
+export function drawDialog(ctx, v, barPx, s, h) {
   const sub = v.sub;
   const font = clamp(17 / s, 20, 46);
   const lineH = font * 1.28, pad = font * 0.7, maxW = Math.min(W - 80, font * 30) - pad * 2;
@@ -71,7 +71,14 @@ function drawDialog(ctx, v, barPx, s, h) {
   ctx.font = `${font}px ${h.SANS}`;
   const lines = wrapLines(ctx, sub.full, maxW);
   const nameH = font * 0.95;
-  const boxW = Math.min(W - 60, Math.max(...lines.map((l) => ctx.measureText(l).width)) + pad * 2 + 4);
+  const textW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  // a long name over a short line ("THE DEEP-FRY BUTCHER" / "Welcome!") must widen the box too
+  ctx.font = `bold ${font * 0.78}px ${h.SANS}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${font * 0.12}px`;
+  const nameW = ctx.measureText(sub.speaker.toUpperCase()).width;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.font = `${font}px ${h.SANS}`;
+  const boxW = Math.min(W - 60, Math.max(textW, nameW) + pad * 2 + 8);
   const boxH = pad * 2 + nameH + lines.length * lineH;
   const x = (W - boxW) / 2, y = H - barPx - 16 - boxH;
   // panel

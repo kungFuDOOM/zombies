@@ -115,18 +115,17 @@ export function buy(p, item) {
 
 export const STORY = {
   intro: [
-    'Black Friday. The Mall of the Dead was supposed to open at six.',
-    'At 4:59 AM, somebody opened the doors. What came in was not shopping.',
-    'Four survivors barricaded the Security Room: a Biker, a Mall Cop, a Skater and a Mall Goth.',
-    'First stop: the Food Court. Every choice you make will be remembered.',
+    'Black Friday, 1994. Brightwater Commons opens at six.',
+    'At 4:59 AM, somebody opened it early.',
+    'Four strangers. Six wings. One very polite voice on the PA.',
   ],
   realms: [
-    ['Fryer smoke, sticky tile, and a fountain full of drool.', 'In the back kitchen, something is still taking orders.'],
+    ['WING 1: THE FOOD COURT. Fryer smoke, sticky tile, and a fountain full of drool.', "Porko's Carvery handed out free samples at four. Everybody who ate one is still in line, including someone you trust."],
   ],
   ending: [
-    'The Deep-Fry Butcher goes into his own fryer. Extra crispy.',
-    'But the Grease Main is still pumping, and it runs through every wing in the mall.',
-    "And the door log just printed who opened the mall at 4:59 AM: the Mall Cop's keycard.",
+    'Dale, the Deep-Fry Butcher, is off the clock. The fryers are cold. The Grease Main is not.',
+    "The door log doesn't lie. The keycard was his.",
+    'Pam has a list. One of you is on it.',
   ],
 };
 

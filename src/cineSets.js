@@ -289,7 +289,84 @@ export function drawFeed(c, w, hgt, t, glitch = 0.4) {
   if (Math.floor(t * 2) % 2) { c.fillStyle = '#ff3a3a'; c.beginPath(); c.arc(w - 18, hgt * 0.08, 4, 0, Math.PI * 2); c.fill(); }
 }
 
-export function buildOffice() {
+/** CCTV feed 2 (Scene 1): the escalator, walkers being dragged into the comb plate at the bottom. */
+export function drawEscalatorFeed(c, w, hgt, t) {
+  c.fillStyle = '#12362a'; c.fillRect(0, 0, w, hgt);
+  const top = hgt * 0.14, bot = hgt * 0.84;
+  c.fillStyle = '#3a8a68'; c.beginPath(); c.moveTo(w * 0.4, top); c.lineTo(w * 0.62, top); c.lineTo(w * 0.86, bot); c.lineTo(w * 0.14, bot); c.fill();
+  c.strokeStyle = '#7ad8ac'; c.lineWidth = 3;
+  for (let i = 0; i < 12; i++) { const k = ((i / 12 + t * 0.22) % 1), y = top + (bot - top) * k * k, hw = w * (0.11 + 0.25 * k * k); c.beginPath(); c.moveTo(w * 0.51 - hw, y); c.lineTo(w * 0.51 + hw, y); c.stroke(); }
+  c.lineWidth = 6; c.strokeStyle = '#2f7a5c';
+  c.beginPath(); c.moveTo(w * 0.4, top); c.lineTo(w * 0.12, bot); c.moveTo(w * 0.62, top); c.lineTo(w * 0.88, bot); c.stroke();
+  c.fillStyle = '#6ae0a8'; for (let x = w * 0.14; x < w * 0.86; x += 11) c.fillRect(x, bot, 5, 10);   // the comb plate's teeth
+  // the one going under: arms up, sinking and jerking; two more shambling down after him
+  const man = (x, y, s, arms, sink) => {
+    c.save(); c.beginPath(); c.rect(0, 0, w, y + 2); c.clip();
+    c.fillStyle = '#020a07'; c.strokeStyle = '#020a07'; c.lineCap = 'round';
+    c.translate(x, y + sink);
+    c.beginPath(); c.arc(0, -s * 0.92, s * 0.17, 0, Math.PI * 2); c.fill();
+    c.fillRect(-s * 0.2, -s * 0.76, s * 0.4, s * 0.5); c.fillRect(-s * 0.17, -s * 0.3, s * 0.12, s * 0.32); c.fillRect(s * 0.05, -s * 0.3, s * 0.12, s * 0.32);
+    c.lineWidth = s * 0.11; c.beginPath(); c.moveTo(-s * 0.18, -s * 0.7); c.lineTo(-s * 0.46, -s * (0.7 + arms * 0.45)); c.moveTo(s * 0.18, -s * 0.7); c.lineTo(s * 0.46, -s * (0.7 + (1 - arms) * 0.45)); c.stroke();
+    c.restore();
+  };
+  man(w * 0.5, bot, hgt * 0.4, 0.5 + 0.5 * Math.sin(t * 11), hgt * 0.1 + ((t * 0.045) % 0.16) * hgt + Math.sin(t * 23) * 2);
+  man(w * 0.46 + Math.sin(t * 2) * 3, hgt * 0.55, hgt * 0.24, 0.9, 0);
+  man(w * 0.57, hgt * 0.38, hgt * 0.16, 0.7, 0);
+  for (let i = 0; i < 160; i++) { c.fillStyle = `rgba(190,255,215,${hash(i * 3 + t * 31) * 0.18})`; c.fillRect(hash(i + t * 7) * w, hash(i + 90 + t * 13) * hgt, 2, 1); }
+  c.fillStyle = 'rgba(0,0,0,0.22)'; for (let y = 0; y < hgt; y += 3) c.fillRect(0, y, w, 1);
+  c.font = `bold ${Math.round(hgt * 0.075)}px monospace`; c.fillStyle = '#9dffc8'; c.textAlign = 'left';
+  c.fillText('CAM 04  ESCALATOR', 8, hgt * 0.1);
+  c.fillText('05:09:' + String(10 + (Math.floor(t) % 50)) + ' AM', 8, hgt - 6);
+}
+
+/** CCTV feed 3 (the Wing 1 ending): the static clears. It is the Mall Cop, eyes glowing cook-yellow, swiping his card. */
+export function drawRevealFeed(c, w, hgt, t, clear = 1) {
+  const warm = clear * clear;
+  const bg = c.createRadialGradient(w * 0.5, hgt * 0.45, 8, w * 0.5, hgt * 0.5, w * 0.7);
+  bg.addColorStop(0, `rgb(${18 + warm * 130 | 0},${62 + warm * 18 | 0},${44 - warm * 24 | 0})`); bg.addColorStop(1, '#0a2018');
+  c.fillStyle = bg; c.fillRect(0, 0, w, hgt);
+  // door and keypad
+  c.fillStyle = '#174234'; c.fillRect(w * 0.04, hgt * 0.1, w * 0.24, hgt * 0.86);
+  c.fillStyle = '#0a1a14'; c.fillRect(w * 0.74, hgt * 0.36, w * 0.12, hgt * 0.22);
+  c.fillStyle = Math.sin(t * 7) > 0 ? '#c8ffb0' : '#3a8a5a'; c.fillRect(w * 0.775, hgt * 0.39, 8, 8);
+  const fx = w * 0.46 + Math.sin(t * 0.8) * 1.5;
+  // shoulders and uniform
+  c.fillStyle = '#10384a'; c.beginPath(); c.moveTo(fx - w * 0.2, hgt); c.lineTo(fx - w * 0.14, hgt * 0.6); c.lineTo(fx + w * 0.14, hgt * 0.6); c.lineTo(fx + w * 0.2, hgt); c.fill();
+  c.fillStyle = '#0a2430'; c.fillRect(fx - 3, hgt * 0.62, 6, hgt * 0.38);
+  c.fillStyle = '#e8d870'; c.beginPath(); c.arc(fx - w * 0.07, hgt * 0.72, 7, 0, Math.PI * 2); c.fill();   // the badge
+  // face, cap, moustache
+  c.fillStyle = '#7a8a64'; c.beginPath(); c.ellipse(fx, hgt * 0.42, w * 0.095, hgt * 0.18, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#0c2030'; c.fillRect(fx - w * 0.11, hgt * 0.2, w * 0.22, hgt * 0.1); c.fillRect(fx - w * 0.13, hgt * 0.285, w * 0.26, hgt * 0.035);
+  c.fillStyle = '#e8d870'; c.fillRect(fx - 5, hgt * 0.225, 10, 10);
+  c.fillStyle = '#1a140a'; c.fillRect(fx - w * 0.05, hgt * 0.5, w * 0.1, hgt * 0.028); c.fillRect(fx - w * 0.03, hgt * 0.545, w * 0.06, 3);
+  // the eyes: cook-yellow
+  for (const s of [-1, 1]) {
+    const ex = fx + s * w * 0.04, ey = hgt * 0.39;
+    const eg = c.createRadialGradient(ex, ey, 1, ex, ey, 20);
+    eg.addColorStop(0, `rgba(255,250,170,${warm})`); eg.addColorStop(0.3, `rgba(255,190,20,${warm})`); eg.addColorStop(1, 'rgba(255,120,0,0)');
+    c.fillStyle = '#061008'; c.fillRect(ex - 8, ey - 3, 16, 6);
+    c.fillStyle = eg; c.fillRect(ex - 20, ey - 20, 40, 40);
+  }
+  // the arm, swiping the card down the reader
+  const sw = (t * 0.55) % 1, hy = hgt * (0.34 + 0.2 * Math.min(1, sw * 1.6));
+  c.strokeStyle = '#10384a'; c.lineWidth = 18; c.lineCap = 'round'; c.beginPath(); c.moveTo(fx + w * 0.13, hgt * 0.68); c.lineTo(w * 0.72, hy + 8); c.stroke();
+  c.fillStyle = '#7a8a64'; c.beginPath(); c.arc(w * 0.73, hy + 6, 9, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ffb040'; c.fillRect(w * 0.735, hy - 6, 24, 15);
+  // static that clears
+  const mess = 1 - clear;
+  for (let i = 0; i < 8; i++) {
+    if (hash(Math.floor(t * 14) * 7 + i) > mess + 0.05) continue;
+    const y = hash(i + Math.floor(t * 11)) * hgt, hh = 4 + hash(i + 5) * 22, dx = (hash(i + Math.floor(t * 9)) - 0.5) * 70;
+    c.drawImage(c.canvas, 0, y, w, hh, dx, y, w, hh);
+  }
+  for (let i = 0; i < 120 + mess * 900; i++) { c.fillStyle = `rgba(190,255,215,${hash(i * 3 + t * 31) * (0.1 + mess * 0.6)})`; c.fillRect(hash(i + t * 7) * w, hash(i + 90 + t * 13) * hgt, 2 + mess * 3, 1 + mess); }
+  c.fillStyle = 'rgba(0,0,0,0.2)'; for (let y = 0; y < hgt; y += 3) c.fillRect(0, y, w, 1);
+  c.font = `bold ${Math.round(hgt * 0.07)}px monospace`; c.fillStyle = '#9dffc8'; c.textAlign = 'left';
+  c.fillText('CAM 01  FRONT DOORS', 8, hgt * 0.1);
+  c.fillText('04:59:0' + (Math.floor(t) % 10) + ' AM', 8, hgt - 8);
+}
+
+export function buildOffice({ chair = true } = {}) {
   const g = new THREE.Group(), H = { tubes: [] };
   g.position.set(OFFICE_X, 0, 0);
   const wall = lam('#1c2230'), floor = new THREE.MeshStandardMaterial({ color: '#10141e', roughness: 0.35, metalness: 0.2 });
@@ -314,7 +391,7 @@ export function buildOffice() {
   add(g, box(190, 5, 46), lam('#2a2436'), 0, 34, -30); add(g, box(190, 34, 4), lam('#1a1626'), 0, 17, -50);
   add(g, new THREE.CylinderGeometry(3, 3, 6, 10), lam('#c8c0b0'), 40, 39, -26);
   add(g, new THREE.CylinderGeometry(9, 9, 3, 14), lam('#14161e'), -50, 38, -22);
-  add(g, box(34, 4, 30), lam('#1a1a24'), 0, 28, 10); add(g, box(34, 36, 4), lam('#1a1a24'), 0, 46, 24);
+  if (chair) { add(g, box(34, 4, 30), lam('#1a1a24'), 0, 28, 10); add(g, box(34, 36, 4), lam('#1a1a24'), 0, 46, 24); }
   // rain window on the right wall
   const rainWin = canvasTex(256, 192, (c, w, h) => {
     c.fillStyle = '#0a1426'; c.fillRect(0, 0, w, h);
@@ -328,7 +405,12 @@ export function buildOffice() {
     for (const f of H.tubes) f.mat.color.copy(f.base).multiplyScalar(flicker(t, f.seed, true) * 0.55 + 0.15);
     H.rain = t;
   };
-  H.drawFeed = (t, glitch) => { drawFeed(H.feed.getContext('2d'), 320, 240, t, glitch); H.feedTex.needsUpdate = true; };
+  // mode: 'door' (the glitched door cam), 'escalator', or 'reveal' (glitch = how clear the picture has become)
+  H.drawFeed = (t, glitch, mode = 'door') => {
+    const draw = mode === 'escalator' ? drawEscalatorFeed : mode === 'reveal' ? drawRevealFeed : drawFeed;
+    draw(H.feed.getContext('2d'), 320, 240, t, glitch);
+    H.feedTex.needsUpdate = true;
+  };
   H.drawFeed(0, 0.3);
   return { group: g, h: H };
 }

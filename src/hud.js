@@ -7,7 +7,7 @@ import { hubRayLabel } from './story.js';
 import { Input } from './input.js';
 import { SHOP, priceOf, maxed } from './campaign.js';
 import { BOSS_ROSTER } from './bossRoster.js';
-import { drawCine } from './cineOverlay.js';
+import { drawCine, drawDialog } from './cineOverlay.js';
 
 const SERIF = '"Arial Black", Impact, "Trebuchet MS", sans-serif'; // arcade display type
 const SANS = '"Trebuchet MS", Verdana, sans-serif';
@@ -1219,7 +1219,7 @@ function drawGlobalBoard(ctx, time, g, isMine) {
 
 // ---------- in-game chatter ----------
 
-const BARK_COLORS = { biker: '#ff7a50', mallCop: '#6aa0ff', skater: '#50e890', mallGoth: '#d070ff', ray: '#ffb060', butcher: '#ff8a30' };
+const BARK_COLORS = { biker: '#ff7a50', mallCop: '#6aa0ff', skater: '#50e890', mallGoth: '#d070ff', ray: '#ffb060', butcher: '#ff8a30', pa: '#ffd89a' };
 const BARK_NAMES = { biker: 'BIKER', mallCop: 'MALL COP', skater: 'SKATER', mallGoth: 'MALL GOTH', ray: 'RAY' };
 
 // Short lines of squad chatter along the bottom of the screen.
@@ -1254,14 +1254,28 @@ function drawBarks(ctx, g) {
 
 const LB = 42; // default letterbox bar height (cutscenes ask for their own: see Cutscene.view)
 const CH = { x: 30, y: 504, w: 210, h: 66, gap: 10 };
-const choiceRect = (i) => ({ x: CH.x + i * (CH.w + CH.gap), y: CH.y, w: CH.w, h: CH.h });
+// CSS pixels per canvas pixel: 0.41 on a phone held upright (390 wide), 0.61 held sideways (390 tall).
+const cssScale = () => (typeof window === 'undefined' || !window.innerWidth ? 1 : Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H));
+
+// On a small screen the four choices become a 2 x 2 grid with type and buttons sized in real (CSS) pixels, so they
+// stay readable and thumb-sized; a desktop keeps the one-row bar. Both sit just above the bottom letterbox bar.
+function choiceLayout(bar = LB) {
+  const s = cssScale();
+  if (s >= 0.9) return { compact: false, s, rects: [0, 1, 2, 3].map((i) => ({ x: CH.x + i * (CH.w + CH.gap), y: CH.y, w: CH.w, h: CH.h })), x: CH.x, w: 4 * CH.w + 3 * CH.gap, top: CH.y };
+  const x = 22, gap = 10, w = (VIEW_W - x * 2 - gap) / 2;
+  const h = Math.round(Math.max(66, 41 / s));
+  const top = VIEW_H - Math.min(bar, 42) - 8 - h * 2 - gap;
+  return { compact: true, s, rects: [0, 1, 2, 3].map((i) => ({ x: x + (i % 2) * (w + gap), y: top + Math.floor(i / 2) * (h + gap), w, h })), x, w: VIEW_W - x * 2, top };
+}
 
 // Which choice (0-3) a tap at (x, y) lands on, or -1.
 export function cutChoiceAt(x, y, view) {
   if (!view || !view.choices) return -1;
+  const L = choiceLayout(view.bar);
   for (let i = 0; i < view.choices.length; i++) {
-    const r = choiceRect(i);
-    if (x >= r.x - 4 && x <= r.x + r.w + 4 && y >= r.y - 14 && y <= r.y + r.h + 6) return i;
+    const r = L.rects[i];
+    const up = L.compact ? 5 : 14, down = L.compact ? 5 : 6;
+    if (x >= r.x - 4 && x <= r.x + r.w + 4 && y >= r.y - up && y <= r.y + r.h + down) return i;
   }
   return -1;
 }
@@ -1276,11 +1290,13 @@ export function drawCutscene(ctx, v, time) {
   // letterbox: as tall as the scene asks on a desktop; a phone (390px tall) keeps the picture and the text clear
   let bar = Math.max(0, Math.min(v.bar == null ? LB : v.bar, 110));
   if (device === 'touch') bar = Math.min(bar, card ? 64 : 38);
-  // a heavy vignette so every shot falls away at the edges
+  // a heavy vignette so every shot falls away at the edges (the HD film has its own on High: only a touch more here)
+  ctx.globalAlpha = v.film ? 0.45 : 1;
   const vg0 = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.34, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.92);
   vg0.addColorStop(0, 'rgba(0,0,0,0)'); vg0.addColorStop(1, 'rgba(2,0,8,0.62)');
   ctx.fillStyle = vg0;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.globalAlpha = 1;
   // an alarm pulse around the edges (red, clean: no pattern)
   if (v.alarm) {
     const a = 0.12 + (Math.sin(time * 8) * 0.5 + 0.5) * 0.2;
@@ -1300,8 +1316,8 @@ export function drawCutscene(ctx, v, time) {
   if (v.flash > 0) { ctx.fillStyle = `rgba(255,240,230,${Math.min(0.85, v.flash * 0.8)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
   drawBars(ctx, bar);
   if (v.card) drawChapterCard(ctx, v.card, time);
-  else if (v.beat === 'line') drawDialogue(ctx, v);
-  else if (v.beat === 'choice') drawChoiceBar(ctx, v, time);
+  else if (v.beat === 'line') drawDialogue(ctx, v, bar);
+  else if (v.beat === 'choice') drawChoiceBar(ctx, v, time, bar);
   if (v.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, v.fade)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 }
 
@@ -1327,7 +1343,7 @@ function drawChapterCard(ctx, c, time) {
   const scale = 1 + (1 - slam) * (c.boss ? 0.75 : 0.4);
   ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(1, age / 0.08)) * out;
-  const cy = c.boss ? 318 : 312;
+  const cy = c.boss ? 436 : 312; // (the Butcher's sits low, so his face shows above it)
   // a dark band behind the type so it reads over any shot
   const band = ctx.createLinearGradient(0, cy - 100, 0, cy + 100);
   band.addColorStop(0, 'rgba(6,2,14,0)'); band.addColorStop(0.5, `rgba(6,2,14,${c.boss ? 0.78 : 0.7})`); band.addColorStop(1, 'rgba(6,2,14,0)');
@@ -1336,9 +1352,9 @@ function drawChapterCard(ctx, c, time) {
   const c0 = c.boss ? '#ff5a18' : '#ff2ea6', c1 = c.boss ? '#ffd040' : '#2ee6ff';
   ctx.textAlign = 'center';
   if (c.boss) { // a small red tag over the name
-    ctx.font = `bold 16px ${SANS}`;
+    ctx.font = `bold ${Math.max(16, Math.min(24, 10 / cssScale()))}px ${SANS}`;
     if ('letterSpacing' in ctx) ctx.letterSpacing = '7px';
-    outlined(ctx, 'GUARDIAN', VIEW_W / 2 + 3, cy - 52, '#ff7a50', '#000', 3);
+    outlined(ctx, 'GUARDIAN', VIEW_W / 2 + 3, cy - 56, '#ff7a50', '#000', 3);
     if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
   ctx.shadowColor = c0;
@@ -1376,8 +1392,11 @@ function drawChapterCard(ctx, c, time) {
   ctx.save();
   ctx.globalAlpha = clamp01((age - 0.35) / 0.4) * out;
   ctx.textAlign = 'center';
-  ctx.font = `bold 21px ${SANS}`;
+  const subPx = Math.max(21, Math.min(30, 12 / cssScale()));
+  ctx.font = `bold ${subPx}px ${SANS}`;
   if ('letterSpacing' in ctx) ctx.letterSpacing = '6px';
+  const subW = ctx.measureText(c.sub).width;
+  if (subW > VIEW_W - 60) { ctx.font = `bold ${Math.floor(subPx * (VIEW_W - 60) / subW)}px ${SANS}`; if ('letterSpacing' in ctx) ctx.letterSpacing = '3px'; }
   outlined(ctx, c.sub, VIEW_W / 2 + 3, cy + 58, c.boss ? '#ffd040' : '#2ee6ff', '#000', 4);
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.restore();
@@ -1394,54 +1413,47 @@ function drawChapterCard(ctx, c, time) {
   }
 }
 
-function drawDialogue(ctx, v) {
-  const x = 90, y = 474, w = VIEW_W - 180, h = 100;
-  const col = BARK_COLORS[v.who] || '#2ee6ff';
-  roundRect(ctx, x, y, w, h, 6);
-  ctx.fillStyle = 'rgba(10,6,28,0.8)';
-  ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = col;
-  ctx.stroke();
-  // the name tab
-  ctx.font = `bold 15px ${SERIF}`;
-  const nw = ctx.measureText(v.speaker).width + 30;
-  ctx.fillStyle = col;
-  roundRect(ctx, x + 14, y - 14, nw, 26, 4);
-  ctx.fill();
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#10061e';
-  ctx.fillText(v.speaker.toUpperCase(), x + 29, y + 5);
-  ctx.font = `bold 20px ${SANS}`;
-  const rows = wrap(ctx, v.full || v.text, w - 48);
-  let left = v.text.length;
-  rows.forEach((r, i) => {
-    const part = r.slice(0, Math.max(0, left));
-    left -= r.length + 1;
-    outlined(ctx, part, x + 24, y + 42 + i * 26, '#f6f0ff', '#000', 3);
-  });
-  ctx.font = `11px ${SANS}`;
+// A spoken line: the cinema toolkit's subtitle and speaker box (the same one the opening film uses), sized in CSS pixels.
+function drawDialogue(ctx, v, bar) {
+  const s = cssScale(), color = BARK_COLORS[v.who] || '#2ee6ff';
+  drawDialog(ctx, { sub: { speaker: v.speaker, color, text: v.text, full: v.full || v.text, a: 1 } }, bar, s, { SANS });
+  // how to move on, in the bottom bar's right-hand corner (under the top bar on a phone held upright, where the bars are thin)
+  const px = Math.max(11, Math.min(26, 10 / s)), upright = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.05;
+  ctx.save();
+  ctx.globalAlpha = 0.7;
   ctx.textAlign = 'right';
-  outlined(ctx, `${btn('attack')} / click: next`, x + w - 14, y + h - 8, '#9a8ac0', '#000', 2);
+  ctx.font = `${px}px ${SANS}`;
+  outlined(ctx, device === 'touch' ? 'tap: next' : `${btn('attack')} / click: next`, VIEW_W - 16, upright ? bar + px + 6 : VIEW_H - Math.max(5, (bar - px) / 2), '#b8acd8', '#000', 2);
+  ctx.restore();
 }
 
-function drawChoiceBar(ctx, v, time) {
+function drawChoiceBar(ctx, v, time, bar) {
+  const L = choiceLayout(v.bar == null ? bar : v.bar), big = L.compact, s = L.s;
+  const TH = big ? 12 : 10, ty = L.top - TH - (big ? 9 : 6);
+  // a dark translucent wash behind the whole choice block, so it reads over any shot
+  const top = ty - (big ? 70 : 48);
+  const wash = ctx.createLinearGradient(0, top - 40, 0, top + 40);
+  wash.addColorStop(0, 'rgba(6,2,16,0)'); wash.addColorStop(1, 'rgba(6,2,16,0.55)');
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, top - 40, VIEW_W, VIEW_H - bar - top + 40);
   // the prompt
+  const pf = big ? Math.round(Math.min(32, 13 / s)) : 17, ph = pf + 12;
   ctx.textAlign = 'center';
-  ctx.font = `bold 17px ${SANS}`;
-  const pw = ctx.measureText(v.prompt).width + 36;
-  ctx.fillStyle = 'rgba(10,6,28,0.78)';
-  roundRect(ctx, (VIEW_W - pw) / 2, 446, pw, 28, 5);
+  ctx.font = `bold ${pf}px ${SANS}`;
+  const pw = Math.min(VIEW_W - 24, ctx.measureText(v.prompt).width + 36);
+  const py = ty - ph - (big ? 10 : 8);
+  ctx.fillStyle = 'rgba(10,6,28,0.82)';
+  roundRect(ctx, (VIEW_W - pw) / 2, py, pw, ph, 5);
   ctx.fill();
-  outlined(ctx, v.prompt, VIEW_W / 2, 466, '#f6f0ff', '#000', 3);
-  if (v.hint) { // a small dim note under the choice buttons, clear of the question
-    ctx.globalAlpha = 0.75;
-    ctx.font = `italic 12px ${SANS}`;
-    outlined(ctx, v.hint, VIEW_W / 2, CH.y + CH.h + 22, '#ffcc33', '#000', 2);
+  outlined(ctx, v.prompt, VIEW_W / 2, py + ph / 2 + pf * 0.35, '#f6f0ff', '#000', 3);
+  if (v.hint) { // a small note: under the buttons on a desktop, over the question on a phone (the buttons fill the bottom)
+    ctx.globalAlpha = 0.85;
+    ctx.font = `italic ${big ? Math.round(Math.min(26, 10.5 / s)) : 12}px ${SANS}`;
+    outlined(ctx, v.hint, VIEW_W / 2, big ? py - 8 : CH.y + CH.h + 22, '#ffcc33', '#000', big ? 3 : 2);
     ctx.globalAlpha = 1;
   }
   // the timer bar: thick, neon, full width above the four choices, and it drains
-  const tx = CH.x, tw = 4 * CH.w + 3 * CH.gap, TH = 10, ty = CH.y - TH - 6;
+  const tx = L.x, tw = L.w;
   const frac = Math.max(0, Math.min(1, v.timerFrac));
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(tx - 2, ty - 2, tw + 4, TH + 4);
@@ -1456,32 +1468,41 @@ function drawChoiceBar(ctx, v, time) {
   ctx.restore();
   ctx.fillStyle = 'rgba(255,255,255,0.55)'; // a highlight strip so it reads as a lit tube
   ctx.fillRect(tx, ty, tw * frac, 2);
+  const lf = big ? Math.round(Math.min(32, 13.5 / s)) : 14, badge = big ? Math.round(lf * 1.25) : 22;
   v.choices.forEach((c, i) => {
-    const r = choiceRect(i);
-    roundRect(ctx, r.x, r.y, r.w, r.h, 6);
-    ctx.fillStyle = c.silence ? 'rgba(20,16,36,0.78)' : 'rgba(10,6,28,0.82)';
+    const r = L.rects[i];
+    roundRect(ctx, r.x, r.y, r.w, r.h, big ? 9 : 6);
+    ctx.fillStyle = c.silence ? 'rgba(20,16,36,0.74)' : 'rgba(10,6,28,0.78)';
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = c.silence ? '#7a7090' : '#2ee6ff';
     ctx.stroke();
     // the key badge
+    const by = big ? r.y + (r.h - badge) / 2 : r.y + 8;
     ctx.fillStyle = c.silence ? '#7a7090' : '#ff2ea6';
-    roundRect(ctx, r.x + 8, r.y + 8, 22, 22, 4);
+    roundRect(ctx, r.x + 8, by, badge, badge, 4);
     ctx.fill();
     ctx.textAlign = 'center';
-    ctx.font = `bold 14px ${SANS}`;
+    ctx.font = `bold ${big ? Math.round(lf * 0.85) : 14}px ${SANS}`;
     ctx.fillStyle = '#10061e';
-    ctx.fillText(String(c.n), r.x + 19, r.y + 24);
+    ctx.fillText(String(c.n), r.x + 8 + badge / 2, by + badge * 0.73);
     ctx.textAlign = 'left';
+    const lx = r.x + 8 + badge + (big ? 14 : 10);
     if (c.silence) {
-      ctx.font = `bold 30px ${SERIF}`;
-      outlined(ctx, '...', r.x + 44, r.y + 38, '#b8b0d0', '#000', 3);
-      ctx.font = `11px ${SANS}`;
-      outlined(ctx, 'say nothing', r.x + 44, r.y + 56, '#7a7090', '#000', 2);
+      ctx.font = `bold ${big ? Math.round(lf * 1.4) : 30}px ${SERIF}`;
+      outlined(ctx, '...', lx, big ? r.y + r.h / 2 + lf * 0.2 : r.y + 38, '#b8b0d0', '#000', 3);
+      ctx.font = `${big ? Math.round(lf * 0.78) : 11}px ${SANS}`;
+      if (big) outlined(ctx, 'say nothing', lx + lf * 2.2, r.y + r.h / 2 + lf * 0.28, '#9a90b0', '#000', 2);
+      else outlined(ctx, 'say nothing', lx, r.y + 56, '#7a7090', '#000', 2);
     } else {
-      ctx.font = `bold 14px ${SANS}`;
-      const rows = wrap(ctx, c.label, r.w - 52);
-      rows.slice(0, 3).forEach((row, k) => outlined(ctx, row, r.x + 40, r.y + 24 + k * 17, '#f6f0ff', '#000', 3));
+      // a label that would need another row gets smaller type rather than losing words
+      let px = lf;
+      ctx.font = `bold ${px}px ${SANS}`;
+      let rows = wrap(ctx, c.label, r.x + r.w - lx - 10);
+      while (rows.length > (big ? 2 : 3) && px > lf * 0.7) { px--; ctx.font = `bold ${px}px ${SANS}`; rows = wrap(ctx, c.label, r.x + r.w - lx - 10); }
+      rows = rows.slice(0, big ? 2 : 3);
+      const lh = big ? px * 1.15 : 17;
+      rows.forEach((row, k) => outlined(ctx, row, lx, big ? r.y + r.h / 2 + lf * 0.34 + (k - (rows.length - 1) / 2) * lh : r.y + 24 + k * lh, '#f6f0ff', '#000', 3));
     }
   });
 }

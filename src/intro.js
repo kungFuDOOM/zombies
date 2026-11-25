@@ -1,7 +1,7 @@
 // The opening film, "Doorbuster" (STORY.md 9a): ~78 s, in engine, before the title screen. Skippable by any input.
 //
 //   1  crane down a PA speaker to the dark atrium          7  Biker: low orbit, chainsaw rev
-//   2  slow dolly down the corridor to the glass doors     8  Mall Cop: over the shoulder, shotgun rack
+//   2  slow dolly down the corridor to the glass doors     8  Mall Cop: three-quarter push-in, shotgun rack
 //   3  keypad LED: red -> green, rack focus to the horde   9  Skater: tracking low mid-dash
 //   4  whip-pan, the doors burst inward                    10 Mall Goth: push-in, hairspray torch
 //   5  the security monitor: a figure at the door panel    11 pull back from the four, crane to the skylight, title slam
@@ -246,7 +246,9 @@ export class Intro {
     hero('biker', 38.4, 42.2, "Quiet's for libraries and the dead.");
     // --- 8 mall cop
     p.card(43.55, 48.6, HEROES[1].name, HEROES[1].role, HEROES[1].color);
-    at(44.8, () => { this.heroes.mallCop.play('2H_Ranged_Shoot', { upper: true, timeScale: 0.45 }); this.ping = 0.25; });
+    // (no fire clip here: a one-shot releases the weapon-aim pose and leaves the gun hanging off his hand, so the rack is
+    // acted on top of the aiming idle: a dip and kick of the torso with the flashlight flaring)
+    at(44.8, () => { this.ping = 0.25; this.rack = 0.55; p.shake(44.8, 2.5, 6); });
     at(44.9, () => { cine.shotgunRack(); });
     at(45.4, () => cine.snareHit());
     hero('mallCop', 45.6, 48.6, 'Copy. I am very calm.');
@@ -394,18 +396,20 @@ export class Intro {
           },
         }),
       },
-      // ---- 8: Mall Cop: over the Biker's shoulder to the front of the Cop, shotgun racked, flashlight key
-      { id: 'cop', dur: 6, fov: [36, 30], cam: push([BAY_X.mallCop + 16, 54, BAY_Z + 112], [BAY_X.mallCop + 8, 52, BAY_Z + 96], [BAY_X.mallCop, 38, BAY_Z], [BAY_X.mallCop - 1, 40, BAY_Z], { hand: 0.35 }),
-        dof: { focus: [114, 98], aperture: 1.4 },
+      // ---- 8: Mall Cop: a three-quarter push-in, the gun held level across the frame, shotgun racked, flashlight key
+      { id: 'cop', dur: 6, fov: [37, 31], cam: push([BAY_X.mallCop - 14, 44, BAY_Z + 136], [BAY_X.mallCop - 6, 47, BAY_Z + 108], [BAY_X.mallCop + 6, 29, BAY_Z], [BAY_X.mallCop + 4, 34, BAY_Z], { hand: 0.3 }),
+        dof: { focus: [135, 107], aperture: 1.2 },
         ...bayShot('mallCop', {
-          lights: (c) => ({ key: ['#cfe0ff', [c.x - 40, 70, c.z + 90], 330], rim: ['#3a6aff', [c.x + 60, 95, c.z - 85], 420], fill: ['#1a2a5a', [c.x + 70, 30, c.z + 100], 70] }),
+          lights: (c) => ({ key: ['#cfe0ff', [c.x - 40, 70, c.z + 90], 330], rim: ['#3a6aff', [c.x + 60, 95, c.z - 85], 420], fill: ['#c86a30', [c.x + 80, 30, c.z + 70], 90] }),
           enter(p, c) {
-            const a = self.heroes.mallCop; a.visible = true; a.root.position.set(c.x, 0, c.z); a.root.rotation.y = -0.1; a.look(25, -4, 3);
-            const b = self.heroes.biker; b.visible = true; b.root.position.set(c.x + 48, 0, c.z + 66); b.root.rotation.y = Math.PI + 0.55; b.look(0, 0, 2).raise('R', 0).lean(0); self.ping = 0;
+            const a = self.heroes.mallCop; a.visible = true; a.root.position.set(c.x, 0, c.z); a.root.rotation.y = 0.72; a.look(-24, -3, 3).lean(0);
+            self.ping = 0; self.rack = 0;
           },
           tick(dt, lt, k, p, c) {
             const a = self.heroes.mallCop;
-            if (lt > 1.0) a.look(-4, 2, 4);
+            if (lt > 1.0) a.look(-34, 1, 4);
+            self.rack = Math.max(0, (self.rack || 0) - dt);
+            a.lean(self.rack > 0 ? Math.sin((1 - self.rack / 0.55) * Math.PI * 2) * 0.28 : 0.04);
             self.ping = Math.max(0, (self.ping || 0) - dt);
             self.lights.set({ key: ['#cfe0ff', [c.x - 40, 70, c.z + 90], 330 + (self.ping > 0 ? 700 : 0)] });
           },

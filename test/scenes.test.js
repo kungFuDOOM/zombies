@@ -111,10 +111,10 @@ test('Scene 3 changes with the earlier choice', () => {
   const loot = newStory(); applyChoice(loot, 'rayLocker', 'loot');
   const hold = newStory(); applyChoice(hold, 'rayLocker', 'hold');
   const none = newStory(); applyChoice(none, 'rayLocker', 'silence');
-  assert.match(lines(ray), /ray: .*hot slices/i);
-  assert.match(lines(loot), /Hope those shotgun shells were worth it/);
-  assert.match(lines(hold), /ray: .*Can't stand on this leg/i);
-  assert.match(lines(none), /No cook. No backup/);
+  assert.match(lines(ray), /mallCop: Ray's safe\. Now we close this kitchen/);
+  assert.match(lines(loot), /We left Ray for a box of shells/);
+  assert.match(lines(hold), /skater: Ray's barely breathing/i);
+  assert.match(lines(none), /Nobody's coming\. It's just us/);
   assert.equal(SCENES.boss(ray)[0].title, 'THE DEEP-FRY BUTCHER');
 });
 

@@ -8,6 +8,8 @@
 //   biker.play('2H_Melee_Attack_Chop', { upper: true });   // any clip the game already has
 //
 // The bone tweaks are layered AFTER the animation mixer each frame, and are eased, so gestures blend in and out rather than snap.
+// (The mixer does not rewrite a bone whose animated value has not changed, so each tweak is taken off again before the next
+// mixer step; otherwise it would pile up on a still pose and fold the actor over.)
 
 import * as THREE from 'three';
 import { Actor } from './assets.js';
@@ -30,6 +32,12 @@ export class CineActor {
     this.rate = 6;
     this.bones = {};
     for (const n of ['Head', 'Neck', 'Chest', 'Torso', 'UpperArmR', 'UpperArmL', 'LowerArmR', 'LowerArmL']) this.bones[n] = actor.bone(n);
+    this.tweaked = new Map();   // bone -> { base: its pose before the gesture, out: what we wrote, on } (records are reused)
+  }
+
+  /** Take last frame's gestures off any bone nothing else has rewritten since. */
+  untweak() {
+    for (const [bone, q] of this.tweaked) { if (q.on && bone.quaternion.equals(q.out)) bone.quaternion.copy(q.base); q.on = false; }
   }
 
   /** Head turn in degrees: +yaw looks to the model's left, +pitch looks up. */
@@ -54,12 +62,20 @@ export class CineActor {
   }
 
   update(dt) {
-    this.actor.update(dt);
     if (!(dt > 0)) return;
+    this.untweak();
+    this.actor.update(dt);
     const f = 1 - Math.exp(-dt * this.rate), g = this.g, t = this.target;
     for (const k in g) g[k] += (t[k] - g[k]) * f;
     const B = this.bones;
-    const rot = (bone, x, y, z) => { if (!bone || (!x && !y && !z)) return; Q.setFromEuler(E.set(x * D2R, y * D2R, z * D2R)); bone.quaternion.multiply(Q); };
+    const rot = (bone, x, y, z) => {   // (once per bone per frame: a second call would lose the untweaked pose)
+      if (!bone || (!x && !y && !z)) return;
+      let r = this.tweaked.get(bone);
+      if (!r) this.tweaked.set(bone, r = { base: new THREE.Quaternion(), out: new THREE.Quaternion(), on: false });
+      r.base.copy(bone.quaternion);
+      Q.setFromEuler(E.set(x * D2R, y * D2R, z * D2R)); bone.quaternion.multiply(Q);
+      r.out.copy(bone.quaternion); r.on = true;
+    };
     rot(B.Neck, g.headPitch * 0.35, g.headYaw * 0.4, 0);
     rot(B.Head, g.headPitch * 0.65, g.headYaw * 0.6, 0);
     rot(B.Chest, g.lean * 18, g.twist * 0.5, 0);

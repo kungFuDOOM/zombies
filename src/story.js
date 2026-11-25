@@ -65,20 +65,20 @@ export const CHOICES = {
   rayLocker: {
     id: 'rayLocker',
     wing: 1,
-    prompt: 'Ray is cornered. The Security Locker is about to seal.',
+    prompt: 'Ray or the locker?',
     options: [
       {
-        pick: 'save', label: 'Save Ray!', speaker: 'skater',
+        pick: 'save', label: 'Pull Ray out!', speaker: 'skater',
         rel: { mallGoth: 2, skater: 2, mallCop: -1 }, flags: { rayAlive: true, rayFate: 'saved', lockerLooted: false },
         toasts: ['Mall Goth will remember that.'], effects: ['ray:saved'],
       },
       {
-        pick: 'loot', label: 'Loot the Security Locker.', speaker: 'mallCop',
+        pick: 'loot', label: 'Grab the locker gear.', speaker: 'mallCop',
         rel: { mallCop: -1, mallGoth: -2, skater: -1, biker: 1 }, flags: { rayAlive: false, rayFate: 'overrun', lockerLooted: true },
         toasts: ['Mall Cop will remember that.'], effects: ['ray:overrun'],
       },
       {
-        pick: 'hold', label: 'Try to hold the shutter!', speaker: 'biker',
+        pick: 'hold', label: 'Hold the shutter for both.', speaker: 'biker',
         rel: { skater: 1, biker: 1, mallCop: -1 }, flags: { rayAlive: true, rayFate: 'injured', lockerLooted: false, shutterHeld: true },
         toasts: ['Skater will remember that.'], effects: ['ray:injured'],
       },

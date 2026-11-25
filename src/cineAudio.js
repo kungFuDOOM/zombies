@@ -300,6 +300,82 @@ export function makeCine(get) {
       for (let i = 0; i < 16; i++) note(i % 4 === 0 ? 55 : 82.4, 0.28, { type: 'triangle', vol: 0.14, delay: 0.8 + i * 0.5, slide: 40, filter: ['lowpass', 400, 0, 1] });
       [[659.3, 1.2], [587.3, 2.8], [523.3, 4.4], [493.9, 6.0]].forEach(([f, d]) => note(f, 2.2, { type: 'sine', vol: 0.06, delay: d, attack: 0.01, filter: ['lowpass', 2200, 800, 0.8] }));
     },
+    // ----- the story scenes (storyFilm.js) -----
+    // Pam's three-note shopper chime, "ding-dong-ding": two struck bars and a brighter third, too sweet and slightly flat.
+    pamChime(delay = 0) {
+      [[880, 0, 0.19], [698.46, 0.42, 0.17], [1046.5, 0.84, 0.2]].forEach(([f, d, v]) => {
+        note(f, 2.1, { type: 'sine', vol: v, delay: delay + d, attack: 0.006, vib: [4.5, 7] });
+        note(f * 2.76, 0.7, { type: 'sine', vol: v * 0.22, delay: delay + d, attack: 0.003 });   // the metal bar's overtone
+        note(f * 0.997, 1.8, { type: 'triangle', vol: v * 0.2, delay: delay + d, attack: 0.01, filter: ['lowpass', 2000, 0, 0.7] });
+      });
+      hiss(2.4, { vol: 0.025, delay, filter: ['bandpass', 3000, 0, 0.8] });
+    },
+    ringing(dur = 3) { note(3150, dur, { type: 'sine', vol: 0.035, attack: 0.5 }); note(3163, dur, { type: 'sine', vol: 0.03, attack: 0.7 }); },
+    clockTick() { hiss(0.025, { vol: 0.22, filter: ['bandpass', 3400, 0, 4] }); note(1250, 0.05, { type: 'square', vol: 0.04, slide: 900, filter: ['bandpass', 1500, 0, 3] }); note(52, 0.14, { type: 'sine', vol: 0.2, slide: 36 }); },
+    shutterSlams() { [0, 0.5, 1.15].forEach((d, i) => { hiss(0.35, { vol: 0.24 - i * 0.05, delay: d, filter: ['lowpass', 800 - i * 180, 90, 0.8] }); note(66 - i * 6, 0.4, { type: 'sine', vol: 0.26 - i * 0.06, delay: d, slide: 32 }); hiss(0.18, { vol: 0.08, delay: d + 0.02, filter: ['bandpass', 2200, 0, 3] }); }); },
+    shutterRattle() { for (let i = 0; i < 14; i++) hiss(0.05, { vol: 0.2 * (1 - i / 18), delay: i * 0.055 + R(0, 0.02), filter: ['bandpass', R(900, 2600), 0, 3], drive: 2 }); note(92, 0.8, { type: 'sawtooth', vol: 0.08, slide: 60, filter: ['lowpass', 300, 0, 1], vib: [18, 80] }); },
+    // Deep-fry oil: a bright seething wash, fat spitting out of it, and the low burble of the vat.
+    fryerSizzle(dur = 4, vol = 0.09) {
+      hiss(dur, { vol, attack: 0.25, filter: ['highpass', 4200, 0, 0.6] });
+      hiss(dur, { vol: vol * 0.5, attack: 0.4, filter: ['bandpass', 1500, 1900, 0.8] });
+      crackle(dur, 28, vol * 1.5);
+      for (let i = 0; i < dur * 3; i++) note(R(90, 190), R(0.06, 0.14), { type: 'sine', vol: vol * 0.7, delay: R(0, dur), slide: R(220, 420), attack: 0.02 });
+    },
+    fryerDown() { [0, 0.55, 1.05, 1.5, 1.9].forEach((d, i) => { note(150 - i * 18, 0.9, { type: 'sawtooth', vol: 0.12, delay: d, slide: 28, filter: ['lowpass', 600, 90, 2], drive: 2 }); hiss(0.08, { vol: 0.2, delay: d, filter: ['bandpass', 1100, 0, 3] }); }); hiss(3.2, { vol: 0.08, filter: ['highpass', 4200, 6500, 0.6] }); },
+    // A meat hook swung on its rail: two inharmonic steel strikes, a chain rattle and the ring that hangs after.
+    hookClank(delay = 0) {
+      for (const [d, k] of [[0, 1], [0.19, 0.6]]) {
+        [523, 1347, 2210, 3391].forEach((f, i) => note(f * (1 + d * 0.05), 1.1 - i * 0.2, { type: i % 2 ? 'sine' : 'triangle', vol: (0.1 - i * 0.018) * k, delay: delay + d, attack: 0.003 }));
+        hiss(0.05, { vol: 0.3 * k, delay: delay + d, filter: ['highpass', 2400, 0, 1], drive: 3 });
+        note(96, 0.25, { type: 'sine', vol: 0.24 * k, delay: delay + d, slide: 50 });
+      }
+      for (let i = 0; i < 9; i++) hiss(0.02, { vol: 0.1, delay: delay + 0.05 + i * 0.045, filter: ['bandpass', R(2500, 5000), 0, 6] });
+    },
+    cleaverThunk() { hiss(0.09, { vol: 0.42, filter: ['lowpass', 900, 150, 1], drive: 3 }); note(104, 0.28, { type: 'sine', vol: 0.5, slide: 40 }); note(2870, 0.22, { type: 'sine', vol: 0.025, slide: 2780 }); },
+    cleaverClang() { [0, 0.34, 0.55].forEach((d, i) => { [1480, 2315, 3710].forEach((f, k) => note(f, 0.9 - k * 0.2, { type: 'sine', vol: 0.09 / (i + 1), delay: d, attack: 0.003 })); hiss(0.06, { vol: 0.3 / (i + 1), delay: d, filter: ['highpass', 2000, 0, 1] }); note(88, 0.2, { type: 'sine', vol: 0.3 / (i + 1), delay: d, slide: 44 }); }); },
+    // "Order up!": the pass bell, over a pig squeal bent into the roar.
+    orderUp() {
+      [2093, 2637, 4186].forEach((f, i) => note(f, 1.8, { type: 'sine', vol: 0.11 - i * 0.03, attack: 0.002 }));
+      note(900, 0.9, { type: 'sawtooth', vol: 0.14, slide: 1750, delay: 0.1, attack: 0.08, filter: ['bandpass', 1900, 1100, 5], drive: 6, vib: [17, 190] });
+      note(560, 0.8, { type: 'square', vol: 0.06, slide: 190, delay: 0.55, filter: ['bandpass', 900, 300, 4], drive: 5, vib: [23, 140] });
+    },
+    metalGroan() { note(112, 1.8, { type: 'sawtooth', vol: 0.16, slide: 71, attack: 0.25, filter: ['bandpass', 640, 280, 9], drive: 5, vib: [7.5, 70] }); note(1390, 1.2, { type: 'square', vol: 0.022, slide: 920, delay: 0.3, filter: ['bandpass', 1200, 0, 12] }); hiss(0.5, { vol: 0.24, delay: 1.1, filter: ['lowpass', 700, 90, 1] }); },
+    klaxon(n = 3) { for (let i = 0; i < n; i++) { note(698, 0.2, { type: 'square', vol: 0.055, delay: i * 0.62, filter: ['bandpass', 1300, 0, 2], drive: 3 }); note(523, 0.2, { type: 'square', vol: 0.045, delay: i * 0.62 + 0.22, filter: ['bandpass', 1000, 0, 2], drive: 3 }); } },
+    lockerOpen() { hiss(0.1, { vol: 0.45, filter: ['bandpass', 1100, 500, 2], drive: 3 }); note(70, 0.6, { type: 'sine', vol: 0.45, slide: 34 }); note(240, 1.3, { type: 'sawtooth', vol: 0.05, slide: 330, delay: 0.15, attack: 0.2, filter: ['bandpass', 900, 0, 7], vib: [11, 60] }); hiss(1.4, { vol: 0.07, delay: 0.2, attack: 0.3, filter: ['highpass', 3000, 0, 0.6] }); },
+    // A tiny wind-up tune: four tines, slowing down.
+    musicBox() { [[1318.5, 0], [1567.98, 0.46], [1174.66, 0.96], [1046.5, 1.6], [987.77, 2.4]].forEach(([f, d]) => { note(f, 1.5, { type: 'sine', vol: 0.075, delay: d, attack: 0.003 }); note(f * 3.01, 0.35, { type: 'sine', vol: 0.014, delay: d, attack: 0.002 }); }); },
+    boomboxClick() { hiss(0.04, { vol: 0.35, filter: ['bandpass', 1800, 0, 2] }); note(140, 0.07, { type: 'square', vol: 0.12, slide: 70 }); hiss(1.1, { vol: 0.07, delay: 0.1, filter: ['bandpass', 2600, 1300, 0.8] }); crackle(1.1, 16, 0.06, 0.1); },
+    gurgle() { for (let i = 0; i < 8; i++) note(R(70, 150), R(0.1, 0.24), { type: 'sine', vol: 0.2, delay: i * 0.13 + R(0, 0.05), slide: R(40, 190), attack: 0.03, filter: ['lowpass', 500, 0, 3] }); },
+    printer(dur = 3) { // dot-matrix: pins chattering a line at a time, then the carriage zipping back
+      for (let line = 0; line * 0.5 < dur; line++) {
+        const t0 = line * 0.5;
+        for (let i = 0; i < 17; i++) note(R(1750, 2100), 0.016, { type: 'square', vol: 0.04, delay: t0 + i * 0.019, attack: 0.002, filter: ['bandpass', 2600, 0, 3], drive: 3 });
+        hiss(0.32, { vol: 0.05, delay: t0, filter: ['bandpass', 3600, 0, 5] });
+        note(310, 0.12, { type: 'sawtooth', vol: 0.04, delay: t0 + 0.36, slide: 720, filter: ['bandpass', 900, 0, 4] });
+      }
+    },
+    receiptRattle(dur = 1.8) { for (let i = 0; i < dur * 22; i++) { const k = (i + 1) / (dur * 22); note(R(900, 1300), 0.03, { type: 'square', vol: 0.045 * k, delay: k * dur, attack: 0.022, filter: ['bandpass', 1700, 0, 4], drive: 3 }); } hiss(dur, { vol: 0.07, attack: dur * 0.95, filter: ['highpass', 4000, 0, 0.7] }); },
+    tapeRewind(dur = 1.4) { note(180, dur, { type: 'sawtooth', vol: 0.06, slide: 1500, attack: 0.15, filter: ['bandpass', 700, 2600, 3], vib: [14, 150] }); hiss(dur, { vol: 0.08, attack: 0.2, filter: ['bandpass', 1200, 5000, 2] }); hiss(0.07, { vol: 0.3, delay: dur, filter: ['bandpass', 900, 0, 2] }); },
+    // The reveal: a reversed swell into a detuned minor-second stab, a sub drop and a thin high line that will not resolve.
+    revealSting() {
+      hiss(1.0, { vol: 0.2, attack: 0.95, filter: ['bandpass', 400, 5200, 1] });
+      note(220, 1.0, { type: 'sawtooth', vol: 0.08, slide: 440, attack: 0.95, filter: ['lowpass', 300, 3000, 2] });
+      [[116.5, 0], [123.5, 5], [174.6, -4], [185, 7], [466.2, 0]].forEach(([f, d]) => note(f, 3.4, { type: 'sawtooth', vol: 0.12, delay: 1.0, attack: 0.01, slide: f * 0.975, detune: d, filter: ['lowpass', 2400, 260, 1.4], drive: 3 }));
+      note(64, 2.6, { type: 'sine', vol: 0.55, delay: 1.0, slide: 27 });
+      note(1864.7, 3.6, { type: 'sine', vol: 0.035, delay: 1.15, attack: 0.6, vib: [5.5, 18] });
+    },
+    brassSwell() { [196, 246.94, 293.66, 392].forEach((f, i) => note(f, 2.8, { type: 'sawtooth', vol: 0.085, delay: i * 0.06, attack: 0.5, filter: ['lowpass', 500, 2600, 1], vib: [5, 9] })); note(98, 2.8, { type: 'square', vol: 0.06, attack: 0.4, filter: ['lowpass', 600, 0, 1] }); },
+    celloDread() { [[87.31, 0], [92.5, 0.35], [130.81, 0.8]].forEach(([f, d]) => note(f, 3.2, { type: 'sawtooth', vol: 0.13, delay: d, attack: 0.7, slide: f * 0.98, filter: ['lowpass', 520, 900, 2], vib: [5.2, 26] })); },
+    synthNote() { note(220, 4.2, { type: 'triangle', vol: 0.13, attack: 1.1, filter: ['lowpass', 1100, 700, 1], vib: [3.2, 8] }); note(110.3, 4.2, { type: 'sine', vol: 0.1, attack: 1.3 }); },
+    racing(dur = 3) { for (let i = 0; i * 0.14 < dur; i++) { hiss(0.07, { vol: i % 4 === 0 ? 0.2 : 0.09, delay: i * 0.14, filter: ['bandpass', i % 4 === 0 ? 420 : 3200, 0, 2] }); if (i % 4 === 0) note(70, 0.16, { type: 'sine', vol: 0.3, delay: i * 0.14, slide: 42 }); } },
+    softPiano() { [[220, 0], [261.63, 0.9], [329.63, 1.8], [311.13, 3.1], [246.94, 4.4], [220, 5.8]].forEach(([f, d]) => cue.piano(f, 0.11, d)); },
+    // The next wing's cabinet waking up in the dark: a bright square-wave attract loop that ends on a coin ping.
+    arcadeJingle() {
+      [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5, 1567.98, 1396.9, 1174.66, 1318.5, 1567.98, 2093].forEach((f, i) => note(f, i === 12 ? 0.7 : 0.13, { type: 'square', vol: 0.06, delay: 0.15 + i * 0.13, attack: 0.004, filter: ['lowpass', 5200, 0, 0.7] }));
+      [130.81, 130.81, 196, 196, 174.61, 196, 261.63].forEach((f, i) => note(f, 0.2, { type: 'triangle', vol: 0.14, delay: 0.15 + i * 0.26 }));
+      note(987.77, 0.08, { type: 'square', vol: 0.07, delay: 2.15 }); note(1318.5, 0.5, { type: 'square', vol: 0.07, delay: 2.23 });
+    },
+
     // A black-out: everything dips for a beat (the sudden silence before a slam)
     duck(dur = 0.6) {
       if (!bus || !busCtx) return;

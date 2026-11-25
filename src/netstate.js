@@ -157,9 +157,11 @@ function cleanCut(v) {
   if (!v || typeof v !== 'object') return null;
   const choices = Array.isArray(v.choices) ? list(v.choices, 4).map((c, i) => ({ n: i + 1, label: str(c && c.label, 90), silence: !!(c && c.silence) })) : null;
   const card = v.card && typeof v.card === 'object' ? { title: str(v.card.title, 60), sub: str(v.card.sub, 60), boss: !!v.card.boss, t: num(v.card.t, 0, 1), out: num(v.card.out, 0, 1), age: num(v.card.age, 0, 60), dur: num(v.card.dur, 0, 60) } : null;
+  const f = v.film && typeof v.film === 'object' ? v.film : null;
+  const film = f ? { key: str(f.key, 24), id: str(f.id, 12), shot: str(f.shot, 48), cut: int(f.cut, 0, 999), ts: num(f.ts, 0, 1), tens: num(f.tens, 0, 1), ray: str(f.ray, 12), party: list(f.party, 4).map((c) => str(c, 12)) } : null;
   return {
-    id: str(v.id, 12), letterbox: 1, bar: num(v.bar, 0, 110), flash: num(v.flash, 0, 1), fade: num(v.fade, 0, 1), mood: str(v.mood, 12), alarm: v.alarm ? 1 : 0, card, speaker: str(v.speaker, 40), who: str(v.who, 12), text: str(v.text, 300), prompt: str(v.prompt, 120),
-    choices, timerFrac: num(v.timerFrac, 0, 1), hint: str(v.hint, 60), beat: ['card', 'line', 'choice'].includes(v.beat) ? v.beat : null,
+    film, id: str(v.id, 12), letterbox: 1, bar: num(v.bar, 0, 110), flash: num(v.flash, 0, 1), fade: num(v.fade, 0, 1), mood: str(v.mood, 12), alarm: v.alarm ? 1 : 0, card, speaker: str(v.speaker, 40), who: str(v.who, 12), text: str(v.text, 300), full: str(v.full, 300), prompt: str(v.prompt, 120),
+    choices, timerFrac: num(v.timerFrac, 0, 1), hint: str(v.hint, 60), beat: ['card', 'line', 'shot', 'choice'].includes(v.beat) ? v.beat : null,
   };
 }
 

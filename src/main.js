@@ -3,7 +3,7 @@
 //   realm -> cutscene (Scene 1) -> Food Court (play) -> cutscene (Scene 2) -> level clear
 //   -> cutscene (Scene 3) -> the Butcher (play) -> recap ("Your Choices") -> hub
 
-import { VIEW_W, VIEW_H, CLASSES, CLASS_ORDER, MAX_PLAYERS, stagePoints } from './config.js';
+import { VIEW_W, VIEW_H, CLASSES, CLASS_ORDER, MAX_PLAYERS, stagePoints, TILE } from './config.js';
 import { Input } from './input.js';
 import { TouchControls } from './touch.js';
 import { Tutorial, tutorialView } from './tutorial.js';
@@ -14,12 +14,13 @@ import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanG
 import { Lobby } from './lobby.js';
 import { Renderer3D, defaultQuality } from './render3d.js';
 import { Intro } from './intro.js';
+import { StoryFilm } from './storyFilm.js';
 import { loadAssets } from './assets.js';
 import { startLineup, renderLineup, lineupActive } from './lineup.js';
 import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, selectCardAt, drawTouchButtons, touchButtonAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawIntro, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
 import { unlockedClasses, loadSave, writeSave, newSave, hasProgress, isUnlocked, levelNumber, nextStage, completeLevel, SHOP, buy, STORY, wingOpen, REALMS } from './campaign.js';
-import { levelInfo, WINGS } from './level.js';
-import { applyChoice, resetWing1, writeStory, recap, hubRayPresent } from './story.js';
+import { levelInfo, WINGS, FOOD_COURT } from './level.js';
+import { applyChoice, resetWing1, writeStory, recap, hubRayPresent, newStory, sanitizeStory, DEFAULT_PICKS } from './story.js';
 import { Cutscene } from './cutscenes.js';
 import { trackFor } from './music-data.js';
 import { phaseOf } from './bosses.js';
@@ -108,6 +109,8 @@ loadAssets((p) => (loadProgress = p)).then(() => {
   const q = new URLSearchParams(location.search);
   setState('title');
   if (q.has('lineup')) { startLineup(r3d, q.get('lineup') || 'all'); return; }
+  // Dev / capture jump, local builds only: ?cine=scene1|ticket|scene2|boss|ending (&ray=saved|injured|overrun|lost)
+  if (q.has('cine') && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && jumpToScene(q.get('cine'), q.get('ray'))) return;
   // The opening cinematic plays once, on the first launch (motd-intro-seen); ?intro=1 forces it (capture tools) and
   // needs no key press; automated browsers (webdriver) only see it when asked, so smoke tests still land on the title.
   const forced = q.has('intro') && q.get('intro') !== '0';
@@ -555,29 +558,41 @@ function enterLevel(n) {
 
 // ---------- cutscenes (Telltale-style timed choices, see cutscenes.js) ----------
 
-// Debug / capture hook: window.__motd.cutscene('opening' | 'crisis' | 'boss') plays that scene on a fresh Biker, then returns to the title.
-function debugCutscene(id = 'opening') {
-  if (net || !['opening', 'crisis', 'boss'].includes(id)) return false;
+// Debug / capture hook: window.__motd.cutscene('opening' | 'ticket' | 'crisis' | 'boss' | 'ending') plays that scene on a
+// fresh Biker, then returns to the title. It works on a throwaway copy of the story: nothing it picks is ever saved.
+function debugCutscene(id = 'opening', ray = null) {
+  if (net || !['opening', 'ticket', 'crisis', 'boss', 'ending'].includes(id)) return false;
+  const story = sanitizeStory(JSON.parse(JSON.stringify(save.story || newStory())));
+  const pick = { saved: 'save', overrun: 'loot', injured: 'hold', lost: 'silence' }[ray];
+  if (pick) applyChoice(story, 'rayLocker', pick);
+  else if (id === 'boss' || id === 'ending') applyChoice(story, 'rayLocker', DEFAULT_PICKS.rayLocker);
   game = new Game();
-  game.story = save.story;
-  game.addPlayer(0, 'kb', 'biker', save.heroes.biker);
-  if (id === 'opening') game.startHub(); else game.startLevel(id === 'boss' ? 2 : 1);
+  game.story = story;
+  game.addPlayer(0, 'kb', 'biker');
+  if (id === 'opening') game.startHub(); else game.startLevel(id === 'boss' || id === 'ending' ? 2 : 1);
   game.stageCutscene(id);
-  startCutscene(id, () => { game.endCutscene(); game = null; setState('title'); });
+  startCutscene(id, () => { game.endCutscene(); game = null; setState('title'); }, story);
   return true;
 }
 
-function startCutscene(id, done) {
+function jumpToScene(name, ray) {
+  const id = { scene1: 'opening', ticket: 'ticket', scene2: 'crisis', boss: 'boss', ending: 'ending' }[name];
+  return !!id && debugCutscene(id, ray);
+}
+
+// `sandbox` is the debug hook's own story: choices made on it are not written to the save.
+function startCutscene(id, done, sandbox = null) {
   cutDone = done;
+  const story = sandbox || save.story;
   cut = new Cutscene(id, {
-    story: save.story,
-    skip: skipCutscenes,
+    story,
+    skip: skipCutscenes && !sandbox,
+    party: game.allPlayers().map((p) => p.cls),
     hooks: {
       choose(choiceId, pick) {
-        const res = applyChoice(save.story, choiceId, pick);
+        const res = applyChoice(story, choiceId, pick);
         if (!res) return null;
-        persist();
-        writeStory(save.story);
+        if (!sandbox) { persist(); writeStory(save.story); }
         game.applyStoryEffects(res.effects);
         return res;
       },
@@ -593,7 +608,36 @@ function finishCutscene() {
   const done = cutDone;
   cut = null; cutDone = null;
   if (game) game.cutCam = null;
+  try { stopCine(); } catch { /* audio not ready */ } // a skipped scene takes its long tails with it
+  endStoryFilm();
   if (done) done();
+}
+
+// ---------- the HD story scenes (storyFilm.js): drawn from the cutscene's view, ours or the host's ----------
+let storyFilm = null;
+let storyFilmFailed = ''; // the scene whose film could not be built: it falls back to the game-world cameras
+function endStoryFilm() {
+  if (!storyFilm) return;
+  try { storyFilm.dispose(); } catch (err) { console.error(err); }
+  storyFilm = null;
+}
+function syncStoryFilm(dt) {
+  const view = state !== 'cutscene' ? null : net && net.role === 'guest' ? net.ui.cut : cut && cut.view();
+  const fv = view && view.film;
+  if (!fv || fv.key === storyFilmFailed) { endStoryFilm(); return; }
+  try {
+    if (!storyFilm || storyFilm.key !== fv.key) {
+      endStoryFilm();
+      // the film hides the game, so a level that was just entered is built now, under the fade, not when play starts
+      if (game && r3d.level !== game.level) r3d.render(game);
+      storyFilm = new StoryFilm(r3d, fv);
+    }
+    storyFilm.update(dt, fv);
+  } catch (err) {
+    console.error(err);
+    storyFilmFailed = fv.key;
+    endStoryFilm();
+  }
 }
 
 function updateCutscene(dt) {
@@ -619,6 +663,7 @@ function updateCutscene(dt) {
     if (c.sting && Object.prototype.hasOwnProperty.call(sfx, c.sting)) sfx[c.sting]();
     if (c.shake) game.shake = Math.max(game.shake, c.shake);
     if (c.shake || c.flash) r3d.cineHit(Math.min(2, (c.shake || 4) / 8 + c.flash));
+    if (storyFilm && storyFilm.key === cut.key) storyFilm.hit(c.shake, c.flash);
   }
   if (cut.done) { finishCutscene(); return; }
   game.cutCam = cut.camera(game);
@@ -879,6 +924,8 @@ function startPressed() {
   return false;
 }
 
+const TICKET_LEAD = 9; // tiles before the crisis column
+
 function updatePlay(dt) {
   if (input.key('Escape') || input.key('KeyP') || startPressed()) { setState('paused'); return; }
 
@@ -904,6 +951,13 @@ function updatePlay(dt) {
   }
   updateMagicHint(dt);
 
+  // Scene 1.5, "The Ticket": halfway to Ray's stall (and always before the crisis, however the party got there)
+  if (game.level.foodCourt && game.scene && !game.scene.ticket && (game.pendingScene === 'crisis' || game.livePlayers().some((p) => p.x > (FOOD_COURT.sceneTrigger - TICKET_LEAD) * TILE))) {
+    game.scene.ticket = true;
+    startCutscene('ticket', () => { game.endCutscene(); setState('play'); }); // (a crisis already waiting plays next)
+    return;
+  }
+
   if (game.pendingScene) { // the mid-wing crisis: Ray, the locker and a decision
     const id = game.pendingScene;
     game.pendingScene = null;
@@ -921,8 +975,9 @@ function updatePlay(dt) {
     persist();
     writeStory(save.story);
     clearInfo = { level: n, wasBoss: info.isBoss, realm: info.theme.name, name: info.stageName, bonus };
-    if (info.isBoss) sfx.stingHit(); // the recap's title lands with a hit
-    setState(info.isBoss ? 'recap' : 'levelclear');
+    if (!info.isBoss) { setState('levelclear'); return; }
+    // the Wing 1 ending, "4:59", plays before the recap (progress is already saved)
+    startCutscene('ending', () => { sfx.stingHit(); setState('recap'); }); // the recap's title lands with a hit
     return;
   }
   if (!game.livePlayers().length && game.allPlayers().every((p) => p.deadT > 2.5)) {
@@ -1009,7 +1064,7 @@ function currentTrack() {
   const inLevel = !!(game && game.level && ['play', 'paused', 'levelclear', 'gameover', 'realm', 'shop', 'cutscene', 'recap'].includes(state));
   return trackFor({
     state, inLevel,
-    hub: inLevel && !!game.level.hub, tutorial: inLevel && !!game.level.tutorial, cutscene: state === 'cutscene' ? (cut ? cut.id : 'opening') : '',
+    hub: inLevel && !!game.level.hub, tutorial: inLevel && !!game.level.tutorial, cutscene: state === 'cutscene' ? (cut ? cut.id : (net && net.ui && net.ui.cut && net.ui.cut.id) || 'opening') : '',
     isBoss: inLevel && !!game.info.isBoss, levelNum: game ? game.levelNum : 0,
   });
 }
@@ -1055,8 +1110,13 @@ function render() {
     drawGameOverlay(ctx, game, r3d, { hubPrompt: false });
     drawRealmPick(ctx, stateT, progress, realmPick);
   } else if (state === 'cutscene' && game) {
-    r3d.render(game);
-    drawCutscene(ctx, guest ? net.ui.cut : cut.view(), stateT);
+    const view = guest ? net.ui.cut : cut.view();
+    let drawn = false;
+    if (storyFilm && view && view.film && storyFilm.key === view.film.key) {
+      try { storyFilm.render(view.bar); drawn = true; } catch (err) { console.error(err); storyFilmFailed = storyFilm.key; endStoryFilm(); }
+    }
+    if (!drawn) r3d.render(game);
+    drawCutscene(ctx, drawn || !view ? view : { ...view, film: null }, stateT);
   } else if (state === 'recap' && game) {
     r3d.render(game);
     drawRecap(ctx, stateT, guest ? net.ui.rc : recap(save.story), game);
@@ -1148,6 +1208,7 @@ function frame(now) {
   if (net && net.role === 'guest') {
     guestFrame(dt);
     taps.length = 0;
+    syncStoryFilm(dt);
     render();
     return;
   }
@@ -1196,6 +1257,7 @@ function frame(now) {
   }
   if (net && net.role === 'host') hostSend(dt);
   taps.length = 0;
+  syncStoryFilm(dt);
   render();
 }
 
@@ -1209,7 +1271,7 @@ function loop(now) {
 }
 
 // Debug/test hook (used by automated smoke tests).
-window.__motd = { startTutorial, cutscene: debugCutscene, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate }), get intro() { return intro; }, introSeen, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
+window.__motd = { startTutorial, cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate }), get intro() { return intro; }, introSeen, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
 
 // Scale canvas to fit window while keeping aspect ratio.
 function fit() {

@@ -73,6 +73,8 @@ export const TRACKS = {
     { pad: PAD('strings', 0.04, 550), bass: BASS('sine', 'r..r....r..c....', 0.13, 400), arp: ARP('glass', 'skip', 4, 1, 0.022), lead: LEAD('vibes', '.---.---5---.---4---.---3---.---2---.---1---.---', 1, 0.04), drums: 'heart' }, { wow: 24 }),
   cut_boss: T('cut_boss', 'Something In The Kitchen', 'Eb', 'locrian', 88, [1, 4, 7, 6, 1, 4, 5, 5],
     { pad: PAD('strings', 0.05, 900), bass: BASS('sine', 'r.......r.......', 0.12), arp: ARP('glass', 'up', 4, 2, 0.022), lead: LEAD('buzz', '5---.---6---5---3---.---2---3---1---.---.---.---', 1, 0.03), drums: 'dread' }, { wow: 16 }),
+  cut_ending: T('cut_ending', 'Four Fifty-Nine', 'C', 'minor', 62, [1, 6, 4, 5, 1, 3, 4, 5],
+    { pad: PAD('strings', 0.032, 620), bass: BASS('sine', 'r...............', 0.08), arp: ARP('glass', 'broken', 4, 1, 0.012), lead: LEAD('vibes', '1---.---.---5---4---.---3---.---1---.---.---.---', 1, 0.035), drums: 'none' }, { wow: 30 }),
   recap: T('recap', 'Your Choices', 'B', 'dorian', 98, [1, 3, 6, 7, 1, 4, 6, 5],
     { pad: PAD('epiano', 0.04, 1500), bass: BASS('tri', 'r.......5.......', 0.1), arp: ARP('vibes', 'up', 2, 2, 0.03), lead: LEAD('sax', '5---3-5-8---7-5-6---5-3-2---3-5-7---.---', 1, 0.05), drums: 'muzak' }, { wow: 18, sev: true }),
 
@@ -112,7 +114,7 @@ export function trackFor(s) {
   if (s.state === 'story') return 'story';
   if (s.state === 'shop') return 'shop';
   if (s.state === 'recap') return 'recap';
-  if (s.state === 'cutscene') return s.cutscene === 'crisis' ? 'cut_crisis' : s.cutscene === 'boss' ? 'cut_boss' : 'cut_opening';
+  if (s.state === 'cutscene') return ({ crisis: 'cut_crisis', boss: 'cut_boss', ending: 'cut_ending' })[s.cutscene] || 'cut_opening';
   if (!s.inLevel) return 'title';
   if (s.hub) return 'hub';
   if (s.tutorial) return 'training';
