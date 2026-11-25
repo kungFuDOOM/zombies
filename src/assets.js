@@ -7,7 +7,8 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { buildHero } from './heroes.js';
 import { buildMonster, BUILT_MONSTERS } from './monsters.js';
-import { dressSurvivor, dressZombie, dressShopper } from './charProps.js';
+import { dressSurvivor, dressZombie, dressShopper, dressUndead } from './charProps.js';
+import { undeadMaterial } from './undead.js';
 
 export const MODEL_SCALE = 16; // KayKit metres -> game units (one tile = 32 units = 2 m)
 
@@ -226,6 +227,17 @@ function zombieMaterial(m) {
        #include <opaque_fragment>`);
   };
   m.customProgramCacheKey = () => 'zombieRim';
+  m.userData.hook = m.onBeforeCompile; m.userData.hookKey = 'zombieRim';
+}
+
+// Material.clone() does not copy onBeforeCompile / customProgramCacheKey: put the zombie shader back on flash and fade copies
+// (otherwise a hit-flash or a fade-out drops the gore, the blood and the rim).
+function keepHook(m) {
+  const h = m.userData.hook;
+  if (!h) return;
+  const key = m.userData.hookKey;
+  m.onBeforeCompile = h;
+  m.customProgramCacheKey = () => key;
 }
 
 const matPool = new Map();   // shared character materials (see Actor)
@@ -237,6 +249,7 @@ function flashVariant(base, color) {
   if (!m) {
     m = base.clone();
     m.userData = { ...base.userData };
+    keepHook(m);
     m.emissive = new THREE.Color(color);
     m.emissiveIntensity = 0.8;
     byColor.set(color, m);
@@ -275,17 +288,14 @@ function undeadClip(u, sign, mod = false) {
     : { hips: 'hips', spine: 'spine', chest: 'chest', head: 'head', ual: 'upperarml', uar: 'upperarmr', lal: 'lowerarml', lar: 'lowerarmr', ul: 'upperleg', ll: 'lowerleg' };
   const k = mod ? 0.55 : 1; // the adult rig folds at the waist more readily than the chibi kit
   track(B.hips, (ph) => [0.03 + hitch(ph) * 0.12 * k, lurch(ph) * 0.3, lurch(ph) * 0.45]);
-  track(B.spine, (ph) => [u.lean * 0.4 * k + hitch(ph) * 0.16 * k, 0, lurch(ph) * 0.55]);
-  track(B.chest, (ph) => [u.lean * 0.45 * k + hitch(ph) * 0.28 * k, lurch(ph) * 0.6, lurch(ph) * 0.7]);
-  track(B.head, (ph) => [u.head * 0.6 * k + 0.03 + hitch(ph) * 0.15 * k + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
+  const lean = mod ? 0 : u.lean, headP = mod ? 0 : u.head; // the Modular rig's hunch and chin are set in world space (Actor.undeadPose)
+  track(B.spine, (ph) => [lean * 0.4 * k + hitch(ph) * 0.16 * k, 0, lurch(ph) * 0.55]);
+  track(B.chest, (ph) => [lean * 0.45 * k + hitch(ph) * 0.28 * k, lurch(ph) * 0.6, lurch(ph) * 0.7]);
+  track(B.head, (ph) => [headP * 0.6 * k + 0.03 + hitch(ph) * 0.15 * k + Math.sin(ph * 2) * 0.08, lurch(ph) * 0.8, sign * 0.3 + lurch(ph) * 0.7]);
   const un = u.uneven || 0.85;
   const armL = (ph) => u.reach + Math.sin(ph) * 0.2, armR = (ph) => u.reach * un + Math.sin(ph + 2) * 0.25 + hitch(ph) * 0.3;
   if (mod) {
-    const r = u.reach < 1 ? 1 : 0.75; // the adult arm is long: reach a little less than the chibi's
-    track(B.ual, (ph) => [0, 0.1, -armL(ph) * r]);
-    track(B.uar, (ph) => [0, -0.1, armR(ph) * r]);
-    track(B.lal, (ph) => [0, 0, -(u.bend + Math.max(0, Math.sin(ph * 2)) * 0.25) * 0.8]);
-    track(B.lar, (ph) => [0, 0, (u.bend * 1.4 + Math.max(0, Math.sin(ph * 2 + 1)) * 0.3) * 0.8]);
+    // arms: aimed in world space by Actor.undeadPose (the rig's local axes defeat additive swings)
   } else {
     track(B.ual, (ph) => [-armL(ph), 0.1, -0.05]);
     track(B.uar, (ph) => [-armR(ph), -0.1, 0.05]);
@@ -309,6 +319,26 @@ function undeadClip(u, sign, mod = false) {
   const clip = new THREE.AnimationClip(`undead:${key}`, dur, tracks, THREE.AdditiveAnimationBlendMode);
   undeadClips.set(key, clip);
   return clip;
+}
+
+// scratch objects for Actor.undeadPose
+const _rq = new THREE.Quaternion(), _rqi = new THREE.Quaternion(), _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _pq = new THREE.Quaternion();
+const _Y = new THREE.Vector3(0, 1, 0), _right = new THREE.Vector3(), _t = new THREE.Vector3(), _d = new THREE.Vector3(), _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3(), _qi = new THREE.Quaternion();
+// rotate `bone` by the world-space rotation qW (applied on top of whatever the mixer left it at)
+function worldRot(bone, qW) {
+  bone.parent.getWorldQuaternion(_pq);
+  _qb.copy(_pq).invert().multiply(qW).multiply(_pq);
+  bone.quaternion.premultiply(_qb);
+}
+// swing `bone` so that the line bone -> child points along world direction `dir` (blend weight w)
+function aimBone(bone, child, dir, w) {
+  bone.getWorldPosition(_p0); child.getWorldPosition(_p1);
+  _d.subVectors(_p1, _p0);
+  if (_d.lengthSq() < 1e-10) return;
+  _d.normalize();
+  _qa.setFromUnitVectors(_d, dir);
+  _qi.identity().slerp(_qa, w);
+  worldRot(bone, _qi);
 }
 
 // A character instance: a full-body base loop (idle / run) plus one-shot actions that
@@ -353,7 +383,7 @@ export class Actor {
           m.emissive = new THREE.Color(typeof ghost === 'string' ? ghost : '#6080ff'); m.emissiveIntensity = 0.6;
           m.color.set(m.emissive).lerp(new THREE.Color('#ffffff'), 0.8);
         }
-        if (undead) zombieMaterial(m);
+        if (undead) { if (/^z_/.test(charName)) undeadMaterial(m, charName, o.geometry, zvariant); else zombieMaterial(m); }
         if (eyes) { m.emissive.set(emissiveEyes); m.emissiveIntensity = 2; }
         m.userData.e0 = m.emissive.clone();
         m.userData.ei0 = m.emissiveIntensity;
@@ -368,6 +398,7 @@ export class Actor {
     if (this.nat && NATIVE_SURVIVORS.includes(this.nat.key)) dressSurvivor(this, this.nat.key);
     if (this.nat && zvariant && (charName === 'z_walker' || charName === 'z_sprinter')) dressZombie(this, zvariant);
     if (this.nat && charName === 'z_shopper') dressShopper(this);
+    if (this.nat && this.undead && /^z_(walker|sprinter|brute|spitter)$/.test(charName)) dressUndead(this, charName, zvariant);
     if (this.undead && (!this.nat || MODULAR.includes(this.nat.key))) this.startUndead(); // additive shamble on the walk cycle
     this.baseName = null;
     this.baseAction = null;
@@ -413,6 +444,7 @@ export class Actor {
     const a = this.mixer.clipAction(clip);
     a.reset().setLoop(THREE.LoopRepeat, Infinity).setEffectiveWeight(1).fadeIn(0.15).play();
     a.timeScale = timeScale;
+    if (this.undead && !prev) a.time = Math.random() * clip.duration; // a crowd never walks in step
     if (prev) prev.fadeOut(0.15);
     this.baseName = name;
     this.baseAction = a;
@@ -460,6 +492,8 @@ export class Actor {
     if (!(dt > 0)) return;
     if (this.baseAction && !this.oneShot && this.baseAction.getEffectiveWeight() < 0.5) this.baseAction.setEffectiveWeight(1);
     this.mixer.update(dt);
+    if (this.undeadWorld && !this.locked && !(this.poseLod < 0)) this.undeadPose(dt);
+    if (this.aim) this.weaponAim(dt);
     if (this.adult) this.adultPose();
     if (this.undeadAct) this.undeadAct.setEffectiveWeight(this.locked ? 0 : this.oneShot ? 0.35 : 1); // attacks keep their swing
   }
@@ -475,6 +509,69 @@ export class Actor {
     act.time = Math.random() * clip.duration;
     act.timeScale = u.rate || 1;
     this.undeadAct = act;
+    this.undeadWorld = !!(this.nat && MODULAR.includes(this.nat.key));
+    this.upT = Math.random() * 6.28;
+  }
+
+  // Survivors: while idling or running (no attack clip playing) hold the weapon in a natural pose: its length axis is aimed along
+  // `aim.dir` in the ACTOR's frame (+Z forward, +X to the model's left), then eased back to the clip-tuned grip for attacks.
+  weaponAim(dt) {
+    const A = this.aim;
+    if (!A.h || !A.h.parent) return;
+    if (!A.q0) { A.q0 = A.h.quaternion.clone(); A.k = 0; A.d = new THREE.Vector3(...A.dir).normalize(); }
+    A.k += ((this.oneShot || this.locked ? 0 : 1) - A.k) * Math.min(1, dt * 10);
+    if (A.k < 0.004) { A.h.quaternion.copy(A.q0); return; }
+    this.root.getWorldQuaternion(_rq);
+    A.h.parent.getWorldQuaternion(_pq);
+    _t.copy(A.d).applyQuaternion(_rq).applyQuaternion(_qi.copy(_pq).invert());
+    _qa.setFromUnitVectors(_Y, _t.normalize());
+    if (A.roll) _qa.multiply(_qb.setFromAxisAngle(_Y, A.roll));
+    A.h.quaternion.copy(A.q0).slerp(_qa, A.k);
+  }
+
+  // World-space zombie pose, run right after the mixer (which rewrites every bone it has a track for, so nothing piles
+  // up): hunch the torso toward the camera, keep the chin up so the face shows, and reach BOTH arms out in front of the
+  // chest (a sprinter flails them). Works in the actor's own frame (+Z forward, +X to the right... of the root), so the
+  // rig's twisted bind axes do not matter. Module scratch objects only: no allocations per frame.
+  undeadPose(dt) {
+    const u = this.undead;
+    if (!this.upBones) {
+      const g = (n) => this.model.getObjectByName(n);
+      this.upBones = { torso: g('Torso'), head: g('Head'), ua: [g('UpperArmL'), g('UpperArmR')], la: [g('LowerArmL'), g('LowerArmR')], wr: [g('WristL'), g('WristR')] };
+    }
+    const B = this.upBones;
+    if (!B.torso || !B.head || !B.ua[0] || !B.ua[1] || !B.la[0] || !B.la[1]) return;
+    this.upT += dt * (u.rate || 1) * 2.6;
+    const lite = this.poseLod === 1; // Low quality: torso, head and upper arms only (forearms keep the mixer's pose)
+    const ph = this.upT, w = this.oneShot ? (this.oneShotUpper ? 0.5 : 0.3) : 1;
+    this.root.updateWorldMatrix(true, false);
+    this.root.getWorldQuaternion(_rq);
+    _rqi.copy(_rq).invert();
+    // actor-frame axes in world space
+    _right.set(1, 0, 0).applyQuaternion(_rq);
+    // hunch: the torso pitches about the actor's right axis (positive = lean forward)
+    const hunch = (u.hunch ?? 0.45) * w * (1 + Math.sin(ph * 0.5) * 0.08);
+    _qa.setFromAxisAngle(_right, hunch);
+    worldRot(B.torso, _qa);
+    B.torso.updateWorldMatrix(false, true);
+    // chin up, so a camera 40 degrees overhead still sees the face
+    _qa.setFromAxisAngle(_right, -hunch * 0.6);
+    worldRot(B.head, _qa);
+    B.head.updateWorldMatrix(false, true);
+    // arms
+    const flail = u.flail || 0, armY = u.armY ?? -0.05, spread = u.spread ?? 0.16;
+    for (let i = 0; i < 2; i++) {
+      const s = i === 0 ? -1 : 1, ua = B.ua[i], la = B.la[i], wr = B.wr[i];
+      const sw = Math.sin(ph * 1.7 + i * 2.1);
+      // target direction in actor space, then to world
+      _t.set(s * (spread + flail * 0.5 * sw), armY + flail * 0.35 * Math.sin(ph * 2.3 + i * 1.7) + Math.sin(ph + i) * 0.05, 1).normalize().applyQuaternion(_rq);
+      aimBone(ua, la, _t, w);
+      if (lite) continue;
+      ua.updateWorldMatrix(false, true);
+      _t.set(s * (spread * 0.7 + flail * 0.35 * sw), armY - 0.1 + Math.sin(ph * 1.3 + i) * 0.05, 1).normalize().applyQuaternion(_rq);
+      aimBone(la, wr, _t, w);
+      la.updateWorldMatrix(false, true);
+    }
   }
 
   // The shared animations hold the arms well out from a chibi's wide body; bring them in
@@ -505,7 +602,7 @@ export class Actor {
     const own = new Map();
     for (const pt of this.parts) {
       let m = own.get(pt.base);
-      if (!m) { m = pt.base.clone(); m.userData = { ...pt.base.userData }; own.set(pt.base, m); this.mats.push(m); }
+      if (!m) { m = pt.base.clone(); m.userData = { ...pt.base.userData }; keepHook(m); own.set(pt.base, m); this.mats.push(m); }
       pt.mesh.material = m;
     }
     this.flashing = false;

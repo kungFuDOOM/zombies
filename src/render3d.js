@@ -17,6 +17,11 @@ const MAX_PARTICLES = 900;
 // Phones get fewer dynamic lights; each one costs on every pixel.
 const LOW_POWER = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 const TORCH_LIGHTS = LOW_POWER ? 4 : 8;
+// Graphics quality: phones start on Low (no post pass, no shadows, no rim light), desktops on High; the player's choice is saved
+export function defaultQuality() {
+  try { const q = localStorage.getItem('motd-quality'); if (q === 'low' || q === 'high') return q; } catch { /* storage unavailable */ }
+  return LOW_POWER ? 'low' : 'high';
+}
 const S = MODEL_SCALE;
 
 function hash(x, y) {
@@ -37,12 +42,12 @@ export const HERO_STYLE = {
 // How each monster looks: a built monster ('m_' + type, see monsters.js), its walk cycle and size.
 export const ENEMY_STYLE = {
   // `undead` = post-mixer shamble pose (assets.js zombiePose); variants are m_<type>1/2.
-  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.22, head: 0.18, reach: 1.3, bend: 0.2, sway: 0.14, hitch: 0.16, rate: 0.9 } },
-  sprinter: { model: 'z_sprinter', slim: 0.92, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 0.97, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.2, head: 0.14, reach: 1.0, bend: 0.5, sway: 0.2, hitch: 0.16, rate: 2.0, uneven: 0.6 } },
-  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.3, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.2, head: 0.18, reach: 1.05, bend: 0.25, sway: 0.2, hitch: 0.12, rate: 0.7, stomp: 0.045, drag: 0.4 } },
-  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.05, undead: { lean: 0.24, head: 0.22, reach: 1.1, bend: 0.5, sway: 0.16, hitch: 0.2, rate: 1.2, retch: 0.5 } },
+  walker: { model: 'z_walker', walk: 'Walking_D_Skeletons', walkSpeed: 0.85, idleSpeed: 0.3, scale: 1.1, melee: 'Unarmed_Melee_Attack_Punch_A', undead: { lean: 0.22, head: 0.18, reach: 1.3, bend: 0.2, sway: 0.18, hitch: 0.2, rate: 0.9, hunch: 0.42, armY: -0.02, spread: 0.15 } },
+  sprinter: { model: 'z_sprinter', slim: 0.92, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 1.05, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.2, head: 0.14, reach: 1.0, bend: 0.5, sway: 0.24, hitch: 0.2, rate: 2.0, uneven: 0.75, hunch: 0.45, armY: 0.05, spread: 0.2, flail: 0.9 } },
+  brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.5, wide: 1.2, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.2, head: 0.18, reach: 1.05, bend: 0.25, sway: 0.22, hitch: 0.14, rate: 0.7, stomp: 0.045, drag: 0.4, hunch: 0.34, armY: -0.12, spread: 0.3 } },
+  spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.12, undead: { lean: 1.3, head: 1.0, reach: 1.9, bend: 0.3, sway: 0.18, hitch: 0.25, rate: 1.2, retch: 0.8 } },
   // The Grim Shopper: an upright, unhurried undead mall manager (ch_zombie_shopper, dressed in charProps.dressShopper)
-  death: { model: 'z_shopper', single: true, tint: '#dfe4e2', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.3, scale: 1.2, undead: { lean: 0.08, head: 0.1, reach: 0.45, bend: 0.15, sway: 0.06, hitch: 0.08, rate: 0.6 } },
+  death: { model: 'z_shopper', single: true, tint: '#dfe4e2', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.3, scale: 1.2, undead: { lean: 0.08, head: 0.1, reach: 0.45, bend: 0.15, sway: 0.06, hitch: 0.08, rate: 0.6, hunch: 0.06, armY: -0.55, spread: 0.12 } },
 };
 
 export class Renderer3D {
@@ -61,6 +66,15 @@ export class Renderer3D {
     this.hemi = new THREE.HemisphereLight('#ffffff', '#202020', 1);
     this.sun = new THREE.DirectionalLight('#ffffff', 1);
     this.scene.add(this.hemi, this.sun, this.sun.target);
+    // High quality only: a cool back-rim light so characters pop off the floor (the warm key is `sun`), a shadow map for the
+    // heroes and the boss, and one fullscreen grade pass (vignette, lift/gamma/gain, saturation). Low is the plain forward render.
+    this.rim = new THREE.DirectionalLight('#7fb6ff', 0.75);
+    this.sun.shadow.mapSize.set(1024, 1024);
+    const shc = this.sun.shadow.camera;
+    shc.left = -280; shc.right = 280; shc.top = 280; shc.bottom = -280; shc.near = 100; shc.far = 1300;
+    this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 1.2;
+    this.post = null;
+    this.quality = null;
 
     this.torchLights = [];
     for (let i = 0; i < TORCH_LIGHTS; i++) {
@@ -121,7 +135,72 @@ export class Renderer3D {
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(VIEW_W, VIEW_H, false);
     this.canvas.style.imageRendering = level ? 'pixelated' : 'auto';
+    if (this.post) this.resizePost();
     return ['Pixels: OFF', 'Pixels: RETRO', 'Pixels: CHUNKY'][level];
+  }
+
+  // 'low' (phones: the plain forward render) or 'high' (rim light, hero/boss shadows, colour-grade pass).
+  setQuality(q) {
+    q = q === 'high' ? 'high' : 'low';
+    if (q === this.quality) return this.qualityLabel();
+    this.quality = q;
+    const high = q === 'high';
+    this.renderer.shadowMap.enabled = high;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.sun.castShadow = high;
+    if (high) { this.scene.add(this.rim, this.rim.target); this.post = this.post || this.makePost(); this.resizePost(); }
+    else { this.scene.remove(this.rim, this.rim.target); }
+    this.postOn = high;
+    return this.qualityLabel();
+  }
+  qualityLabel() { return this.quality === 'high' ? 'Graphics: HIGH' : 'Graphics: LOW'; }
+
+  makePost() {
+    const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true });
+    const tri = new THREE.BufferGeometry();
+    tri.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
+    tri.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 2, 0, 0, 2]), 2));
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: rt.texture }, uLift: { value: new THREE.Vector3(0.006, 0.008, 0.016) }, uGain: { value: new THREE.Vector3(1.05, 1.02, 0.97) }, uGamma: { value: 1.06 }, uSat: { value: 1.14 }, uVig: { value: 0.42 } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; uniform vec3 uLift; uniform vec3 uGain; uniform float uGamma; uniform float uSat; uniform float uVig;
+        varying vec2 vUv;
+        void main() {
+          vec3 raw = texture2D(tDiffuse, vUv).rgb, c = raw;
+          c = pow(max(c * uGain + uLift, 0.0), vec3(1.0 / uGamma));
+          float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          c = mix(vec3(l), c, uSat);
+          vec2 d = (vUv - 0.5) * vec2(1.0, 0.85);
+          c *= 1.0 - uVig * smoothstep(0.28, 0.78, length(d));
+          gl_FragColor = vec4(c, 1.0);
+          #include <tonemapping_fragment>
+          // self-lit pixels (neon bands/signs, eye glows: toneMapped:false materials) are bright and saturated or pure white:
+          // keep them un-tonemapped so ACES doesn't dull them. Lit surfaces rarely reach this.
+          float mx = max(raw.r, max(raw.g, raw.b)), mn = min(raw.r, min(raw.g, raw.b));
+          float glow = smoothstep(0.6, 0.85, (mx - mn) / max(mx, 1e-3)) * smoothstep(0.45, 0.8, mx) + smoothstep(0.96, 1.0, mn);
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, min(c, vec3(1.0)), clamp(glow, 0.0, 1.0));
+          #include <colorspace_fragment>
+        }`,
+      depthTest: false, depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(tri, mat);
+    mesh.frustumCulled = false;
+    const scene = new THREE.Scene(); scene.add(mesh);
+    return { rt, scene, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), mat };
+  }
+  resizePost() {
+    this.renderer.getDrawingBufferSize(this.tmpSize || (this.tmpSize = new THREE.Vector2()));
+    this.post.rt.setSize(this.tmpSize.x, this.tmpSize.y);
+  }
+  // one frame of `scene` through the camera: straight to the canvas on Low, via the grade pass on High
+  draw(scene, camera) {
+    if (this.postOn && this.post) {
+      const r = this.renderer;
+      r.setRenderTarget(this.post.rt);
+      r.render(scene, camera);
+      r.setRenderTarget(null);
+      r.render(this.post.scene, this.post.cam);
+    } else this.renderer.render(scene, camera);
   }
 
   blob(parent, size) {
@@ -193,6 +272,7 @@ export class Renderer3D {
     this.level = g.level;
     this.scene.add(group);
     buildMall(this, g, group);
+    group.traverse((o) => { if (o.isInstancedMesh) o.receiveShadow = true; }); // floor tiles take the hero / boss shadows (High only)
     this.addBloodSmears(g, group);
   }
 
@@ -277,10 +357,14 @@ export class Renderer3D {
   makeHero(p) {
     const a = new Actor(p.cls);
     const root = a.root;
+    root.traverse((o) => { if (o.isMesh) o.castShadow = true; }); // (only drawn into the shadow map on High)
     // player-coloured ring at the feet, like the arcade's player markers
-    const ring = new THREE.Mesh(new THREE.RingGeometry(11, 14, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: heroColor(p.cls), transparent: true, opacity: 0.8, depthWrite: false }));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(10, 15.5, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: heroColor(p.cls), transparent: true, opacity: 0.8, depthWrite: false }));
     ring.position.y = 1.2;
     root.add(ring);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(15, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: heroColor(p.cls), transparent: true, opacity: 0.22, depthWrite: false }));
+    disc.position.y = 1.1;
+    ring.add(disc); // soft team-colour pad so you never lose yourself in a horde
     this.blob(root, 34);
     a.base(HERO_STYLE[p.cls].idle);
     return { kind: 'hero', root, actor: a, ring };
@@ -294,6 +378,7 @@ export class Renderer3D {
     const a = new Actor(vi ? `${st.model}${vi}` : st.model, { tint: st.tint, ghost: st.ghost, emissiveEyes: st.eyes, undead: st.undead ? { ...st.undead } : null });
     a.model.scale.setScalar((a.nat ? a.unit : a.adult ? HERO_SCALE : S) * st.scale * (1 + vr));
     if (st.slim) a.model.scale.x *= st.slim;
+    if (st.wide) a.model.scale.x *= st.wide;
     if (st.weapon) a.attach(st.weapon, 'handslot.r');
     if (!st.float) this.blob(a.root, 30 * st.scale);
     a.base(st.undead ? st.walk : 'Idle', st.undead ? st.idleSpeed : 1);
@@ -330,7 +415,7 @@ export class Renderer3D {
       return { kind: 'boss', root: a.root, actor: a, baseScale: 1 };
     }
     const root = buildBoss(b.model, b.color, b.horn);
-    root.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.blob(root, 110);
     for (const mat of root.userData.mats) { mat.userData.e0 = mat.emissive.clone(); mat.userData.ei0 = mat.emissiveIntensity; }
     root.scale.setScalar(root.userData.bossScale);
@@ -532,6 +617,8 @@ export class Renderer3D {
     }
     this.sun.position.set(tx - 200, 500, tz + 300);
     this.sun.target.position.set(tx, 0, tz);
+    this.rim.position.set(tx + 150, 260, tz - 420);
+    this.rim.target.position.set(tx, 20, tz);
     this.camX = tx; this.camZ = tz;
 
     this.syncLevel(g, t);
@@ -587,7 +674,7 @@ export class Renderer3D {
     this.syncLights(g, t, tx, tz);
     this.syncParticles(g);
     this.updateAmbient(dt, t);
-    this.renderer.render(this.scene, this.camera);
+    this.draw(this.scene, this.camera);
   }
 
   sync(obj, make, update, seen) {
@@ -717,6 +804,7 @@ export class Renderer3D {
     }
     a.fade(e.invisible ? 0.15 : 1);
     a.flash(e.hurt, '#ffd8d0');
+    a.poseLod = !this.near(e.x, e.y, 400) ? -1 : this.quality === 'high' ? 0 : 1; // off-screen: no pose; Low: fewer bones
     a.update(dt);
   }
 
@@ -745,7 +833,7 @@ export class Renderer3D {
         a.play(clip, { upper: moving, timeScale: 1.6 });
       }
       const winding = act && (act.type === 'windup' || act.type === 'roar') && since < 0.8;
-      if (winding) a.flash(0.5 + Math.sin(t * 30) * 0.5, '#ff8020'); // the tell: it glows before it strikes
+      if (winding) a.flash(0.5 + Math.sin(t * 30) * 0.5, '#ff8020'); // (flash() is 0.8 emissive) // the tell: it glows before it strikes
       else a.flash(e.hurt, hurtColor);
       a.update(dt);
       return;
@@ -773,8 +861,8 @@ export class Renderer3D {
     const winding = act && (act.type === 'windup' || act.type === 'roar') && since < 0.8;
     const on = e.hurt > 0 || winding;
     for (const m of v.root.userData.mats) {
-      if (winding) { m.emissive.set('#ff7010'); m.emissiveIntensity = 0.5 + Math.sin(t * 30) * 0.4; } // the tell
-      else if (on) { m.emissive.set(hurtColor); m.emissiveIntensity = 0.8; } else { m.emissive.copy(m.userData.e0); m.emissiveIntensity = m.userData.ei0; }
+      if (winding) { m.emissive.set('#ff5a10'); m.emissiveIntensity = 0.16 + Math.sin(t * 30) * 0.1; } // the tell (a pulse, not a wash)
+      else if (on) { m.emissive.set(hurtColor); m.emissiveIntensity = 0.45; } else { m.emissive.copy(m.userData.e0); m.emissiveIntensity = m.userData.ei0; }
     }
   }
 
@@ -883,7 +971,7 @@ export class Renderer3D {
     this.sun.color.set(th.light).lerp(this.tmpColor.set('#c8d6b4'), mood);
     this.sun.intensity = th.ambient * (1.1 - 0.35 * mood) + 0.3 - 0.15 * mood;
     this.renderer.toneMappingExposure = 0.86 - mood * (foodCourt ? 0.06 : 0.1);
-    if (play && !this.scene.fog) this.scene.fog = new THREE.Fog('#0e1610', 600, 1500);
+    if (play && !this.scene.fog) this.scene.fog = new THREE.Fog('#0e1610', 760, 1900);
     else if (!play && this.scene.fog) this.scene.fog = null;
     this.torchMood = 1 - 0.15 * mood;
   }

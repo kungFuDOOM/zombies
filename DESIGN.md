@@ -157,7 +157,7 @@ Every type keeps the green fresnel rim, glow pinpoint eyes in real sockets, and 
 
 ### 5.4 The Deep-Fry Butcher (Wing 1, redesign)
 
-**Concept.** A food-court fry cook who fell into his own fryer and climbed out *battered*. His head is jammed inside the cracked fibreglass head of "Chef Cluck", the food court's chicken mascot. His real rotting face shows through a split in the cheek, and one dead-yellow eye glows inside the crack. Half mascot, half slaughterhouse: a smiling 90s mall icon that butchers people.
+**Concept.** A hulking pig-mascot chef: a food-court fry cook whose head is jammed inside the cracked fibreglass head of the food court's pig mascot (pink snout, floppy ears, tusks), his small angry eyes glowing out of it. A tall, filthy chef's hat, a blood-soaked white jacket and apron, meat hooks on his back and a giant cleaver. Half mascot, half slaughterhouse: a smiling 90s mall icon that butchers people.
 
 | Aspect | Spec |
 |---|---|

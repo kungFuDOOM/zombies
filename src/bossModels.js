@@ -153,9 +153,8 @@ const shoulderPads = (B, s, mat, k = 1) => {
 };
 
 // ---------- THE DEEP-FRY BUTCHER ----------
-// A fry cook who fell into his own fryer and climbed out battered, his head jammed inside the cracked
-// fibreglass head of Chef Cluck, the food court's chicken mascot. Cream greasy apron, golden batter
-// crust, meat hooks off his back, a cleaver bigger than his head and a smoking fry basket on a chain.
+// A hulking pig-mascot chef: a pink pig head with glowing eyes and tusks, a tall chef's hat, a filthy white
+// jacket under a bloody apron, meat hooks off his back, a cleaver bigger than his head and a smoking fry basket on a chain.
 function butcher() {
   const B = begin(), { m } = B;
   const s = { leg: 40, hipW: 11, legR: 9.5, h1: 10, h2: 22, neck: 22, headZ: 5, shoulder: 31, shoulderY: 16, arm: [26, 24, 21, 20], armR: [8.2, 6.3], jawY: -8, jawZ: 8,
@@ -163,16 +162,16 @@ function butcher() {
   skeleton(B, s);
   const X = shared(B);
   const batter = lofted(B, '#ffffff', { map: paint('batter', '#c89868', { crumbs: 160, grime: 14, dirt: '#6a3a18', seed: 5 }) });
-  const undershirt = lofted(B, '#ffffff', { map: paint('under', '#7a6a58', { grime: 30, blood: 5, dirt: '#2a1a10', seed: 8 }) });
+  const undershirt = lofted(B, '#ffffff', { map: paint('under', '#ece6d6', { grime: 34, blood: 16, dirt: '#9a8a60', seed: 8 }) }); // the chef's jacket: filthy white, soaked in blood
   const trousers = lofted(B, '#ffffff', { map: paint('trou', '#3a3a40', { grime: 30, blood: 4, dirt: '#1a1a14', seed: 9, stripes: '#2c2c32', stripeW: 24 }) });
   const flesh = lofted(B, '#ffffff', { map: paint('flesh', '#b88a80', { grime: 26, veins: 'rgba(120,50,90,0.6)', blood: 3, seed: 6 }) });
   body(B, s, {
-    torsoZones: [[0, 12, trousers], [12, 80, undershirt]], upper: batter, fore: flesh, leg: trousers,
+    torsoZones: [[0, 12, trousers], [12, 80, undershirt]], upper: undershirt, fore: flesh, leg: trousers,
   });
   boots(B, s, '#17171c', 9, 24);
   const cy = B.S.pos('chest').y, by = B.S.pos('belly').y;
   // apron: a thin plate over the belly and chest, skinned so it sways with the gut
-  const apron = lofted(B, '#ffffff', { map: paint('apron', '#efe2c0', { grime: 26, blood: 9, dirt: '#8a6a2a', seed: 12, bands: [[0.82, 0.9, '#c8a050']] }), side: THREE.DoubleSide, roughness: 0.5 });
+  const apron = lofted(B, '#ffffff', { map: paint('apron', '#e6dcc0', { grime: 26, blood: 26, dirt: '#8a6a2a', seed: 12, bands: [[0.82, 0.9, '#c8a050']] }), side: THREE.DoubleSide, roughness: 0.5 });
   addSurfaces(B.S, loft(B.S, {
     pts: ['chest', 'belly', 'pelvis'].map((n) => B.S.pos(n)), bones: ['chest', 'belly'], ext0: 14, ext1: 14, seg: 12, step: 2.5, blend: 0.7,
     profile: [[0, 20, 2.2, 17], [14, 26, 2.2, 21.5], [26, 31, 2.2, 27.5], [36, 30, 2.2, 26.5], [46, 22, 2, 19], [60, 15, 2, 13]],
@@ -192,23 +191,28 @@ function butcher() {
     for (let k = 0; k < 3; k++) prop(B, 'chest', G.sph(2.5, 8), m('#a83a3a'), [x + 3, cy + 18 + h - k * 4.5, -16.5], [0, 0, 0], [1, 1.5, 1]);
     prop(B, 'chest', G.box(6, 8, 0.6), m('#f4f0e0'), [x - 4, cy + 14 + h, -17], [0, 0.4, 0.1]);
   }
-  // CHEF CLUCK: the mascot head, cracked to show the cook inside
+  // THE PIG-MASCOT CHEF: a cracked fibreglass pig head (the food court's "Chef Porko" mascot) with the cook's angry eyes glowing
+  // out of it, tusks, a snout, floppy ears and a tall, filthy chef's hat
   const hy = B.S.pos('head').y, hz = B.S.pos('head').z;
-  const fiber = m('#f4f0e4', { roughness: 0.45 }), crack = m('#241c18'), beakM = m('#e8821a', { roughness: 0.5 }), comb = m('#d02828', { roughness: 0.5 });
-  const rot = m('#7a8a62'), cheek = m('#9a5a50', { roughness: 0.4 });
-  prop(B, 'head', G.sph(19, 18), fiber, [0, hy + 6, hz], [0, 0, 0], [1.08, 1.05, 1.02]);
-  prop(B, 'head', G.sph(10, 12), rot, [12, hy + 2, hz + 11], [0, 0.4, 0], [0.8, 1.1, 0.5]);              // the torn-open cheek
-  prop(B, 'head', G.sph(6, 10), wound, [13.5, hy - 2, hz + 15], [0, 0.4, 0], [1, 1, 0.5]);
-  for (let i = 0; i < 5; i++) prop(B, 'head', G.box(1.3, 7 + (i % 3) * 3, 0.8), crack, [-4 + i * 3.6, hy + 16 - i * 2.5, hz + 17 + i * 0.4], [0, 0, 0.5 - i * 0.2]); // cracks
-  prop(B, 'head', G.sph(5.2, 10), m('#ffffff', { roughness: 0.3 }), [-8, hy + 8, hz + 15.5]);               // the mascot's big cartoon eye
-  prop(B, 'head', G.sph(2.4, 8), crack, [-8.5, hy + 8, hz + 19.8]);
-  prop(B, 'head', G.sph(4.2, 10), X.eye, [11, hy + 9, hz + 15.5]);                                         // the cook's real eye, glowing in the crack
-  prop(B, 'head', G.cone(8, 17, 4), beakM, [0, hy - 1, hz + 25], [Math.PI / 2, Math.PI / 4, 0], [1, 1, 0.6]); // upper beak
-  prop(B, 'jaw', G.cone(7, 14, 4), beakM, [0, hy - 8, hz + 21], [Math.PI / 2, Math.PI / 4, 0], [1, 1, 0.4]);  // lower beak = the jaw
-  for (let i = 0; i < 3; i++) prop(B, 'jaw', G.cone(1.2, 4, 4), X.bone, [(i - 1) * 3.6, hy - 5.5, hz + 25], [Math.PI, 0, 0]);
-  for (let i = 0; i < 4; i++) prop(B, 'head', G.sph(5 + (i % 2) * 2, 8), comb, [(i - 1.5) * 5, hy + 25 - Math.abs(i - 1.5) * 2.5, hz - 2]);
-  prop(B, 'jaw', G.sph(4, 8), comb, [0, hy - 14, hz + 17], [0, 0, 0], [0.7, 1.6, 0.7]);                      // wattle
-  prop(B, 'head', G.box(18, 5, 1.5), X.blood, [0, hy - 8, hz + 20.5], [0, 0, 0]);                           // blood down the beak
+  const pig = m('#f2a2ac', { roughness: 0.5 }), pigD = m('#d8788a', { roughness: 0.5 }), hat = m('#f6f2e6', { roughness: 0.6 }), hatD = m('#cfc6ae', { roughness: 0.8 }), dark = m('#241c18');
+  prop(B, 'head', G.sph(20, 18), pig, [0, hy + 6, hz], [0, 0, 0], [1.1, 1.02, 1.02]);                       // the big round head
+  prop(B, 'head', G.cyl(10, 11.5, 11, 14), pigD, [0, hy + 0.5, hz + 20], [Math.PI / 2, 0, 0], [1, 1, 0.85]);   // snout
+  for (const sx of [-1, 1]) prop(B, 'head', G.sph(1.9, 8), dark, [sx * 4, hy + 0.5, hz + 26.5], [0, 0, 0], [1, 1.5, 0.6]); // nostrils
+  for (const sx of [-1, 1]) {
+    prop(B, 'head', G.cone(8, 17, 4), pig, [sx * 17, hy + 22, hz - 3], [-0.3, Math.PI / 4, sx * -0.55], [1, 1, 0.45]);     // floppy ears
+    prop(B, 'head', G.cone(4.6, 11, 4), pigD, [sx * 17.4, hy + 21, hz - 1.5], [-0.3, Math.PI / 4, sx * -0.55], [1, 1, 0.4]);
+    prop(B, 'head', G.sph(3.2, 8), X.eye, [sx * 8.5, hy + 10, hz + 17], [0, 0, 0], [1.3, 0.8, 0.7]);                      // small, angry, glowing eyes
+    prop(B, 'head', G.box(10, 2.6, 2.4), dark, [sx * 8.5, hy + 14.2, hz + 18], [0, 0, sx * -0.4]);                       // heavy brow
+    prop(B, 'jaw', G.cone(2.4, 11, 5), X.bone, [sx * 8, hy - 6, hz + 20], [-0.2, 0, sx * 0.12]);                         // tusks
+  }
+  prop(B, 'head', G.box(14, 4, 1.6), X.blood, [0, hy - 3, hz + 27], [0, 0, 0]);                              // blood smeared on the snout
+  prop(B, 'jaw', G.box(15, 3, 6), pigD, [0, hy - 8, hz + 15]);                                               // lower lip
+  // the chef's hat (toque): band, tall pleated stack, puffy crown, grease and blood
+  prop(B, 'head', G.cyl(16, 16.5, 6, 18), hatD, [0, hy + 21, hz - 1]);
+  prop(B, 'head', G.cyl(14.5, 15.5, 16, 18), hat, [0, hy + 32, hz - 1]);
+  prop(B, 'head', G.sph(17, 14), hat, [0, hy + 45, hz - 1], [0, 0, 0], [1, 0.8, 1]);
+  prop(B, 'head', G.box(6, 14, 1), X.blood, [-6, hy + 30, hz + 15]);
+  prop(B, 'head', G.box(9, 3, 1), hatD, [6, hy + 24, hz + 15.4]);
   // the cleaver, scaled up on the long right arm
   const cl = 'handR', hp = B.S.pos('handR'), cx = hp.x + 6, cyh = hp.y, cz = hp.z + 24;
   prop(B, cl, G.box(5.5, 26, 5.5), X.dark, [cx, cyh + 6, cz]);                                                 // handle, held upright

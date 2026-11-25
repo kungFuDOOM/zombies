@@ -85,18 +85,18 @@ const SPECS = {
   },
   Casual: { // Walker: gaunt dead shopper
     out: 'ch_zombie_walker', drop: [[/Head$/, 'Hair']], // bald and rotting: the pack's hair read as a sporty tuft
-    colors: { Skin: '#74b04c', Skin_Darker: '#4f7a34', LightBrown: '#a89c88', LightBlue: '#33404c', White: '#d8c8b0', Red_Dark: '#6a2a2a', Hair: '#2a2218', Eye: '#e8e8b0', Eyebrows: '#2a2218' },
-    undead: { cloth: 0.35, wounds: 1 },
+    colors: { Skin: '#aab69c', Skin_Darker: '#76816b', LightBrown: '#d8d2c0', LightBlue: '#7a8ea4', White: '#e2dac8', Red_Dark: '#8a3a34', Hair: '#2a2218', Eye: '#fff6a0', Eyebrows: '#2a2218' },
+    undead: { cloth: 0.1, wounds: 1.4, bib: 1 },
   },
   Farmer: { // Sprinter: emaciated, jaundiced, torn overalls (hat dropped)
     out: 'ch_zombie_sprinter', drop: [[/Head$/, 'Beige'], [/Head$/, 'Red']],
-    colors: { Skin: '#b4c040', Brown: '#7a4a2a', 'Beige@Body': '#d8c880', LightBlue: '#8a2a1e', Brown2: '#4a3828', Eye: '#f0f0a0', Eyebrows: '#2a2218' },
-    undead: { cloth: 0.3, wounds: 1.2 },
+    colors: { Skin: '#bcb890', Brown: '#a8764c', 'Beige@Body': '#e6dcae', LightBlue: '#b04434', Brown2: '#7a6048', Eye: '#ffd0a0', Eyebrows: '#2a2218' },
+    undead: { cloth: 0.1, wounds: 1.6, bib: 1 },
   },
   Hoodie: { // Brute: grey slab of meat in a torn dark hoodie
     out: 'ch_zombie_brute', drop: [[/Head$/, 'Hair']],
-    colors: { Skin: '#8a9ca2', Purple: '#1c2236', LightBlue: '#26324a', White: '#c8c8c0', Hair: '#1c1c20', Eye: '#d8e0e0', Eyebrows: '#1c1c20' },
-    undead: { cloth: 0.3, wounds: 1.5 },
+    colors: { Skin: '#92a3a8', Purple: '#56608a', LightBlue: '#3e4e72', White: '#d8d8d0', Hair: '#1c1c20', Eye: '#ffc890', Eyebrows: '#1c1c20' },
+    undead: { cloth: 0.1, wounds: 1.8, bib: 1.15 },
   },
   BusinessMan: { // The Grim Shopper: a grey, upright undead mall manager in a funeral suit with a blood-red tie
     out: 'ch_zombie_shopper',
@@ -105,8 +105,8 @@ const SPECS = {
   },
   AnimatedWoman2: { // Spitter: toxic-green skin, cream smock
     out: 'ch_zombie_spitter',
-    colors: { Skin: '#6cd038', White: '#d8cfa4', Orange: '#cfc79a', Grey: '#3a3a30', Hair_Blond: '#8a9a46', Hair_Brown: '#2a3010', Brown: '#7fff3a' },
-    undead: { cloth: 0.25, wounds: 0.9, goo: true },
+    colors: { Skin: '#a8b88a', White: '#ece2c6', Orange: '#d8d0a4', Grey: '#6a6a58', Hair_Blond: '#8a9a46', Hair_Brown: '#3a4018', Brown: '#a8d860' },
+    undead: { cloth: 0.1, wounds: 1.1, goo: true, bib: 0.9 },
   },
 };
 
@@ -122,6 +122,28 @@ async function build(name, spec) {
   const P = [], N = [], J = [], W = [], C = [], I = [];
   let base = 0, skinNode = null;
   const p = [0, 0, 0];
+  // bounding boxes (the meshes are Z-up, facing -y): the whole body, and the Head-joint skin, for the blood paint below
+  const bb = { min: [1e9, 1e9, 1e9], max: [-1e9, -1e9, -1e9] }, hb = { min: [1e9, 1e9, 1e9], max: [-1e9, -1e9, -1e9] };
+  if (spec.undead) {
+    const q = [0, 0, 0], w4 = [0, 0, 0, 0], j4 = [0, 0, 0, 0];
+    for (const node of root.listNodes()) {
+      const mesh = node.getMesh();
+      if (!mesh) continue;
+      for (const prim of mesh.listPrimitives()) {
+        const mat = prim.getMaterial(), mname = mat ? mat.getName() : '';
+        if ((spec.drop || []).some(([re, m]) => re.test(mesh.getName()) && m === mname)) continue;
+        const pos = prim.getAttribute('POSITION'), jo = prim.getAttribute('JOINTS_0'), we = prim.getAttribute('WEIGHTS_0');
+        for (let i = 0; i < pos.getCount(); i++) {
+          pos.getElement(i, q);
+          for (let a = 0; a < 3; a++) { bb.min[a] = Math.min(bb.min[a], q[a]); bb.max[a] = Math.max(bb.max[a], q[a]); }
+          jo.getElement(i, j4); we.getElement(i, w4);
+          let k = 0; for (let t = 1; t < 4; t++) if (w4[t] > w4[k]) k = t;
+          if (/^Head/.test(jn[j4[k]] || '') && SKIN.test(mname)) for (let a = 0; a < 3; a++) { hb.min[a] = Math.min(hb.min[a], q[a]); hb.max[a] = Math.max(hb.max[a], q[a]); }
+        }
+      }
+    }
+  }
+  const H = Math.max(1e-6, bb.max[2] - bb.min[2]), cx = (bb.min[0] + bb.max[0]) / 2, cy = (bb.min[1] + bb.max[1]) / 2;
 
   for (const node of root.listNodes()) {
     const mesh = node.getMesh();
@@ -149,14 +171,31 @@ async function build(name, spec) {
         let rgb = typeof hex === 'function' ? lin(hex(smooth(p[0], p[1], p[2], 1100))) : hex ? lin(hex) : orig;
         if (u) {
           if (!isSkin && !isEye && !/^Eyebrows|^Hair/.test(mname)) { // rags: faded, filthy, stained
-            rgb = mix(rgb, lin('#2e2c24'), u.cloth);
-            if (smooth(p[0] + 7, p[1], p[2], 420) > 0.62) rgb = mix(rgb, lin('#1c1812'), 0.55);
+            rgb = mix(rgb, lin('#4a4638'), u.cloth);
+            if (smooth(p[0] + 7, p[1], p[2], 420) > 0.7) rgb = mix(rgb, lin('#3a3226'), 0.4);
+          }
+          // BLOOD that reads from a high camera at ~8 px per head: a big dark-red bib down the chest, a soaked back and
+          // shoulders (the camera sees those), red hands, a bloody mouth and chin. Model space: x side, z height, -y front.
+          const nx = (p[0] - cx) / H, nz = (p[2] - bb.min[2]) / H, nf = -(p[1] - cy) / H;
+          const cloth = !isSkin && !isEye && !/^Eyebrows|^Hair/.test(mname);
+          const bk = u.bib || 1, jit = smooth(p[0], p[1], p[2], 300), jit2 = smooth(p[0] + 9, p[1], p[2], 700);
+          const bibW = (0.085 + 0.07 * jit) * bk;
+          if (cloth && nf > -0.01 && nz > 0.50 && nz < 0.80 - 0.06 * jit && Math.abs(nx) < bibW) rgb = mix(rgb, lin(jit2 > 0.62 ? '#3a0505' : '#6a0b0b'), 0.94); // front bib
+          if (cloth && nf < 0.01 && nz > 0.56 && nz < 0.8 && Math.abs(nx) < (0.07 + 0.08 * jit) * bk && jit2 > 0.3) rgb = mix(rgb, lin('#640a0a'), 0.9);       // back soak
+          if (cloth && nz > 0.7 && Math.abs(nx) > 0.07 && Math.abs(nx) < 0.2 && jit > 0.5) rgb = mix(rgb, lin('#700c0c'), 0.9);                              // bloody shoulders
+          if (cloth && nz > 0.46 && nz < 0.56 && jit2 > 0.55) rgb = mix(rgb, lin('#58080a'), 0.8);                                                            // soaked waist
+          if (/^(Wrist|Hand|LowerArm)/.test(joint) && isSkin && (/^Wrist|^Hand/.test(joint) || jit > 0.35)) rgb = mix(rgb, lin('#6a0a0a'), 0.85);          // red hands and forearms
+          if (isSkin && /^Head/.test(joint) && hb.max[2] > hb.min[2]) {
+            const hh = (p[2] - hb.min[2]) / (hb.max[2] - hb.min[2]), hf = -(p[1] - hb.min[1] - 0) / 1; void hf;
+            const fr = (hb.min[1] + hb.max[1]) / 2 - p[1];            // > 0 on the face side (-y)
+            if (fr > 0 && hh < 0.34) rgb = mix(rgb, lin('#4a0606'), 0.85);                                 // blood on the mouth and chin
+            else if (fr > 0 && hh > 0.36 && hh < 0.52 && Math.abs(p[0] - (hb.min[0] + hb.max[0]) / 2) < (hb.max[0] - hb.min[0]) * 0.34) rgb = mix(rgb, lin('#2a1210'), 0.35); // shadowed eye band
           }
           if (WOUNDABLE.test(joint) && !isEye && !/^Hair|^Eyebrows/.test(mname)) { // hair and brows stay hair-coloured (no red tufts)
             const face = /^Head|^Neck/.test(joint), s = smooth(p[0], p[1], p[2], face ? 1300 : 620), d = smooth(p[0] + 3, p[1], p[2], 260), kk = face ? u.wounds * 0.4 : u.wounds;
             if (s > 0.8 - 0.04 * kk) rgb = mix(rgb, lin(s > 0.86 ? '#4a0606' : '#9a1212'), 0.92); // raw wounds, dark at the core
             else if (d > 0.66) rgb = mix(rgb, lin(u.goo ? '#5ac030' : '#3a4a22'), 0.55);            // rot / bruising (goo for the spitter)
-            else if (s < 0.2 && isSkin) rgb = mix(rgb, lin('#241a12'), 0.6);                          // grime
+            else if (s < 0.14 && isSkin) rgb = mix(rgb, lin('#3a2c22'), 0.4);                          // grime
           }
         }
         C.push(rgb[0], rgb[1], rgb[2]);

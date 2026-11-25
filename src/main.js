@@ -12,7 +12,7 @@ import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMu
 import { Host, Guest, showCode } from './net.js';
 import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanGame } from './netstate.js';
 import { Lobby } from './lobby.js';
-import { Renderer3D } from './render3d.js';
+import { Renderer3D, defaultQuality } from './render3d.js';
 import { Intro } from './intro.js';
 import { loadAssets } from './assets.js';
 import { startLineup, renderLineup, lineupActive } from './lineup.js';
@@ -53,6 +53,7 @@ try {
   const saved = Number(localStorage.getItem('motd-pixels'));
   if (saved >= 0 && saved <= 2 && localStorage.getItem('motd-pixels') !== null) r3d.setPixelation(saved);
 } catch { /* storage unavailable */ }
+r3d.setQuality(defaultQuality());
 
 const input = new Input();
 input.touch = new TouchControls({
@@ -72,6 +73,11 @@ window.addEventListener('pointerdown', (e) => {
   if (!r.width) return;
   taps.push({ x: (e.clientX - r.left) * VIEW_W / r.width, y: (e.clientY - r.top) * VIEW_H / r.height });
 }, true);
+function toggleQuality() {
+  const q = r3d.quality === 'high' ? 'low' : 'high';
+  toast = { text: r3d.setQuality(q), t: 1.5, local: true };
+  try { localStorage.setItem('motd-quality', q); } catch { /* storage unavailable */ }
+}
 let game = null;
 let state = 'loading';
 const touching = () => document.body.classList.contains('touching');
@@ -89,7 +95,7 @@ function touchButtons() {
       { id: 'no', label: 'KEEP MY GAME', x: VIEW_W / 2 + 20, y: 440, w: 230, h: 52 },
     ];
     case 'gameover': return [bottom('back', 'RETREAT TO THE HUB')];
-    case 'paused': return game && !(net && net.role === 'guest') ? [bottom('quit', game.level && game.level.tutorial ? 'SKIP ORIENTATION' : 'SAVE & QUIT TO TITLE')] : [];
+    case 'paused': return game && !(net && net.role === 'guest') ? [{ id: 'gfx', label: r3d.qualityLabel().toUpperCase(), x: VIEW_W / 2 - 150, y: VIEW_H - 126, w: 300, h: 46 }, bottom('quit', game.level && game.level.tutorial ? 'SKIP ORIENTATION' : 'SAVE & QUIT TO TITLE')] : [];
     default: return [];
   }
 }
@@ -1072,7 +1078,7 @@ function render() {
       else if (tq) lines.push(game.level.tutorial ? 'Use the button below to skip the orientation' : 'Use the button below to save and quit');
       else lines.push(game.level.tutorial ? `${quit}: skip the orientation` : `${quit}: save and quit to title`);
       if (!guest && !tq) lines.push(`${input.lastDevice === 'keys' ? 'K' : 'Title'}: SKIP CUTSCENES — ${skipCutscenes ? 'ON (default picks: Mall Cop lockdown, save Ray)' : 'off'}`);
-      if (input.lastDevice === 'keys') lines.push('M: mute   N: music   V: announcer   TAB: minimap   X: pixel size');
+      if (input.lastDevice === 'keys') lines.push('M: mute   N: music   V: announcer   TAB: minimap   X: pixel size   Z: graphics (low/high)');
       drawOverlay(ctx, 'PAUSED', [...lines, `${game.info.stageName} — ${game.theme.name}`]);
     } else if (state === 'levelclear') {
       const lines = [`${clearInfo.name} cleared!`, 'Next: the Butcher\'s Kitchen.', ''];
@@ -1127,6 +1133,7 @@ function frame(now) {
     toast = { text: r3d.setPixelation(level), t: 1.5, local: true };
     try { localStorage.setItem('motd-pixels', String(level)); } catch { /* storage unavailable */ }
   }
+  if (input.key('KeyZ')) toggleQuality();
   if (input.key('KeyV')) { toast = { text: toggleVoice() ? 'Announcer ON' : 'Announcer OFF', t: 1.5, local: true }; }
   if (input.key('KeyN')) { initAudio(); toast = { text: toggleMusic() ? 'Music ON' : 'Music OFF', t: 1.5, local: true }; }
   playMusic(currentTrack());
@@ -1166,7 +1173,8 @@ function frame(now) {
     case 'recap': updateRecap(); break;
     case 'play': updatePlay(dt); break;
     case 'paused':
-      if (input.key('Escape') || input.key('KeyP') || startPressed()) setState('play');
+      if (tapBtn() === 'gfx') toggleQuality();
+      else if (input.key('Escape') || input.key('KeyP') || startPressed()) setState('play');
       // quit: Q on the keyboard (Esc resumes), B on a gamepad, B on the touch screen
       // (online guests can pause and resume, but only the host's own players can quit)
       else if (input.key('KeyQ') || (tapBtn() === 'quit') || partySources().some((src) => !isNet(src) && (!isKb(src) || input.lastDevice === 'touch') && input.get(src).pressed.magic)) {

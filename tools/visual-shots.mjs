@@ -1,0 +1,122 @@
+// Visual regression screenshots. Usage:
+//   node tools/visual-shots.mjs --prefix before [--url https://site/zombies/] [--only horde,select]
+// Output: /workspace/motd-shots/<prefix>-<name>.png and <prefix>-report.json
+import { chromium } from 'playwright-core';
+import { spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const args = process.argv.slice(2);
+const arg = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : d; };
+const prefix = arg('prefix', 'shots');
+const quality = arg('quality', '');
+const only = arg('only', '') ? arg('only').split(',') : null;
+const OUT = '/workspace/motd-shots';
+mkdirSync(OUT, { recursive: true });
+
+let url = arg('url', '');
+let srv = null;
+if (!url) {
+  const port = 8700 + Math.floor(Math.random() * 200);
+  srv = spawn('node', ['server.js'], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
+  url = `http://127.0.0.1:${port}/`;
+  await new Promise((r) => setTimeout(r, 1200));
+}
+const ARGS = ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'];
+const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ARGS });
+const report = {};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function open(ctxOpts) {
+  const ctx = await browser.newContext(ctxOpts);
+  await ctx.addInitScript(() => { try { localStorage.setItem('motd-intro-seen', '1'); } catch {} });
+  if (quality) await ctx.addInitScript((q) => { try { localStorage.setItem('motd-quality', q); } catch {} }, quality);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)); });
+  page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
+  await page.goto(url, { waitUntil: 'load' });
+  await page.waitForFunction(() => window.__motd && window.__motd.state && window.__motd.state !== 'loading', null, { timeout: 90000 });
+  return { ctx, page, errors };
+}
+async function fps(page, ms = 3000) {
+  return page.evaluate((ms) => new Promise((res) => { let n = 0; const t0 = performance.now(); const f = (t) => { n++; if (t - t0 < ms) requestAnimationFrame(f); else res(+(n / ((t - t0) / 1000)).toFixed(1)); }; requestAnimationFrame(f); }), ms);
+}
+async function record(name, page, errors, extra = {}) {
+  const f = await fps(page);
+  await page.screenshot({ path: `${OUT}/${prefix}-${name}.png` });
+  report[name] = { fps: f, consoleErrors: errors.length, errors: errors.slice(0, 3), ...extra };
+  console.log(name, report[name].fps, 'fps', errors.length, 'errors');
+}
+// title -> select -> ready -> tutorial level (a real game with a player)
+async function intoPlay(page, mobile) {
+  const key = (k) => page.keyboard.press(k);
+  if (mobile) {
+    await page.evaluate(() => document.body.classList.add('rotate-ok'));
+  }
+  await page.evaluate(() => window.__motd.state === 'title' || 0);
+  for (let i = 0; i < 6 && (await page.evaluate(() => window.__motd.state)) !== 'play'; i++) {
+    const st = await page.evaluate(() => window.__motd.state);
+    if (st === 'title') { if (mobile) await page.touchscreen.tap(page.viewportSize().width / 2, page.viewportSize().height * 0.7); await key('Enter'); }
+    else if (st === 'story') await key('Escape');
+    else if (st === 'select') { await key('Enter'); await sleep(300); await key('Enter'); await sleep(4500); }
+    else await key('Enter');
+    await sleep(800);
+  }
+  await page.waitForFunction(() => window.__motd.state === 'play' && window.__motd.game, null, { timeout: 20000 });
+}
+const SETUP = `
+  const g = window.__motd.game; const p = g.players.find(Boolean);
+  const types = ['walker','sprinter','brute','spitter'];
+  g.enemies.length = 0;
+  const offs = [[-90,-60],[90,-70],[-40,70],[100,60],[0,-110],[-130,10],[140,0],[40,-40]];
+  offs.forEach((o,i) => { const e = g.spawnEnemy(types[i%4], p.x+o[0], p.y+o[1]); e.cd = 99; e.speed = 0; });
+  p.invuln = 1e9; p.hp = 1e9;
+`;
+const want = (n) => !only || only.includes(n);
+
+if (want('horde') || want('select') || want('zombies-lineup') || want('butcher')) {
+  const { ctx, page, errors } = await open({ viewport: { width: 1280, height: 720 } });
+  if (want('select')) {
+    await page.keyboard.press('Enter'); await sleep(800);
+    for (let i = 0; i < 4 && (await page.evaluate(() => window.__motd.state)) !== 'select'; i++) { await page.keyboard.press('Escape'); await sleep(800); }
+    // add all four survivors to the select screen
+    await page.evaluate(() => { const s = window.__motd.slots; const cls = ['biker', 'mallCop', 'skater', 'mallGoth']; cls.forEach((c, i) => { s[i] = { source: i ? 'pad' + i : (s[0] && s[0].source) || 'kb', cls: c, ready: false }; }); });
+    await sleep(1500);
+    await record('select', page, errors, { state: await page.evaluate(() => window.__motd.state) });
+    await page.evaluate(() => { const s = window.__motd.slots; s.length = 1; });
+  }
+  await ctx.close();
+}
+if (want('horde') || want('butcher')) {
+  const { ctx, page, errors } = await open({ viewport: { width: 1280, height: 720 } });
+  await intoPlay(page, false);
+  if (want('horde')) {
+    await page.evaluate(SETUP); await sleep(1500);
+    await record('horde', page, errors);
+  }
+  if (want('butcher')) {
+    await page.evaluate(`(async()=>{ const g = window.__motd.game; g.startLevel(2); })()`);
+    await sleep(1500);
+    const info = await page.evaluate(() => { const g = window.__motd.game; const p = g.players.find(Boolean); if (g.boss) { p.x = g.boss.x - 170; p.y = g.boss.y; p.invuln = 1e9; p.hp = 1e9; g.boss.cd = 99; g.boss.cd2 = 99; g.boss.cd3 = 99; } return { boss: !!g.boss, state: window.__motd.state }; });
+    await sleep(2500);
+    await record('butcher', page, errors, info);
+  }
+  await ctx.close();
+}
+if (want('zombies-lineup')) {
+  const { ctx, page, errors } = await open({ viewport: { width: 1280, height: 720 } });
+  await page.evaluate(() => window.__motd.lineup('zombies')); await sleep(2000);
+  await record('zombies-lineup', page, errors);
+  await ctx.close();
+}
+for (const [name, vp] of [['phone-portrait', { width: 390, height: 844 }], ['phone-landscape', { width: 844, height: 390 }]]) {
+  if (!want(name)) continue;
+  const { ctx, page, errors } = await open({ viewport: vp, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+  await intoPlay(page, true);
+  await page.evaluate(SETUP); await sleep(1500);
+  await record(name, page, errors);
+  await ctx.close();
+}
+writeFileSync(`${OUT}/${prefix}-report.json`, JSON.stringify(report, null, 2));
+await browser.close();
+if (srv) srv.kill();

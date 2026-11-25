@@ -9,6 +9,7 @@ import { T, FOOD_COURT, WINGS } from './level.js';
 import { glowSprite } from './models.js';
 
 export const WALL_H = 52;
+const SHARED = {}; // textures / geometry / materials reused across level rebuilds (not re-created per level)
 
 const hashN = (x, y, k = 0) => {
   let h = (x * 374761393 + y * 668265263 + k * 2246822519) | 0;
@@ -151,7 +152,14 @@ export function buildMall(r, g, group) {
       (isMosaic ? mosaic : floors).push({ x, y: 0, z, rx: -Math.PI / 2, color: `#${c.clone().multiplyScalar(shade).getHexString()}` });
     }
   }
-  const tileMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5, metalness: 0.05, emissive: '#ffffff', emissiveIntensity: 0.03 });
+  // shared scuffed-terrazzo map: near-white so the checker instance colours stay in charge (built once)
+  const terrazzo = SHARED.terrazzo || (SHARED.terrazzo = canvasTex(128, 128, (ctx, cw, ch) => {
+    ctx.fillStyle = '#f4f4f4'; ctx.fillRect(0, 0, cw, ch);
+    for (let i = 0; i < 90; i++) { const v = 200 + Math.floor(hashN(i, 7) * 55); ctx.fillStyle = `rgba(${v},${v},${v},0.55)`; ctx.beginPath(); ctx.ellipse(hashN(i, 8) * cw, hashN(i, 9) * ch, 1 + hashN(i, 10) * 3, 1 + hashN(i, 11) * 2, hashN(i, 12) * 3, 0, Math.PI * 2); ctx.fill(); }
+    for (let i = 0; i < 14; i++) { ctx.strokeStyle = 'rgba(120,120,130,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); const x = hashN(i, 13) * cw, y = hashN(i, 14) * ch; ctx.moveTo(x, y); ctx.lineTo(x + 8 + hashN(i, 15) * 22, y + (hashN(i, 16) - 0.5) * 10); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(0,0,0,0.10)'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, cw, ch); // grout line
+  }));
+  const tileMat = new THREE.MeshStandardMaterial({ color: '#ffffff', map: terrazzo, roughness: 0.5, metalness: 0.05, emissive: '#ffffff', emissiveIntensity: 0.03 });
   tileMat.emissiveMap = null;
   r.instancedPrim(group, new THREE.PlaneGeometry(S, S), tileMat, floors);
   if (mosaic.length) {
@@ -166,7 +174,7 @@ export function buildMall(r, g, group) {
   }
 
   // ---- walls: pastel slabs with a neon band, only where they can be seen ----
-  const walls = [], caps = [], bands = [];
+  const walls = [], caps = [], bands = [], boards = [], decor = [];
   for (let ty = 0; ty < h; ty++) {
     for (let tx = 0; tx < w; tx++) {
       if (!isWall(tx, ty)) continue;
@@ -185,10 +193,40 @@ export function buildMall(r, g, group) {
         const k = (tx + ty) % 3;
         const bc = k === 0 ? th.neonA : k === 1 ? th.neonB : th.neonC;
         bands.push({ x: x + ox, y: WALL_H * 0.62, z: z + oz, sx: sx === 3 ? 1.6 : sx, sy: 4, sz: sz === 3 ? 1.6 : sz, color: bc });
+        // dark chrome baseboard along the foot of the face
+        boards.push({ x: x + ox * 1.02, y: 2.2, z: z + oz * 1.02, sx: sx === 3 ? 2.4 : sx, sy: 4.4, sz: sz === 3 ? 2.4 : sz, color: '#2a2c36' });
+        // rare decor hugging the wall (thin, tile-based collision is untouched): trash can or planter
+        const hv = hashN(tx * 3 + dx, ty * 5 + dy, 21);
+        if (hv > 0.9 && open(tx + dx * 2, ty + dy * 2)) decor.push({ x: x + ox * 1.0 + dx * 0, z: z + oz * 1.0, face: [dx, dy], kind: hv > 0.95 ? 0 : 1, hv });
       }
     }
   }
-  r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.7, emissive: '#1a2a1a', emissiveIntensity: 0.2 }), walls);
+  // 90s pastel panel gradient (lighter up top) with a chair-rail line; instance tint stays per tile
+  const panel = SHARED.panel || (SHARED.panel = canvasTex(8, 64, (ctx, cw, ch) => {
+    const gr = ctx.createLinearGradient(0, 0, 0, ch); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, '#e4dff0'); gr.addColorStop(1, '#bdb6cc');
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, ch * 0.62, cw, 2);
+  }));
+  panel.anisotropy = 1;
+  r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', map: panel, roughness: 0.7, emissive: '#1a2a1a', emissiveIntensity: 0.2 }), walls);
+  const S_ = (k, f) => SHARED[k] || (SHARED[k] = f());
+  r.instancedPrim(group, S_('boxG', () => new THREE.BoxGeometry(1, 1, 1)), S_('boardM', () => new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.25, metalness: 0.6 })), boards);
+  {
+    // decor: one instanced draw per prop shape (shared materials, no lights, no collision)
+    const cans = [], pots = [], plants = [];
+    for (const d of decor) {
+      const [fx, fy] = d.face;
+      const px = d.x + fx * 5, pz = d.z + fy * 5; // pushed out from the wall face
+      // slide along the wall a little so props don't sit dead-centre on a tile
+      const slide = (d.hv * 97 % 1 - 0.5) * 8;
+      const X = px + (fy !== 0 ? slide : 0), Z = pz + (fx !== 0 ? slide : 0);
+      if (d.kind === 0) cans.push({ x: X, y: 7, z: Z, sx: 1, sy: 1, sz: 1 });
+      else { pots.push({ x: X, y: 5, z: Z }); plants.push({ x: X, y: 15, z: Z, sx: 1, sy: 1, sz: 1 }); }
+    }
+    r.instancedPrim(group, S_('canG', () => new THREE.CylinderGeometry(4.5, 3.8, 14, 8)), S_('canM', () => new THREE.MeshStandardMaterial({ color: '#59606e', roughness: 0.4, metalness: 0.5 })), cans);
+    r.instancedPrim(group, S_('potG', () => new THREE.CylinderGeometry(6, 4.5, 10, 8)), S_('potM', () => new THREE.MeshStandardMaterial({ color: '#b0654a', roughness: 0.8 })), pots);
+    r.instancedPrim(group, S_('plantG', () => new THREE.IcosahedronGeometry(7, 0)), S_('plantM', () => new THREE.MeshStandardMaterial({ color: '#3f8f46', roughness: 0.8, flatShading: true })), plants);
+  }
   r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6, emissive: '#ffffff', emissiveIntensity: 0.06 }), caps);
   r.instancedPrim(group, new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }), bands);
 

@@ -28,7 +28,8 @@ export function startLineup(r3d, section = 'all') {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(4000, 1200).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#5c5668', roughness: 0.9 }));
   scene.add(floor);
   const actors = [], bosses = [];
-  const want = (k) => section === 'all' || section === k;
+  const side = section === 'zombies-side', close = section === 'zombies-close' || side;
+  const want = (k) => section === 'all' || section === k || (k === 'zombies' && close);
   const stage = { scene, actors, bosses, items: [], t: 0 };
   // layout
   const place = (obj, x, z, s) => { obj.position.set(x, 0, z); obj.scale.setScalar(s); scene.add(obj); };
@@ -40,12 +41,12 @@ export function startLineup(r3d, section = 'all') {
     });
   }
   if (want('zombies')) {
-    ['walker', 'sprinter', 'brute', 'spitter'].forEach((t, ti) => [0, 1, 2].forEach((v) => {
+    ['walker', 'sprinter', 'brute', 'spitter'].forEach((t, ti) => (close ? [ti === 0 ? 2 : ti === 1 ? 1 : 0] : [0, 1, 2]).forEach((v) => {
       const st = ENEMY_STYLE[t];
       const a = new Actor(`${st.model}${v || ''}`, { tint: st.tint, undead: { ...st.undead } });
       if (st.slim) a.model.scale.x *= st.slim;
       a.base(st.walk, st.walkSpeed); actors.push(a);
-      place(a.root, -165 + (ti * 3 + v) * 30, 10, st.scale); a.root.scale.setScalar(st.scale * 1.15); a.root.rotation.y = 0.2;
+      place(a.root, close ? -75 + ti * 50 : -165 + (ti * 3 + v) * 30, 10, st.scale); a.root.scale.setScalar(st.scale * 1.15); a.root.rotation.y = side ? -Math.PI / 2 : 0.2;
     }));
   }
   if (want('bosses') || section.startsWith('boss:')) {
@@ -61,6 +62,7 @@ export function startLineup(r3d, section = 'all') {
   cam.position.set(0, 330, 520); cam.lookAt(0, 40, -20);
   if (section === 'heroes') { cam.position.set(0, 100, 360); cam.lookAt(0, 50, 110); }
   if (oneHero) { cam.position.set(0, 70, 190); cam.lookAt(0, 42, 110); }
+  if (close) { cam.position.set(0, 110, 190); cam.lookAt(0, 26, 0); }
   if (section === 'zombies') { cam.position.set(0, 150, 250); cam.lookAt(0, 38, 0); }
   if (section === 'bosses') { cam.position.set(0, 330, 560); cam.lookAt(0, 50, -150); }
   if (section.startsWith('boss:')) { cam.position.set(0, 190, 130); cam.lookAt(0, 62, -150); }

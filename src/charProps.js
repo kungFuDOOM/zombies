@@ -8,17 +8,19 @@
 // holder that cancels the rig's 100x armature scale.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { kit } from './heroes.js';
+import { UNDEAD_LOOK } from './undead.js';
 
 const { mat, metal, add, box, sphere, cap, cylinder, cone, roundedBox, chainsaw, shotgun, spikedBat, hairspray, boombox } = kit;
 const WEAPON = { // Wrist.R holder transforms (see DRESS); tuned against Idle_Sword / Idle_Gun / Gun_Shoot / Sword_Slash
   // Melee weapons hang off the right fist (Idle_Sword: arm down, fingers down): a +0.95 rad turn about the
   // wrist's outward z axis swings the blade/bar from "down" to "forward and down", and the slash then arcs naturally.
-  biker: { pos: [0, 0.05, 0], rot: [0, 0, 0.95], scale: 0.95 },
+  biker: { pos: [0, 0.05, 0], rot: [0, 0, 0.95], scale: 1.1 },
   // Gun class: the right arm is held straight out front (fingers forward), so the barrel just runs along the hand.
   mallCop: { pos: [0, 0.04, 0], rot: [0, 0, 0], scale: 1.0 },
-  skater: { pos: [0, 0.05, 0], rot: [0, 0, 1.05], scale: 1.05 },
-  mallGoth: { pos: [0, 0.04, 0], rot: [0, 0, 0], scale: 1.0 },
+  skater: { pos: [0, 0.05, 0], rot: [0, 0, 1.05], scale: 0.9 },
+  mallGoth: { pos: [0, 0.04, 0], rot: [0, 0, 0], scale: 1.15 },
 };
 const PROP_UNIT = 33; // world units per prop metre (a touch over life size so weapons read at gameplay distance)
 
@@ -129,22 +131,58 @@ const DRESS = {
   biker(a) {
     a.model.scale.x *= 1.12; a.model.scale.z *= 1.1; a.model.scale.y *= 1.03; // burly, taller than the rest
     const h = holder(a, 'Head'); if (h) { bandana(h); shades(h, '#0a0a10', '#0a0a10', 1.6); }
-    const w = holder(a, a.hand, WEAPON.biker); if (w) chainsaw(w);
+    const w = holder(a, a.hand, WEAPON.biker); if (w) { chainsaw(w); a.aim = { h: w, dir: [-0.1, -0.45, 0.9], roll: 0 }; } // low and forward at the hip
+    const t = holder(a, 'Torso', { pos: [0, 0.02, 0] });
+    if (t) { // black leather vest with studs and spiked shoulders: the broad, dark biker silhouette
+      const leather = mat('#15110f', { roughness: 0.5 }), stud = metal('#e8ecf4'), red = mat('#d41414', { roughness: 0.6 });
+      add(t, roundedBox(0.2), leather, [0, -0.04, 0], [0, 0, 0], [0.32, 0.32, 0.21]);
+      add(t, box(), red, [0, -0.04, 0.119], [0, 0, 0], [0.03, 0.34, 0.01]);                         // open front, red shirt showing
+      for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) add(t, sphere(5), stud, [sx * 0.15, 0.1 - i * 0.07, 0.118], [0, 0, 0], [0.014, 0.014, 0.014]);
+      for (const sx of [-1, 1]) { add(t, roundedBox(0.3), leather, [sx * 0.2, 0.15, 0], [0, 0, sx * -0.25], [0.12, 0.07, 0.2]); for (let i = 0; i < 3; i++) add(t, cone(5), stud, [sx * (0.19 + i * 0.03), 0.2 + (i === 1 ? 0.02 : 0), (i - 1) * 0.05], [0, 0, sx * -0.9], [0.03, 0.09, 0.03]); }
+    }
   },
   mallCop(a) {
     // the Worker body already has a moustache (and its hard hat was dropped at build time): cap + aviators only
     const h = holder(a, 'Head'); if (h) { copCap(h); shades(h, '#4a5a68', '#e8c040', 1.5, true); }
-    const w = holder(a, a.hand, WEAPON.mallCop); if (w) shotgun(w);
+    const w = holder(a, a.hand, WEAPON.mallCop); if (w) { shotgun(w); a.aim = { h: w, dir: [-0.4, 0.7, 0.55], roll: 0 }; } // barrel up across the chest
+    const t = holder(a, 'Torso', { pos: [0, 0.02, 0] });
+    if (t) { // navy uniform shirt, bright gold badge, shoulder epaulettes, duty belt: reads as security from afar
+      const navy = mat('#1c3070', { roughness: 0.6 }), gold = metal('#ffd23a', { emissive: '#a07800', emissiveIntensity: 0.5 }), black = mat('#0a0c14', { roughness: 0.4 });
+      add(t, roundedBox(0.2), navy, [0, -0.04, 0], [0, 0, 0], [0.35, 0.34, 0.225]);
+      add(t, box(), black, [0, -0.2, 0.0], [0, 0, 0], [0.37, 0.05, 0.24]);                               // duty belt
+      add(t, box(), gold, [0, -0.2, 0.121], [0, 0, 0], [0.05, 0.04, 0.012]);                             // buckle
+      add(t, roundedBox(0.3), gold, [0.085, 0.07, 0.121], [0, 0, 0], [0.07, 0.085, 0.014]);             // badge
+      for (const sx of [-1, 1]) add(t, box(), gold, [sx * 0.19, 0.155, 0], [0, 0, sx * -0.2], [0.09, 0.02, 0.1]);
+    }
   },
   skater(a) {
     const h = holder(a, 'Head'); if (h) backCap(h);
     highTops(a);
-    const w = holder(a, a.hand, WEAPON.skater); if (w) spikedBat(w);
+    const w = holder(a, a.hand, WEAPON.skater); if (w) { spikedBat(w); a.aim = { h: w, dir: [0.15, 0.7, -0.55], roll: 0 }; } // bat up over the shoulder
+    const t = holder(a, 'Torso', { pos: [0, 0.02, 0] });
+    if (t) { // a neon pink/teal backpack with straps: the loudest silhouette of the four
+      const pink = mat('#ff3fb0', { roughness: 0.5, emissive: '#a01070', emissiveIntensity: 0.4 }), teal = mat('#20e0d0', { roughness: 0.5, emissive: '#087870', emissiveIntensity: 0.4 }), yel = mat('#ffe020', { roughness: 0.5 });
+      add(t, roundedBox(0.25), pink, [0, -0.02, -0.17], [0, 0, 0], [0.28, 0.34, 0.14]);
+      add(t, box(), teal, [0, -0.02, -0.245], [0, 0, 0], [0.2, 0.05, 0.02]);
+      add(t, box(), yel, [0, 0.12, -0.245], [0, 0, 0], [0.2, 0.05, 0.02]);
+      for (const sx of [-1, 1]) add(t, box(), teal, [sx * 0.1, 0.02, 0.0], [0, 0, 0], [0.04, 0.4, 0.23]);
+    }
   },
   mallGoth(a) {
     // PunkF's ripped black legs already read as her skirt/ripped look: no extra skirt
-    const w = holder(a, a.hand, WEAPON.mallGoth); if (w) hairspray(w);
-    const t = holder(a, 'Torso', { pos: [0, 0.02, 0] }); if (t) boombox(t, { chest: 0.1, chestD: 1 });
+    const w = holder(a, a.hand, WEAPON.mallGoth); if (w) { hairspray(w); a.aim = { h: w, dir: [-0.15, 0.4, 0.9], roll: 0 }; } // can up and forward
+    const t = holder(a, 'Torso', { pos: [0, 0.02, 0] });
+    if (t) {
+      boombox(t, { chest: 0.1, chestD: 1 });
+      const purple = mat('#7a22d8', { roughness: 0.5, emissive: '#4a0a9a', emissiveIntensity: 0.6 }), black = mat('#0a0810', { roughness: 0.5 });
+      add(t, roundedBox(0.2), black, [0, -0.05, 0], [0, 0, 0], [0.31, 0.3, 0.2]);                              // black corset
+      for (let i = 0; i < 4; i++) add(t, box(), purple, [0, 0.03 - i * 0.07, 0.102], [0, 0, 0], [0.03, 0.012, 0.008]); // purple lacing
+      add(t, cylinder(0.15, 0.27, 16), purple, [0, -0.25, 0], [0, 0, 0], [1, 0.12, 1]);                       // flared purple tutu
+    }
+    const h = holder(a, 'Head'); if (h) { // spiked choker
+      const { y, r } = HEAD; const c = metal('#d8d8e8');
+      for (let i = 0; i < 6; i++) { const an = i / 6 * Math.PI * 2; add(h, cone(5), c, [Math.sin(an) * r * 0.7, y - r * 1.25, Math.cos(an) * r * 0.7], [Math.cos(an) * 1.2, 0, -Math.sin(an) * 1.2], [0.02, 0.05, 0.02]); }
+    }
   },
 };
 
@@ -186,18 +224,117 @@ export function dressShopper(actor) {
 }
 
 // Cheap zombie outfit variants on top of the shared bodies: a food-court visor, a security cap...
+const grimeMats = {};
 export function dressZombie(actor, variant) {
   if (!variant || !actor.bone('Head')) return;
   measureHead(actor);
   const h = holder(actor, 'Head');
   if (!h) return;
   const { y, r, zc, zf } = HEAD;
-  const grime = (c) => mat(c, { roughness: 0.95 });
+  const grime = (c) => (grimeMats[c] ||= mat(c, { roughness: 0.95 })); // shared: not one material per spawned zombie
   if (variant === 1) { // food-court visor, hanging off
     add(h, cylinder(1, 1, 14), grime('#8a1a1a'), [0, y + r * 0.45, zc], [0.1, 0, 0.2], [r * 1.05, r * 0.16, r * 1.07]);
     add(h, box(), grime('#8a1a1a'), [r * 0.1, y + r * 0.42, zf + r * 0.12], [0.3, 0, 0.2], [r * 1.0, r * 0.06, r * 0.6]);
   } else if (variant === 2) { // a tilted, torn security cap and a loose tie
     add(h, cylinder(1, 1, 14), grime('#233252'), [r * 0.12, y + r * 0.55, zc], [0.18, 0, -0.3], [r * 1.0, r * 0.4, r * 1.02]);
     add(h, box(), grime('#0c0f1a'), [r * 0.3, y + r * 0.42, zf + r * 0.02], [0.25, 0, -0.3], [r * 0.9, r * 0.05, r * 0.5]);
+  }
+}
+
+// ---------- the four zombie types: glowing eyes, sunken sockets, bloody mouth, per-type gear ----------
+// One merged, vertex-coloured, UNLIT face mesh per type (dark sockets + bright eyes + gore around the mouth)
+// and one additive glow sprite per zombie, so the eyes read from across the room: two extra draws per zombie.
+
+const faceGeos = new Map();
+const faceMats = new Map();
+let glowTex = null;
+const glowMats = new Map();
+
+function part(geo, color, pos, scale) {
+  const g = geo.clone();
+  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...pos), new THREE.Quaternion(), new THREE.Vector3(...scale)));
+  const c = new THREE.Color(color);
+  const n = g.attributes.position.count, col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.deleteAttribute('uv'); g.deleteAttribute('normal');
+  return g.index ? g.toNonIndexed() : g;
+}
+
+function faceGeometry(type) {
+  if (faceGeos.has(type)) return faceGeos.get(type);
+  const { y, r, zf } = HEAD, look = UNDEAD_LOOK[type];
+  const S = new THREE.SphereGeometry(1, 8, 6), B = new THREE.BoxGeometry(1, 1, 1);
+  const eyeY = y - r * 0.05, z = zf - r * 0.04;
+  const parts = [];
+  for (const s of [-1, 1]) {
+    parts.push(part(S, '#050202', [s * r * 0.42, eyeY, z - r * 0.02], [r * 0.38, r * 0.34, r * 0.18]));      // sunken socket
+    parts.push(part(S, look.eye, [s * r * 0.42, eyeY, z + r * 0.06], [r * 0.27, r * 0.2, r * 0.12]));       // the glowing eye
+  }
+  parts.push(part(B, '#4a0606', [0, y - r * 0.78, z - r * 0.02], [r * 0.95, r * 0.34, r * 0.18]));          // blood-smeared mouth
+  parts.push(part(B, '#7a0a0a', [r * 0.2, y - r * 1.1, z - r * 0.02], [r * 0.14, r * 0.5, r * 0.1]));       // dribble
+  if (type === 'z_spitter') {
+    parts.push(part(B, '#88b830', [-r * 0.12, y - r * 1.2, z - r * 0.0], [r * 0.12, r * 0.85, r * 0.1]));   // acid drool
+    parts.push(part(S, '#a8d048', [-r * 0.12, y - r * 1.65, z - r * 0.0], [r * 0.16, r * 0.2, r * 0.14]));
+  }
+  const g = mergeGeometries(parts);
+  faceGeos.set(type, g);
+  return g;
+}
+
+function glowSprite(color) {
+  if (!glowTex) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+    glowTex = new THREE.CanvasTexture(c); glowTex.colorSpace = THREE.SRGBColorSpace;
+  }
+  let m = glowMats.get(color);
+  if (!m) { m = new THREE.SpriteMaterial({ map: glowTex, color, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.8, fog: false }); glowMats.set(color, m); }
+  return new THREE.Sprite(m);
+}
+
+const gutMat = mat('#b4a58a', { roughness: 0.55, emissive: '#2a2a10', emissiveIntensity: 0.25 }); // distended, skin-toned belly
+const veinMat = mat('#6a7a4a', { roughness: 0.6 });
+const pustMat = mat('#b8d870', { emissive: '#80b020', emissiveIntensity: 0.7 });
+const fleshMat = mat('#7a0c10', { roughness: 0.5, emissive: '#300004', emissiveIntensity: 0.5 });
+const boneMat = mat('#e8e0c8', { roughness: 0.7 });
+
+export function dressUndead(actor, type, variant) {
+  if (!actor.bone('Head')) return;
+  measureHead(actor);
+  const look = UNDEAD_LOOK[type];
+  const h = holder(actor, 'Head');
+  if (h) {
+    if (!faceMats.has('f')) faceMats.set('f', new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }));
+    const face = new THREE.Mesh(faceGeometry(type), faceMats.get('f'));
+    h.add(face);
+    const sp = glowSprite(look.glow);
+    sp.position.set(0, HEAD.y - HEAD.r * 0.05, HEAD.zf + HEAD.r * 0.1);
+    const gs = type === 'z_brute' ? 0.5 : 0.42; // a tight glow around the eyes only (head ~0.4 prop-metres wide)
+    sp.scale.set(gs * 1.2, gs * 0.6, 1);
+    h.add(sp);
+  }
+  if (type === 'z_spitter') { // a swollen, glowing acid gut
+    const t = holder(actor, 'Torso', { pos: [0, 0.02, 0] });
+    if (t) {
+      // a FRONT belly hanging forward and down below the chest (nothing behind the spine, so it never reads as a shell)
+      add(t, sphere(10), gutMat, [0, -0.2, 0.15], [0, 0, 0], [0.15, 0.16, 0.13]);
+      const pus = [[-0.06, -0.14, 0.27, 0.03], [0.06, -0.19, 0.28, 0.036], [0.0, -0.27, 0.26, 0.028], [0.1, -0.1, 0.23, 0.024], [-0.09, -0.24, 0.24, 0.026]];
+      for (const [px, py, pz, ps] of pus) add(t, sphere(6), pustMat, [px, py, pz], [0, 0, 0], [ps, ps, ps * 0.6]);
+      add(t, sphere(6), veinMat, [0.0, -0.12, 0.278], [0, 0, 0], [0.08, 0.03, 0.015]);
+    }
+  }
+  if (type === 'z_brute') { // oversized fists
+    for (const w of ['WristL', 'WristR']) { const b = actor.bone(w); if (b) b.scale.multiplyScalar(1.4); }
+  }
+  if (variant === 2 && (type === 'z_walker' || type === 'z_sprinter')) { // right forearm torn off at the elbow
+    const b = actor.bone('LowerArmR');
+    if (b) {
+      b.scale.setScalar(0.001);
+      const st = holder(actor, 'LowerArmR', { scale: 1000 });
+      if (st) { add(st, sphere(8), fleshMat, [0, 0.02, 0], [0, 0, 0], [0.055, 0.05, 0.055]); add(st, sphere(6), boneMat, [0, 0.05, 0], [0, 0, 0], [0.022, 0.03, 0.022]); }
+    }
   }
 }

@@ -88,7 +88,7 @@ export function drawGameOverlay(ctx, g, r3d, opts) {
   if (opts.tutorial) drawTutorial(ctx, g, opts.tutorial);
   else if (!g.level.hub) drawBanner(ctx, g); // (in the Security Room it would sit on the 3D SECURITY ROOM sign)
   for (let s = 0; s < MAX_PLAYERS; s++) drawPanel(ctx, g, s);
-  if (opts.controls) drawControlsBar(ctx, g.players[2] || g.players[3] ? 440 : 680);
+  if (opts.controls && device !== 'touch' && !document.body.classList.contains('touching')) drawControlsBar(ctx, g.players[2] || g.players[3] ? 440 : 680);
   if (opts.minimap || g.anyBuff('xray')) drawMinimap(ctx, g, g.anyBuff('xray'));
 }
 
@@ -149,9 +149,13 @@ function drawPanel(ctx, g, slot) {
   // health
   ctx.font = `bold 9px ${SANS}`;
   outlined(ctx, 'HEALTH', x + 56, y + 36, '#c8b88a', '#000', 2);
-  ctx.font = `bold 26px ${SANS}`;
   const hc = p.hp < 200 ? (Math.floor(g.time * 5) % 2 ? '#ff3a2a' : '#ffd0c0') : '#ffffff';
-  outlined(ctx, String(Math.max(0, Math.floor(p.hp))), x + 56, y + 61, hc, '#000', 4);
+  const hpv = Math.max(0, Math.floor(p.hp));
+  const hpText = hpv >= 1e9 ? `${Math.floor(hpv / 1e8) / 10}B` : hpv >= 1e6 ? `${Math.floor(hpv / 1e5) / 10}M` : hpv >= 1e5 ? `${Math.floor(hpv / 100) / 10}K` : String(hpv);
+  let hpSize = 26; // shrink to stay clear of the flashbang badge and the TURBO bar
+  ctx.font = `bold ${hpSize}px ${SANS}`;
+  while (hpSize > 12 && ctx.measureText(hpText).width > 74) { hpSize--; ctx.font = `bold ${hpSize}px ${SANS}`; }
+  outlined(ctx, hpText, x + 56, y + 61, hc, '#000', 4);
 
   // score
   ctx.textAlign = 'right';
@@ -161,18 +165,18 @@ function drawPanel(ctx, g, slot) {
   outlined(ctx, `$${p.gold}`, x + PANEL_W - 12, y + 36, '#ffe070', '#000', 3);
 
   // inventory: flashbangs
-  const iy = y + 43;
-  let ix = x + 150;
+  const iy = y + 46;
+  let ix = x + 152;
   // the flashbang key, as a little key cap, so players know they have one and how to use it
   const mk = btn('magic', p.source);
   if (mk.length <= 2) {
     ctx.font = `bold 9px ${SANS}`;
     ctx.textAlign = 'center';
-    roundRect(ctx, ix - 13, iy - 6, 11, 12, 2);
+    roundRect(ctx, ix - 15, iy - 6, 11, 12, 2);
     ctx.fillStyle = p.potions ? '#c8d0ff' : '#5a5a6a';
     ctx.fill();
     ctx.fillStyle = '#10142a';
-    ctx.fillText(mk.toUpperCase(), ix - 7.5, iy + 3.5);
+    ctx.fillText(mk.toUpperCase(), ix - 9.5, iy + 3.5);
   }
   for (let i = 0; i < Math.min(p.potions, 3); i++) drawPotionIcon(ctx, ix + i * 11, iy);
   if (p.potions > 3) { ctx.font = `bold 10px ${SANS}`; ctx.textAlign = 'left'; outlined(ctx, `x${p.potions}`, ix + 36, iy + 4, '#8aa0ff', '#000', 2); }
