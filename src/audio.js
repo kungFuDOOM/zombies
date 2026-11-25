@@ -93,9 +93,9 @@ export const sfx = {
   die() { tone(400, 0.6, { type: 'sawtooth', vol: 0.2, slide: 50 }); },
   food() { tone(392, 0.08, { vol: 0.12 }); tone(523, 0.08, { vol: 0.12, delay: 0.07 }); tone(659, 0.12, { vol: 0.12, delay: 0.14 }); },
   gold() { if (throttle('gold', 50)) { tone(1046, 0.06, { type: 'triangle', vol: 0.15 }); tone(1568, 0.1, { type: 'triangle', vol: 0.15, delay: 0.05 }); } },
-  key() { tone(784, 0.07, { type: 'triangle', vol: 0.15 }); tone(1175, 0.15, { type: 'triangle', vol: 0.15, delay: 0.07 }); },
+  key() { tone(2200, 0.05, { type: 'square', vol: 0.07 }); tone(2200, 0.09, { type: 'square', vol: 0.07, delay: 0.09 }); }, // keycard reader beep-beep
   door() { noise(0.35, { vol: 0.3, freq: 400 }); tone(90, 0.35, { type: 'sawtooth', vol: 0.12, slide: 60 }); },
-  potion() { noise(0.6, { vol: 0.45, freq: 600 }); tone(120, 0.6, { type: 'sawtooth', vol: 0.2, slide: 40 }); },
+  potion() { noise(0.12, { vol: 0.6, freq: 2500 }); noise(0.5, { vol: 0.3, freq: 900 }); tone(180, 0.18, { type: 'square', vol: 0.2, slide: 40 }); tone(3200, 0.7, { type: 'sine', vol: 0.05, delay: 0.1 }); }, // flashbang: bang, then the ringing
   explode() { if (throttle('explode', 70)) noise(0.3, { vol: 0.3, freq: 700 }); },
   powerup() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.1, { type: 'triangle', vol: 0.13, delay: i * 0.06 })); },
   levelup() { [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, 0.12, { type: 'square', vol: 0.09, delay: i * 0.07 })); },

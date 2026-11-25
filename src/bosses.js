@@ -13,8 +13,8 @@ import { BOSS_ROSTER, MOVE_ALIAS } from './bossRoster.js';
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-export const BOSS_HP_MAGIC_CAP = 0.06; // most of its health a potion can take
-export const BOSS_WARD = 8;            // seconds a guardian shrugs off magic after a potion
+export const BOSS_HP_MAGIC_CAP = 0.06; // most of its health a flashbang can take
+export const BOSS_WARD = 8;            // seconds a guardian shrugs off flashbangs after one
 
 // moves per phase; the last phase adds the deadliest versions
 const MOVESETS = Object.fromEntries(BOSS_ROSTER.map((b) => [b.id, b.moves]));

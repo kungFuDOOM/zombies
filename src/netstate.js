@@ -72,7 +72,7 @@ const str = (v, max = 80) => (typeof v === 'string' ? v.slice(0, max) : '');
 const list = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
 const color = (v) => (typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v) ? v : '#ffffff');
 const LEVEL_KEY = /^(H|HR|U|L([1-9]|1[0-2]))$/;
-const ITEM_TYPES = new Set(['food', 'poison', 'gold', 'gem', 'chest', 'barrel', 'potion', 'amulet', 'propane', 'armorcrate']);
+const ITEM_TYPES = new Set(['food', 'poison', 'gold', 'gem', 'chest', 'barrel', 'potion', 'key', 'amulet', 'propane', 'armorcrate']);
 const PROJ_KINDS = new Set(['wrench', 'pellet', 'deck', 'spray', 'efire', 'lob', 'bomb', 'flask', 'quake', 'pool', 'fireball', 'axe']);
 const ACT_TYPES = new Set(['melee', 'shoot', 'turbo', 'throw', 'cast', 'windup', 'breath', 'leap', 'teleport', 'roar', 'sweep', 'slam']);
 const STATES = new Set(['title', 'confirm', 'story', 'select', 'realm', 'shop', 'ending', 'play', 'paused', 'levelclear', 'gameover', 'cutscene', 'recap']);

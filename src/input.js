@@ -124,7 +124,7 @@ export class Input {
 
   get(id) { return this.state[id] || EMPTY; }
 
-  // A guest's input packet { x, y, a, m, u, s }: stick, attack, magic, turbo, start.
+  // A guest's input packet { x, y, a, m, u, s }: stick, attack, flashbang, turbo, start.
   remoteInput(id, m) {
     let st = this.remote.get(id);
     if (!st) { st = { held: {}, acc: {} }; this.remote.set(id, st); }

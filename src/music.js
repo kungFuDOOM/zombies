@@ -28,6 +28,10 @@ const WAVES = {
   pipe:  [1, 0, 0.5, 0, 0.3, 0, 0.18, 0, 0.1],
   reed:  [1, 0.1, 0.7, 0.1, 0.5, 0.1, 0.35, 0.1, 0.2],
   brass: [1, 0.9, 0.7, 0.55, 0.42, 0.3, 0.2, 0.12, 0.08],
+  vibes: [1, 0, 0.1, 0, 0, 0.05, 0, 0, 0, 0.02],            // mall-PA vibraphone
+  epiano: [1, 0.45, 0.12, 0.18, 0.05, 0.07],                 // soft electric piano
+  sax:   [1, 0.6, 0.45, 0.2, 0.28, 0.1, 0.12, 0.05],         // smooth-jazz sax patch
+  buzz:  [1, 0.1, 0.8, 0.1, 0.7, 0.1, 0.6, 0.1, 0.5, 0.1, 0.4], // fluorescent-tube hum
 };
 // how each instrument's note behaves: waveform, attack, release factor, filter brightness
 const INSTR = {
@@ -41,6 +45,12 @@ const INSTR = {
   pipe:  { w: 'pipe',  atk: 0.02, rel: 0.3, bright: 1 },
   reed:  { w: 'reed',  atk: 0.02, rel: 0.3, bright: 0.9, scoop: true },
   brass: { w: 'brass', atk: 0.03, rel: 0.3, bright: 1, scoop: true },
+  vibes:  { w: 'vibes',  atk: 0.006, rel: 1, bright: 1, ring: true, det: 7 },
+  epiano: { w: 'epiano', atk: 0.008, rel: 1, bright: 0.9, ring: true, det: 5 },
+  sax:    { w: 'sax',    atk: 0.07, rel: 0.5, bright: 0.75, scoop: true, det: 9 },
+  strings: { w: 'sawtooth', atk: 0.4, rel: 0.8, bright: 0.45, det: 14 },
+  buzz:   { w: 'buzz',   atk: 0.01, rel: 0.3, bright: 0.9, det: 22 },
+  stab:   { w: 'sawtooth', atk: 0.003, rel: 1, bright: 0.8, ring: true, pluck: true, det: 18 },
   saw: { w: 'sawtooth', atk: 0.02, rel: 0.4, bright: 1, det: 6 },
   square: { w: 'square', atk: 0.01, rel: 0.4, bright: 1 },
   tri: { w: 'triangle', atk: 0.02, rel: 0.4, bright: 1 },
@@ -55,7 +65,7 @@ function degree(t, d, chordRoot = 0) {
 }
 // triad on a scale degree, stacked in thirds from the scale itself
 function triad(t, d) {
-  return [0, 2, 4].map((k) => degree(t, d + k));
+  return (t.sev ? [0, 2, 4, 6] : [0, 2, 4]).map((k) => degree(t, d + k)); // sev: muzak-style seventh chords
 }
 
 export function createMusic(ctx, destination) {
@@ -107,17 +117,45 @@ export function createMusic(ctx, destination) {
     osc.frequency.setValueAtTime(ins.scoop ? freq * 0.97 : freq, t);
     if (ins.scoop) osc.frequency.exponentialRampToValueAtTime(freq, t + 0.06);
     osc.connect(f).connect(g).connect(bus);
+    wobble(bus, osc, t, end);
     osc.start(t); osc.stop(end + 0.05);
     if (ins.det) { // a second, slightly detuned oscillator for width
       const o2 = ctx.createOscillator();
       if (WAVES[ins.w]) o2.setPeriodicWave(wave(ins.w)); else o2.type = ins.w;
       o2.frequency.setValueAtTime(freq, t);
       o2.detune.value = ins.det;
+      wobble(bus, o2, t, end, ins.det);
       o2.connect(f); o2.start(t); o2.stop(end + 0.05);
     }
   }
 
+  // slow tape wobble, scheduled per note (a shared LFO node would keep every finished note alive)
+  function wobble(bus, osc, t, end, base = 0) {
+    const w = bus.wowDepth;
+    if (!w) return;
+    const at = (x) => base + w * Math.sin(2 * Math.PI * 0.55 * x);
+    osc.detune.setValueAtTime(at(t), t);
+    osc.detune.linearRampToValueAtTime(at(end), end);
+  }
+
   function drum(bus, kind, t, vol = 1) {
+    if (kind === 'm') { // metal clank: a short inharmonic ping over filtered noise
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(587, t);
+      og.gain.setValueAtTime(0.05 * vol, t);
+      og.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      o.connect(og).connect(bus);
+      o.start(t); o.stop(t + 0.2);
+      const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      src.buffer = noise();
+      f.type = 'bandpass'; f.frequency.value = 3300; f.Q.value = 6;
+      g.gain.setValueAtTime(0.22 * vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      src.connect(f).connect(g).connect(bus);
+      src.start(t, 0.1 * ((t * 5) % 1), 0.24);
+      return;
+    }
     if (kind === 'k' || kind === 't') {
       const osc = ctx.createOscillator(), g = ctx.createGain();
       const hi = kind === 'k' ? 150 : 190, lo = kind === 'k' ? 42 : 95, len = kind === 'k' ? 0.2 : 0.28;
@@ -151,6 +189,7 @@ export function createMusic(ctx, destination) {
     const bus = ctx.createGain();
     bus.gain.value = 0.0001;
     bus.connect(out);
+    bus.wowDepth = tr.wow || 0;
     const p = {
       id, tr, bus, step: 0, next: startAt, done: false, lead: motifOf(tr), sixteenth: 60 / tr.bpm / 4,
       dr: DRUMS[tr.drums], ended: false,
@@ -205,13 +244,13 @@ export function createMusic(ctx, destination) {
     // drums
     const dr = p.dr;
     const hit = (k, vol = 1) => drum(bus, k, swung, vol);
-    for (const [key, name] of [['k', 'k'], ['s', 's'], ['h', 'h'], ['o', 'o'], ['t', 't']]) {
-      const c = dr[key][s16];
+    for (const [key, name] of [['k', 'k'], ['s', 's'], ['h', 'h'], ['o', 'o'], ['t', 't'], ['m', 'm']]) {
+      const c = dr[key]?.[s16];
       if (c === 'x') hit(name); else if (c === 'g') hit(name, 0.4);
     }
     if (tr.boss) {
       if (level >= 1 && dr.h[s16] !== 'x') hit('h', 0.7);                  // hats on every 16th
-      if (level >= 1 && s16 === 14) hit('t', 0.7);                          // fill into the next bar
+      if (level >= 1 && s16 === 14) hit('m', 0.8);                          // clank into the next bar
       if (level >= 2 && s16 % 4 === 2) hit('k', 0.6);                       // kick pushes the off-beats
     }
     // stingers end on a held chord after the last bar
@@ -236,7 +275,7 @@ export function createMusic(ctx, destination) {
     fade(p, 0.0001, secs);
     p.ended = true;
     if (typeof setTimeout === 'function' && !cancelled) {
-      setTimeout(() => { try { p.bus.disconnect(); } catch { /* gone */ } players = players.filter((q) => q !== p); }, (secs + 2.5) * 1000);
+      setTimeout(() => { try { } catch { /* stopped */ } try { p.bus.disconnect(); } catch { /* gone */ } players = players.filter((q) => q !== p); }, (secs + 2.5) * 1000);
     }
   }
 
@@ -265,7 +304,7 @@ export function createMusic(ctx, destination) {
     if (level === intensity) return;
     if (current && current.tr.boss && level > intensity) {
       drum(current.bus, 'c', ctx.currentTime + 0.02, 1);
-      drum(current.bus, 't', ctx.currentTime + 0.02, 1);
+      drum(current.bus, 'm', ctx.currentTime + 0.02, 1);
     }
     intensity = level;
   }

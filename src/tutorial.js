@@ -52,7 +52,7 @@ const STEPS = [
       }
     },
     update: (g) => {
-      // someone used their potion early: hand out another one
+      // someone used their flashbang early: hand out another one
       if (!g.items.some((i) => i.type === 'potion') && g.livePlayers().every((p) => p.potions === 0)) for (const p of g.livePlayers()) p.potions = 1;
     },
     done: (g, s) => g.stats.magic > s.magic,
@@ -61,7 +61,7 @@ const STEPS = [
     title: 'TURBO',
     button: 'turbo',
     text: (b, dev) => dev === 'touch'
-      ? 'When the orange TURBO bar is full, tap TURBO for a powerful special attack. Try it!'
+      ? 'When the orange TURBO bar is full, tap X for a powerful special attack. Try it!'
       : `When the orange TURBO bar is full, hold ${b('turbo')} and press ${b('attack')} for a powerful special attack. Try it!`,
     start: (g) => { for (const [dx, dy] of [[2, -2], [3, 0], [2, 2], [4, -3], [4, 3]]) g.spawnEnemy('walker', (cx(5) + dx + 0.5) * TILE, (M + dy + 0.5) * TILE); },
     update: (g) => { for (const p of g.livePlayers()) p.turbo = Math.max(p.turbo, TURBO_COST + 5); },
@@ -74,7 +74,7 @@ const STEPS = [
   },
   {
     title: 'READY!',
-    text: (b, dev) => `That's everything! ${dev === 'touch' ? 'Tap II' : dev === 'pad' ? 'Press Start' : 'Press Esc'} to pause any time. Walk into the glowing exit to begin your run.`,
+    text: (b, dev) => `That's everything! ${dev === 'touch' ? 'Tap Y' : dev === 'pad' ? 'Press Start' : 'Press Esc'} to pause any time. Walk into the glowing exit to begin your run.`,
   },
 ];
 

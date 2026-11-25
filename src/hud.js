@@ -272,9 +272,11 @@ function drawTutorial(ctx, g, tut) {
 
 // A strip of key caps along the bottom so the controls are always in sight.
 function drawControlsBar(ctx, maxW) {
-  const items = device === 'pad'
-    ? [['STICK', 'move'], ['A', 'attack'], ['B', 'magic'], ['X', '+ A turbo'], ['START', 'pause']]
-    : [['WASD', 'move'], ['SPACE', 'attack'], ['E', 'magic'], ['SHIFT', '+ SPACE turbo'], ['ESC', 'pause'], ['H', 'hide']];
+  const items = device === 'touch'
+    ? [['STICK', 'move'], ['A', 'attack'], ['B', 'flashbang'], ['X', 'turbo'], ['Y', 'pause']]
+    : device === 'pad'
+    ? [['STICK', 'move'], ['A', 'attack'], ['B', 'flashbang'], ['X', '+ A turbo'], ['START', 'pause']]
+    : [['WASD', 'move'], ['SPACE', 'attack'], ['E', 'flashbang'], ['SHIFT', '+ SPACE turbo'], ['ESC', 'pause'], ['H', 'hide']];
   let size = 14;
   const measure = () => {
     let total = 0;
@@ -426,7 +428,7 @@ function drawControlsPanel(ctx) {
   ctx.font = `bold 34px ${SERIF}`;
   outlined(ctx, 'CONTROLS', VIEW_W / 2, 160, '#ffd040', '#000', 5);
   const rows = device === 'touch' ? [
-    'Drag on the left side to move', 'ATTACK, FLASHBANG and TURBO buttons on the right', 'II pauses  ·  the speaker button mutes', 'Gamepads join with A', '', 'Cutscenes: tap a choice box. Silence ("...") is a choice too.',
+    'Drag on the left side to move', 'A attack  ·  B flashbang  ·  X turbo  ·  Y pauses (also the II button)', 'The speaker button mutes', 'Gamepads join with A', '', 'Cutscenes: tap a choice box. Silence ("...") is a choice too.',
   ] : [
     'Move: WASD or ARROWS', 'Attack: SPACE or ENTER (hold to keep swinging or firing)', 'Flashbang: E      Turbo: hold SHIFT + attack',
     'Second player on the keyboard: press 2 (ARROWS + ENTER)', 'Gamepads: A attack · B flashbang · X / RB turbo',
@@ -480,8 +482,8 @@ export function drawTitle(ctx, time, hiscores, progress = null, online = false, 
   ctx.font = `12px ${SANS}`;
   ctx.textAlign = 'center';
   const lines = device === 'touch' ? [
-    'Drag on the left side to move · ATTACK, FLASHBANG and TURBO on the right',
-    'II pauses · gamepads join with A',
+    'Drag on the left side to move · A attack · B flashbang · X turbo on the right',
+    'Y pauses · gamepads join with A',
   ] : [
     'Move: WASD or ARROWS · Attack: SPACE or ENTER · Flashbang: E · Turbo: hold SHIFT + attack',
     'ESC pause / back · M mute · N music · V announcer · K: skip cutscenes (test) · C: controls',
@@ -500,10 +502,11 @@ export function drawTitle(ctx, time, hiscores, progress = null, online = false, 
 // the device kinds 'keys' / 'pad' / 'touch'), so prompts say "Press Enter" rather than
 // leaving people to guess which key is Attack.
 const BUTTON_NAMES = {
-  attack: { kb: 'Space', kb1: 'Space', kb2: 'Enter', pad: 'A', touch: 'ATTACK' },
-  magic: { kb: 'E', kb1: 'E', kb2: '.', pad: 'B', touch: 'MAGIC' },
-  back: { kb: 'Esc', kb1: 'Esc', kb2: '.', pad: 'B', touch: 'MAGIC' }, // leaving a menu
-  turbo: { kb: 'Shift', kb1: 'Left Shift', kb2: 'Right Shift', pad: 'X', touch: 'TURBO' },
+  attack: { kb: 'Space', kb1: 'Space', kb2: 'Enter', pad: 'A', touch: 'A' },
+  magic: { kb: 'E', kb1: 'E', kb2: '.', pad: 'B', touch: 'B' },
+  back: { kb: 'Esc', kb1: 'Esc', kb2: '.', pad: 'B', touch: 'B' }, // leaving a menu
+  turbo: { kb: 'Shift', kb1: 'Left Shift', kb2: 'Right Shift', pad: 'X', touch: 'X' },
+  start: { kb: 'Esc', kb1: 'Esc', kb2: 'Esc', pad: 'Start', touch: 'Y' }, // pause / resume
 };
 let device = 'keys';
 export function setDevice(d) { device = d; }
@@ -630,7 +633,7 @@ export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
     wrap(ctx, def.blurb, SEL_W - 24).slice(0, 2).forEach((ln, li) => outlined(ctx, ln, x + SEL_W / 2, y + 326 + li * 14, '#e0d4b8', '#000', 3));
     const stats = [
       ['Health', def.hp / 1100], ['Strength', def.strength / 30], ['Armor', def.armor / 0.25],
-      ['Blast', def.magic / 1.6], ['Speed', def.speed / 160],
+      ['Flash', def.magic / 1.6], ['Speed', def.speed / 160],
     ];
     stats.forEach(([n, v], i) => {
       const sy = y + 344 + i * 19;
@@ -892,7 +895,7 @@ export function drawShop(ctx, time, g, cursors) {
     });
     ctx.textAlign = 'center';
     ctx.font = `${(L.wide ? 19 : 11 * f)}px ${SANS}`;
-    outlined(ctx, `STR ${Math.round(p.strength)}  ARM ${Math.round(p.armor * 100)}  SPD ${Math.round(p.speed)}  BLAST ${p.magic.toFixed(1)}`, x + L.w / 2, y + L.h - (L.wide ? 16 : 10 * f), '#d8c8a8', '#000', L.wide ? 3 : 2);
+    outlined(ctx, `STR ${Math.round(p.strength)}  ARM ${Math.round(p.armor * 100)}  SPD ${Math.round(p.speed)}  FLASH ${p.magic.toFixed(1)}`, x + L.w / 2, y + L.h - (L.wide ? 16 : 10 * f), '#d8c8a8', '#000', L.wide ? 3 : 2);
     if (c.done) {
       const last = shopRow(L, Math.ceil(SHOP.length / L.cols) - 1);
       ctx.fillStyle = 'rgba(0,0,0,0.55)';

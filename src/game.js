@@ -473,7 +473,7 @@ export class Game {
     p.warnT -= dt;
     for (const k of Object.keys(p.buffs)) { p.buffs[k] -= dt; if (p.buffs[k] <= 0) delete p.buffs[k]; }
 
-    // Health drains over time (not in the treasure room).
+    // Health drains over time (not in the secret room).
     if (!this.level.hub && !this.level.tutorial) p.drain += HEALTH_DRAIN * dt;
     if (p.drain >= 1) { const d = Math.floor(p.drain); p.drain -= d; p.hp -= d; }
     this.healthWarnings(p);
@@ -545,8 +545,8 @@ export class Game {
 
   healthWarnings(p) {
     if (p.warnT > 0) return;
-    if (p.hp < 100) { say(`${p.name} IS ABOUT TO BECOME LUNCH!`, `die${p.slot}`, 15000); p.warnT = 6; }
-    else if (p.hp < 220) { say(`${p.name.toUpperCase()} NEEDS PIZZA BADLY!`, `food${p.slot}`, 20000); p.warnT = 6; }
+    if (p.hp < 100) { say(`${p.name} is about to become lunch!`, `die${p.slot}`, 15000); p.warnT = 6; }
+    else if (p.hp < 220) { say(`${p.name} is starving! Find a slice!`, `food${p.slot}`, 20000); p.warnT = 6; }
   }
 
   tryOpenDoor(p, mx, my) {
@@ -555,6 +555,7 @@ export class Game {
       const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
       if (this.tile(tx, ty) === T.DOOR) {
         p.keys--;
+        sfx.key();
         this.stat(p, 'keys');
         this.openDoorAt(tx, ty);
         return;
@@ -982,9 +983,9 @@ export class Game {
           if (p.invuln <= 0 && !p.buffs.shield) {
             p.hp -= 3; e.drained += 3; p.hurtFlash = 0.1;
             if (p.hp <= 0) this.killPlayer(p);
-            if (e.drained >= 180) { e.hp = 0; e.vanish = true; this.burst(e.x, e.y, '#333', 20, 120); this.text(e.x, e.y - 20, 'Death vanishes...', '#aaa', 1.5); }
+            if (e.drained >= 180) { e.hp = 0; e.vanish = true; this.burst(e.x, e.y, '#333', 20, 120); this.text(e.x, e.y - 20, 'The Grim Shopper wanders off...', '#aaa', 1.5); }
           }
-          say('Death!', 'death', 10000);
+          say('The Grim Shopper!', 'death', 10000);
         }
         break;
       case 'lobber':
@@ -1219,9 +1220,11 @@ export class Game {
         this.text(it.x, it.y - 10, 'ARMOR + FLASHBANG', '#80c0ff', 1.8);
         return true;
       }
+      case 'key': // a keycard for the security shutters
+        p.keys++; sfx.key(); this.text(it.x, it.y - 10, 'KEYCARD', '#80ffb0'); return true;
       case 'potion':
         if (p.potions >= MAX_POTIONS) return false;
-        p.potions++; sfx.key(); this.text(it.x, it.y - 10, 'FLASHBANG', '#c9a0ff'); return true;
+        p.potions++; sfx.powerup(); this.text(it.x, it.y - 10, 'FLASHBANG', '#c9a0ff'); return true;
       case 'amulet': {
         const pu = POWERUPS[it.sub];
         p.buffs[it.sub] = pu.dur;

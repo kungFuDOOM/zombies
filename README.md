@@ -32,12 +32,12 @@ Four survivors are locked in the **Security Room**. Pick one, or play all four i
 Between fights you walk around the Security Room. From there you can:
 
 - read the **Mall Directory** and choose a wing (Wing 1 is open; Wings 2 to 6 are listed and locked),
-- spend cash at the upgrade counter on food, potions, keys and permanent Strength / Armor / Speed / Magic upgrades,
+- spend cash at the upgrade counter on food, flashbangs, keycards and permanent Strength / Armor / Speed / Flash upgrades,
 - check on Ray, if he made it.
 
 ## Wing 1: Food Court and the Deep-Fry Butcher
 
-A neon graveyard of overturned tables and cold fryers, with a **Deep-Fry Butcher** waiting in the kitchen. Boss fights are about reading and dodging: every attack is telegraphed, the Butcher goes through phases, and magic potions can't be spammed against him.
+A neon graveyard of overturned tables and cold fryers, with a **Deep-Fry Butcher** waiting in the kitchen. Boss fights are about reading and dodging: every attack is telegraphed, the Butcher goes through phases, and flashbangs can't be spammed against him.
 
 ## Choices with real consequences
 
@@ -51,7 +51,7 @@ Choices are saved with your game, so they carry into later wings. Replaying Wing
 
 ## Controls
 
-| | Move | Attack | Magic potion | Turbo (hold + attack) |
+| | Move | Attack | Flashbang | Turbo (hold + attack) |
 |---|---|---|---|---|
 | **Keyboard** (one player) | WASD or Arrows | Space / F / Enter | E / G / `.` | Left Shift / Q / Right Shift |
 | **Shared keyboard, player 1** | WASD | Space / F | E / G | Left Shift / Q |

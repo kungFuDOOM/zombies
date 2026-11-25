@@ -14,23 +14,19 @@ for (const cls of Object.keys(CLASSES)) {
   const name = CLASSES[cls].name;
   add(cls[0].toUpperCase() + cls.slice(1)); // picked on the hero select screen
   add(`Welcome, ${name}`);
-  add(`${name} needs food, badly!`);
-  add(`${name} is about to die!`);
-  add(`${name} has died`);
-  add(`${name} shot the food!`);
-  add(`${name} ate poisoned food!`);
-  add(`${name} found a key card!`);
+  add(`${name} is starving! Find a slice!`);
+  add(`${name} is about to become lunch!`);
+  add(`${name} got eaten`);
+  add(`${name} shot the pizza!`);
 }
 for (const b of BOSSES) {
   add(`Beware! ${b.name}`);
   add(`${b.name} has been defeated!`);
 }
-add('Stash room! Grab the cash!');
 add('You found a secret area');
-add('Death!');
+add('The Grim Shopper!');
 // Training Grounds lesson titles (src/tutorial.js)
-for (const t of ['move', 'attack', 'generators', 'magic', 'turbo', 'food']) add(t, t[0].toUpperCase() + t.slice(1) + '!');
-add('keys & doors', 'Keys and doors!');
+for (const t of ['move', 'attack', 'spawners', 'shutters', 'flashbang', 'turbo', 'food']) add(t, t[0].toUpperCase() + t.slice(1) + '!');
 add('Well done!');
 for (const l of [...STORY.intro, ...STORY.realms.flat(), ...STORY.ending]) add(l);
 

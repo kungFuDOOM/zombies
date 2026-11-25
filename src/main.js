@@ -263,7 +263,7 @@ function updateRecords() {
 
 function updateConfirm() {
   // wiping the save: the host's own players only
-  if (input.firstPressed('attack', [...input.remote.keys()])) { save = newSave(); writeSave(save); toast = { text: 'A new quest begins', t: 2, local: true }; setState('title'); }
+  if (input.firstPressed('attack', [...input.remote.keys()])) { save = newSave(); writeSave(save); toast = { text: 'A new shift begins', t: 2, local: true }; setState('title'); }
   else if (input.sources().some((id) => !isNet(id) && backPressed(id))) setState('title');
 }
 
@@ -715,7 +715,7 @@ function guestFrame(dt) {
 
 // ---------- playing ----------
 
-// When someone is swamped or nearly dead and still has a potion, remind them about magic
+// When someone is swamped or nearly dead and still has a potion, remind them about flashbangs
 // (a few times per session, so it doesn't nag).
 function updateMagicHint(dt) {
   magicHint.t -= dt;
@@ -932,7 +932,7 @@ function render() {
       controls: showControls && input.lastDevice !== 'touch' && state === 'play',
     });
     if (state === 'paused') {
-      const resume = { touch: 'Tap II to resume', pad: 'Press Start to resume', keys: 'Press Esc to resume' }[input.lastDevice];
+      const resume = { touch: 'Tap Y to resume', pad: 'Press Start to resume', keys: 'Press Esc to resume' }[input.lastDevice];
       const quit = input.lastDevice === 'keys' ? 'Q' : btn('magic');
       const lines = [resume];
       if (guest) lines.push('(only the host can quit)');
@@ -1031,7 +1031,7 @@ function frame(now) {
     case 'play': updatePlay(dt); break;
     case 'paused':
       if (input.key('Escape') || input.key('KeyP') || startPressed()) setState('play');
-      // quit: Q on the keyboard (Esc resumes), B on a gamepad, MAGIC on the touch screen
+      // quit: Q on the keyboard (Esc resumes), B on a gamepad, B on the touch screen
       // (online guests can pause and resume, but only the host's own players can quit)
       else if (input.key('KeyQ') || partySources().some((src) => !isNet(src) && (!isKb(src) || input.lastDevice === 'touch') && input.get(src).pressed.magic)) {
         if (game.level.tutorial) finishTutorial(true);

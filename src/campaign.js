@@ -72,7 +72,7 @@ export const SHOP = [
   { id: 'strength', name: 'Weapon Mods', desc: 'Hit harder', price: 500, stat: true },
   { id: 'armor', name: 'Armor Padding', desc: 'Take less damage', price: 500, stat: true },
   { id: 'speed', name: 'Fresh Kicks', desc: 'Run faster', price: 400, stat: true },
-  { id: 'magic', name: 'Blast Charge', desc: 'Stronger flashbangs', price: 400, stat: true },
+  { id: 'magic', name: 'Flash Charge', desc: 'Stronger flashbangs', price: 400, stat: true },
   { id: 'done', name: 'Done', desc: 'Back to the Security Room', price: 0 },
 ];
 

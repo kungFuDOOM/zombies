@@ -1,5 +1,6 @@
 // On-screen controls for phones and tablets: a floating joystick on the left half of the
-// screen and Attack / Magic / Turbo buttons on the right, plus Pause and a sound toggle.
+// screen and an Xbox-style diamond of face buttons on the right (A attack, B flashbang,
+// X turbo, Y pause), plus a small Pause and a sound toggle in the top corner.
 // They act as one more input source ('touch'). On phones and tablets they are on from the
 // start; on a touchscreen laptop they appear when the screen is touched and hide again as
 // soon as a key is pressed, and the laptop is never asked to turn sideways.
@@ -22,9 +23,11 @@ const CSS = `
 #touch .btn.down { filter: brightness(1.6); transform: scale(0.93); }
 #touch .btn.pulse { animation: tpulse 0.5s ease-in-out 6 alternate; }
 @keyframes tpulse { from { box-shadow: 0 0 0 0 rgba(255,255,255,0.9); } to { box-shadow: 0 0 0 16px rgba(255,255,255,0); transform: scale(1.12); } }
-#touch .attack { width: 92px; height: 92px; right: 5%; bottom: 10%; background: rgba(200,50,30,0.55); font-size: 15px; }
-#touch .magic { width: 64px; height: 64px; right: calc(5% + 100px); bottom: 7%; background: rgba(70,90,230,0.55); }
-#touch .turbo { width: 64px; height: 64px; right: calc(5% + 14px); bottom: calc(10% + 104px); background: rgba(230,150,20,0.6); }
+#touch .face { font-size: 26px; }
+#touch .attack { width: 92px; height: 92px; right: calc(5% + 58px); bottom: 10%; background: rgba(40,170,50,0.6); font-size: 32px; }
+#touch .magic { width: 64px; height: 64px; right: 5%; bottom: calc(10% + 76px); background: rgba(225,40,40,0.6); }
+#touch .turbo { width: 64px; height: 64px; right: calc(5% + 144px); bottom: calc(10% + 76px); background: rgba(30,110,230,0.6); }
+#touch .ybtn { width: 64px; height: 64px; right: calc(5% + 72px); bottom: calc(10% + 142px); background: rgba(240,190,20,0.65); }
 #touch .small { width: 46px; height: 46px; top: 10px; font-size: 18px; background: rgba(0,0,0,0.35); }
 #touch .pause { right: 12px; }
 #touch .mute { right: 66px; }
@@ -49,9 +52,10 @@ export class TouchControls {
     root.innerHTML = `
       <div class="zone"></div><div class="stick"><div class="knob"></div></div>
       <div class="hint">drag to move</div>
-      <div class="btn attack" data-b="attack">ATTACK</div>
-      <div class="btn magic" data-b="magic">MAGIC</div>
-      <div class="btn turbo" data-b="turbo">TURBO</div>
+      <div class="btn face attack" data-b="attack">A</div>
+      <div class="btn face magic" data-b="magic">B</div>
+      <div class="btn face turbo" data-b="turbo">X</div>
+      <div class="btn face ybtn" data-b="start">Y</div>
       <div class="btn small pause" data-b="start">II</div>
       <div class="btn small mute" data-b="mute">♪</div>`;
     document.body.appendChild(root);

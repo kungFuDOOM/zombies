@@ -1,5 +1,5 @@
 // Procedural models for things the CC0 KayKit packs don't cover: the Deep-Fry Butcher boss,
-// pickups, projectiles, the exit portal, plus shared glow/swirl textures.
+// pickups, projectiles, the exit gate, plus shared glow/exit-pad textures.
 
 import * as THREE from 'three';
 import { buildBossRig } from './bossModels.js';
@@ -204,20 +204,19 @@ export function glowTexture() {
 }
 
 let swirlTex = null;
-export function swirlTexture() {
+export function swirlTexture() { // the emergency-exit pad: a green glow ringed with hazard chevrons
   if (swirlTex) return swirlTex;
   swirlTex = canvasTex(128, (ctx, s) => {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, s, s);
     ctx.translate(s / 2, s / 2);
-    for (let arm = 0; arm < 4; arm++) {
-      for (let i = 0; i < 60; i++) {
-        const t = i / 60;
-        const a = arm * Math.PI / 2 + t * Math.PI * 2.2;
-        const r = t * s * 0.48;
-        ctx.fillStyle = `rgba(${120 + t * 135},${200 + t * 55},255,${1 - t * 0.7})`;
-        ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 2 + t * 6, 0, Math.PI * 2); ctx.fill();
-      }
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 0.5);
+    g.addColorStop(0, 'rgba(120,255,170,0.9)'); g.addColorStop(0.6, 'rgba(40,200,110,0.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.5, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 12; i++) { // alternating green / dark slashes around the rim
+      ctx.fillStyle = i % 2 ? 'rgba(220,255,230,0.85)' : 'rgba(10,60,30,0.85)';
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.46, i * Math.PI / 6, (i + 1) * Math.PI / 6); ctx.arc(0, 0, s * 0.36, (i + 1) * Math.PI / 6, i * Math.PI / 6, true); ctx.fill();
     }
   }, false);
   return swirlTex;
@@ -510,38 +509,45 @@ export function buildItem(type, sub, powerColor) {
       glow = '#60a0ff';
       break;
     }
-    case 'gem':
-      part(spin, G.oct(6), m('#50d0ff', { emissive: '#2080ff', emissiveIntensity: 0.8, metalness: 0.3, roughness: 0.1 }), 0, 9, 0).scale.set(1, 1.4, 1);
+    case 'gem': { // stolen jewelry: a gold ring with a big stone
+      const gold = m('#ffd040', { metalness: 0.9, roughness: 0.2, emissive: '#806000', emissiveIntensity: 0.4 });
+      const ring = part(spin, G.torus(5, 1.3), gold, 0, 7, 0);
+      ring.rotation.x = Math.PI / 2;
+      part(spin, G.oct(3.2), m('#50d0ff', { emissive: '#2080ff', emissiveIntensity: 0.9, metalness: 0.3, roughness: 0.1 }), 0, 13, 0).scale.set(1, 1.3, 1);
       glow = '#50d0ff';
       break;
-    case 'key': {
-      const gold = m('#ffd040', { metalness: 0.9, roughness: 0.2, emissive: '#806000', emissiveIntensity: 0.5 });
-      part(spin, G.torus(3.5, 1.2), gold, -5, 9, 0);
-      part(spin, G.box(11, 2, 2), gold, 2.5, 9, 0);
-      part(spin, G.box(2, 4, 2), gold, 6, 6.5, 0);
-      part(spin, G.box(2, 3, 2), gold, 3, 7, 0);
-      glow = '#ffd040';
+    }
+    case 'key': { // a plastic keycard with a magstripe and a lanyard hole
+      part(spin, G.box(14, 0.8, 9), m('#f2f2f4', { roughness: 0.4 }), 0, 9, 0);
+      part(spin, G.box(14.2, 0.9, 2.4), m('#2a3a50'), 0, 9, 2.5);
+      part(spin, G.box(5, 0.9, 3), m('#2ac060', { emissive: '#10a040', emissiveIntensity: 0.8 }), -3.5, 9, -1.8);
+      part(spin, G.cyl(1, 1, 1, 8), m('#7a7a86'), 5.2, 9, -2.8);
+      glow = '#40ff80';
       break;
     }
-    case 'potion': {
-      const glass = m('#4a6aff', { transparent: true, opacity: 0.85, emissive: '#2040ff', emissiveIntensity: 0.7, roughness: 0.1 });
-      part(spin, G.sphere(6, 10), glass, 0, 7, 0);
-      part(spin, G.cyl(2, 2.5, 6, 8), glass, 0, 14, 0);
-      part(spin, G.cyl(2.4, 2.4, 2.5, 8), m('#a07040'), 0, 18, 0);
-      glow = '#4a6aff';
+    case 'potion': { // a flashbang: grey can, black grip band, spoon lever and ring pin
+      const can = m('#8a8e98', { metalness: 0.6, roughness: 0.4 });
+      part(spin, G.cyl(3.6, 3.6, 13, 12), can, 0, 8, 0);
+      part(spin, G.cyl(3.7, 3.7, 3, 12), m('#202228'), 0, 7, 0);
+      part(spin, G.cyl(3.7, 3.7, 1.6, 12), m('#e0c020', { emissive: '#806000', emissiveIntensity: 0.5 }), 0, 11.5, 0);
+      part(spin, G.cyl(3.2, 3.6, 2, 12), can, 0, 15.5, 0);
+      part(spin, G.box(1.2, 11, 2), m('#b8bcc6', { metalness: 0.7 }), 4.3, 11, 0);
+      part(spin, G.torus(1.6, 0.35), m('#d8d8e0', { metalness: 0.8 }), -3.4, 17, 0);
+      glow = '#fff0b0';
       break;
     }
-    case 'amulet': {
+    case 'amulet': { // a mall power-up: a security badge in the power's color
       const c = powerColor || '#ffffff';
-      part(spin, G.torus(5, 0.8), m('#ffd040', { metalness: 0.9, roughness: 0.2 }), 0, 13, 0);
-      part(spin, G.oct(4.5), m(c, { emissive: c, emissiveIntensity: 1.5 }), 0, 7, 0);
+      part(spin, G.cyl(6.5, 6.5, 1.4, 6), m('#c8ccd8', { metalness: 0.8, roughness: 0.3 }), 0, 10, 0).rotation.x = Math.PI / 2;
+      part(spin, G.cyl(4.6, 4.6, 1.6, 6), m(c, { emissive: c, emissiveIntensity: 1.4 }), 0, 10, 0.2).rotation.x = Math.PI / 2;
+      part(spin, G.box(5, 3, 1.2), m('#202228'), 0, 18, 0);
       glow = c;
       break;
     }
-    case 'rune': {
-      part(spin, G.box(14, 22, 5), m('#5a5a6a'), 0, 11, 0);
-      part(spin, G.box(8, 12, 1), m('#ff80ff', { emissive: '#ff40ff', emissiveIntensity: 2 }), 0, 12, 2.8, false);
-      glow = '#ff80ff';
+    case 'rune': { // a wall keypad with a blinking light (not placed in the mall; kept for old saves)
+      part(spin, G.box(10, 16, 4), m('#3a3a44'), 0, 8, 0);
+      part(spin, G.box(6, 4, 1), m('#40ff80', { emissive: '#20ff60', emissiveIntensity: 1.5 }), 0, 12, 2.2, false);
+      glow = '#40ff80';
       break;
     }
   }
@@ -560,7 +566,7 @@ export function buildExit(sealed) {
   const root = new THREE.Group();
   const mats = makeMats();
   part(root, G.cyl(17, 18, 3, 16), mats.m('#4a4a54'), 0, 1.5, 0).receiveShadow = true;
-  const ring = part(root, G.torus(15, 2, Math.PI * 2), mats.m('#c8a040', { metalness: 0.8, roughness: 0.3 }), 0, 3.2, 0, false);
+  const ring = part(root, G.torus(15, 2, Math.PI * 2), mats.m('#b8bcc8', { metalness: 0.8, roughness: 0.3 }), 0, 3.2, 0, false);
   ring.rotation.x = Math.PI / 2;
   const disk = new THREE.Mesh(
     new THREE.CircleGeometry(14, 24),
@@ -569,13 +575,12 @@ export function buildExit(sealed) {
   disk.rotation.x = -Math.PI / 2;
   disk.position.y = 3.4;
   root.add(disk);
-  const halo = glowSprite('#80d0ff', 70, sealed ? 0 : 0.6);
+  const halo = glowSprite('#50ff90', 70, sealed ? 0 : 0.6);
   halo.position.y = 10;
   root.add(halo);
   const bars = new THREE.Group();
-  const iron = mats.m('#3a3a40', { metalness: 0.7 });
-  for (let i = -2; i <= 2; i++) part(bars, G.box(2, 2.5, 28), iron, i * 5.5, 4.5, 0, false);
-  part(bars, G.box(28, 2.5, 2), iron, 0, 5, 0, false);
+  const iron = mats.m('#9aa0ac', { metalness: 0.7 }); // a rolled-down security shutter
+  for (let i = -3; i <= 3; i++) part(bars, G.box(28, 2.2, 3), iron, 0, 4.5 + (i + 3) * 0.1, i * 4, false);
   bars.visible = sealed;
   root.add(bars);
   return finish(root, mats, { kind: 'exit', disk, halo, bars });
@@ -648,9 +653,9 @@ export function buildProjectile(kind) {
       part(spin, G.cyl(0.6, 0.6, 4, 4), m('#c8a060'), 0, 6, 0, false);
       glow = '#ffb040'; size = 22;
       break;
-    case 'flask': // a bubbling green potion
-      part(spin, G.ico(4), m('#70ff40', { emissive: '#40c020', emissiveIntensity: 1.2, transparent: true, opacity: 0.85 }), 0, 0, 0, false);
-      part(spin, G.cyl(1.2, 1.2, 4, 5), m('#d8d0c0'), 0, 5, 0, false);
+    case 'flask': // a spoiled takeout tub, lobbed
+      part(spin, G.cyl(4.4, 3.2, 5, 8), m('#e8e0c8'), 0, 0, 0, false);
+      part(spin, G.ico(3.6), m('#80d030', { emissive: '#50a010', emissiveIntensity: 1.1 }), 0, 3.5, 0, false);
       glow = '#60ff30'; size = 30;
       break;
     case 'meteor': // a falling ball of fire

@@ -211,7 +211,7 @@ export class Renderer3D {
     if (inst) inst.renderOrder = 1;
   }
 
-  // The exit portal, flanked by neon posts.
+  // The exit gate (emergency-exit pad), flanked by neon posts.
   portalAt(group, x, y, sealed) {
     const e = buildExit(sealed);
     e.position.set(x * TILE + 16, 0.5, y * TILE + 16);
