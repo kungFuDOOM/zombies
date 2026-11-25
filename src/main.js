@@ -27,7 +27,10 @@ import { fetchTop, getName, getMine } from './leaderboard.js';
 import { LbPrompt } from './lbprompt.js';
 
 // Always load the newest version of the game after an update (see sw.js).
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// BASE_URL is '/zombies/' in the GitHub Pages build (Vite) and undefined when server.js serves the
+// raw files at the site root; either way the worker sits next to index.html and controls that folder.
+const BASE = (import.meta.env && import.meta.env.BASE_URL) || './';
+if ('serviceWorker' in navigator) navigator.serviceWorker.register(`${BASE}sw.js`, { scope: BASE }).catch(() => {});
 
 const stage = document.getElementById('stage');
 const hudCanvas = document.getElementById('hud');
