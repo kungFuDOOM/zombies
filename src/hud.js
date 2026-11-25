@@ -7,6 +7,7 @@ import { hubRayLabel } from './story.js';
 import { Input } from './input.js';
 import { SHOP, priceOf, maxed } from './campaign.js';
 import { BOSS_ROSTER } from './bossRoster.js';
+import { drawCine } from './cineOverlay.js';
 
 const SERIF = '"Arial Black", Impact, "Trebuchet MS", sans-serif'; // arcade display type
 const SANS = '"Trebuchet MS", Verdana, sans-serif';
@@ -1569,8 +1570,7 @@ export function drawRecap(ctx, time, r, g) {
 
 
 // ---------- the opening cinematic's overlay ----------
-// Letterbox, the PA subtitles, the hero name cards, the title slam and the skip hint. Text stays inside
-// x 60..900 and y 70..570 (between the bars) so a 390px-tall phone, where 1 virtual px is ~0.6 CSS px, can read it.
+// The black 'tap to begin' gate is drawn here; everything during the film is src/cineOverlay.js (sizes scale with the viewport).
 
 export function drawIntro(ctx, v, time) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
@@ -1590,77 +1590,6 @@ export function drawIntro(ctx, v, time) {
     ctx.globalAlpha = 1;
     return;
   }
-  const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.3, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.95);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(2,0,8,0.7)');
-  ctx.fillStyle = vg; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  if (v.flash > 0) { ctx.fillStyle = `rgba(235,242,255,${Math.min(0.9, v.flash)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
-  drawBars(ctx, v.bar);
-  ctx.textAlign = 'center';
-  // the PA's captions
-  if (v.caption && v.caption.a > 0) {
-    ctx.save();
-    ctx.globalAlpha = v.caption.a * (Math.sin(time * 41) > 0.9 ? 0.55 : 1);
-    ctx.font = `bold ${v.caption.size}px ${SANS}`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
-    outlined(ctx, v.caption.text, VIEW_W / 2 + 2, v.caption.y, '#f0ead8', '#000', 5);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    ctx.restore();
-  }
-  if (v.stamp) {
-    ctx.save();
-    ctx.globalAlpha = v.stamp.a;
-    ctx.textAlign = 'left';
-    ctx.font = `bold 21px ${SANS}`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
-    outlined(ctx, v.stamp.text, 84, 540, '#9fe8ff', '#000', 4);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    ctx.restore();
-  }
-  // a survivor's name card: slides in at the lower left with a role chip
-  if (v.card) {
-    const c = v.card, a = Math.min(c.in, c.out), x = 84 + (1 - easeOut(c.in)) * -60;
-    ctx.save();
-    ctx.globalAlpha = a;
-    ctx.textAlign = 'left';
-    const bg = ctx.createLinearGradient(40, 0, 560, 0);
-    bg.addColorStop(0, 'rgba(6,2,14,0.8)'); bg.addColorStop(1, 'rgba(6,2,14,0)');
-    ctx.fillStyle = bg; ctx.fillRect(40, 436, 520, 118);
-    ctx.fillStyle = c.color; ctx.fillRect(x - 14, 446, 5, 98);
-    ctx.shadowColor = c.color; ctx.shadowBlur = 16;
-    ctx.font = `bold 50px ${SERIF}`;
-    outlined(ctx, c.name, x, 500, '#ffffff', c.color, 6);
-    ctx.shadowBlur = 0;
-    ctx.font = `bold 21px ${SANS}`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '5px';
-    const tw = ctx.measureText(c.role).width;
-    ctx.fillStyle = c.color; roundRect(ctx, x, 512, tw + 30, 30, 4); ctx.fill();
-    ctx.fillStyle = '#10061e'; ctx.fillText(c.role, x + 15, 534);
-    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
-    ctx.restore();
-  }
-  // MALL OF THE DEAD: slammed in, the same sign the title screen shows
-  if (v.title) {
-    const age = v.title.age;
-    const k = easeOut(age / 0.14), scale = 1 + (1 - k) * 1.1 + (age > 0.14 && age < 0.4 ? Math.sin((age - 0.14) / 0.26 * Math.PI) * 0.04 : 0);
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, age / 0.04);
-    drawTitleSign(ctx, time, scale, 1);
-    if (age > 0.5) {
-      ctx.globalAlpha = clamp01((age - 0.5) / 0.6);
-      ctx.textAlign = 'center';
-      ctx.font = `bold 15px ${SANS}`;
-      outlined(ctx, 'BLACK FRIDAY SALE: EVERYONE MUST GO', VIEW_W / 2, 204, '#ffcc33', '#000', 4);
-    }
-    ctx.restore();
-  }
-  if (v.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, v.fade)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
-  // the skip hint: small, bottom right, inside the bar, never on the picture
-  if (v.hint > 0) {
-    ctx.save();
-    ctx.globalAlpha = v.hint * (0.8 + Math.sin(time * 2.4) * 0.2);
-    ctx.textAlign = 'right';
-    ctx.font = `17px ${SANS}`;
-    outlined(ctx, 'tap or press any button to skip', VIEW_W - 64, VIEW_H - 26, '#c8c0e0', '#000', 3);
-    ctx.restore();
-  }
+  // the film itself (letterbox, subtitles, name cards, title, skip hint) is the cinema toolkit's overlay
+  drawCine(ctx, v, time, { SANS, SERIF, drawTitleSign });
 }

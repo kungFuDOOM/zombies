@@ -248,6 +248,64 @@ export function makeCine(get) {
     },
     heartbeat(n = 6, gap = 0.78, vol = 0.3) { for (let i = 0; i < n; i++) { note(62, 0.18, { type: 'sine', vol, delay: i * gap, slide: 38 }); note(58, 0.2, { type: 'sine', vol: vol * 0.7, delay: i * gap + 0.17, slide: 34 }); } },
 
+    // ----- the opener "Doorbuster" (cinema toolkit): locks, bursts, hero stingers, the theme -----
+    // The keypad: a thin electronic beep, then (ok) the bolt thrown with a heavy clunk and the score dropping out.
+    lockBeep(ok = false) { note(ok ? 1760 : 880, 0.09, { type: 'square', vol: 0.05, filter: ['bandpass', ok ? 2200 : 1100, 0, 4] }); if (ok) note(2349, 0.16, { type: 'square', vol: 0.05, delay: 0.1, filter: ['bandpass', 2400, 0, 4] }); },
+    lockClunk() {
+      hiss(0.09, { vol: 0.5, filter: ['bandpass', 1400, 400, 2], drive: 3 });
+      note(62, 0.7, { type: 'sine', vol: 0.6, slide: 30 });
+      hiss(0.4, { vol: 0.3, delay: 0.02, filter: ['lowpass', 420, 70, 0.8] });
+      note(210, 0.16, { type: 'square', vol: 0.07, delay: 0.14, slide: 150, filter: ['bandpass', 600, 0, 3] }); // the latch settling
+    },
+    // The doors give way: glass, horde, and a percussion slam.
+    doorBurst() {
+      hiss(0.14, { vol: 0.65, filter: ['highpass', 2200, 0, 0.7], drive: 3 });
+      hiss(0.9, { vol: 0.45, filter: ['lowpass', 600, 70, 0.8] });
+      note(48, 1.4, { type: 'sine', vol: 0.55, slide: 24 });
+      for (let i = 0; i < 20; i++) note(R(3000, 9000), R(0.05, 0.2), { type: 'sine', vol: R(0.02, 0.05), delay: R(0.02, 1.2), slide: R(2000, 6000) });
+      [0, 0.18, 0.36].forEach((d, i) => { hiss(0.22, { vol: 0.28 - i * 0.05, delay: d, filter: ['lowpass', 900, 120, 1] }); note(70 - i * 8, 0.3, { type: 'sine', vol: 0.4, delay: d, slide: 36 }); }); // timpani-ish slams
+    },
+    // Tape warble: a pitch-sliding detuned tone, the sound of a feed losing its track. Ends on a single piano note.
+    tapeWarble(dur = 1.6) {
+      note(440, dur, { type: 'sawtooth', vol: 0.05, slide: 150, filter: ['lowpass', 1400, 300, 1], vib: [6, 120] });
+      note(443, dur, { type: 'sawtooth', vol: 0.04, slide: 200, filter: ['lowpass', 1400, 300, 1], vib: [4, 160] });
+      hiss(dur, { vol: 0.05, filter: ['bandpass', 3200, 1500, 1], drive: 3 });
+    },
+    piano(freq = 392, vol = 0.18, delay = 0) { // a struck, felted note: sine partials with a quick decay
+      note(freq, 3, { type: 'sine', vol, delay, attack: 0.008, filter: ['lowpass', 2600, 500, 0.7] });
+      note(freq * 2, 2, { type: 'sine', vol: vol * 0.35, delay, attack: 0.006 });
+      note(freq * 3.01, 1, { type: 'triangle', vol: vol * 0.12, delay, attack: 0.004 });
+      hiss(0.04, { vol: vol * 0.4, delay, filter: ['bandpass', 1800, 0, 2] }); // the hammer
+    },
+    // Something wet gagging up: pitch-bending growl with a burble.
+    spitterGargle() {
+      note(130, 1.3, { type: 'sawtooth', vol: 0.17, slide: 62, attack: 0.1, filter: ['bandpass', 520, 240, 5], drive: 4, vib: [13, 140] });
+      for (let i = 0; i < 9; i++) hiss(0.06, { vol: 0.1, delay: 0.1 + i * 0.12, filter: ['bandpass', R(500, 1200), 0, 6] });
+      hiss(0.5, { vol: 0.12, delay: 0.9, attack: 0.05, filter: ['bandpass', 1600, 700, 1.5] }); // the spit
+    },
+    // Hero stingers: each survivor has their own colour of stab.
+    guitarStab() { // power chord, distorted
+      [82.4, 123.5, 164.8].forEach((f, i) => note(f, 1.4, { type: 'sawtooth', vol: 0.16, attack: 0.008, slide: f * 0.97, detune: i * 7, filter: ['lowpass', 2200, 500, 1.4], drive: 8 }));
+      hiss(0.12, { vol: 0.3, filter: ['bandpass', 1800, 0, 1.4], drive: 3 });
+    },
+    snareHit() { hiss(0.2, { vol: 0.34, filter: ['bandpass', 1900, 900, 1.1], drive: 2 }); note(190, 0.14, { type: 'triangle', vol: 0.3, slide: 100 }); },
+    cymbal() { hiss(1.8, { vol: 0.16, attack: 0.01, filter: ['highpass', 6000, 4000, 0.6] }); for (let i = 0; i < 5; i++) note(R(5000, 9000), 0.9, { type: 'square', vol: 0.012, attack: 0.005, slide: R(4000, 7000), filter: ['highpass', 5000, 0, 1] }); },
+    wheelRoll(dur = 1.2) { hiss(dur, { vol: 0.1, attack: 0.1, filter: ['bandpass', 900, 1700, 3] }); hiss(dur, { vol: 0.05, attack: 0.2, filter: ['lowpass', 220, 120, 1] }); },
+    lighterFlick() { hiss(0.04, { vol: 0.2, filter: ['highpass', 4200, 0, 1], drive: 3 }); note(3100, 0.03, { type: 'square', vol: 0.04, delay: 0.005 }); hiss(0.05, { vol: 0.18, delay: 0.12, filter: ['highpass', 3800, 0, 1] }); },
+    flameWhoomp() { hiss(0.9, { vol: 0.38, attack: 0.04, filter: ['lowpass', 1200, 200, 0.8], drive: 2 }); note(78, 0.9, { type: 'sawtooth', vol: 0.16, slide: 36, filter: ['lowpass', 280, 0, 1] }); },
+    bassDrop() { note(120, 1.6, { type: 'sine', vol: 0.6, slide: 28 }); note(60, 1.6, { type: 'sawtooth', vol: 0.15, slide: 30, filter: ['lowpass', 260, 90, 1], drive: 3 }); hiss(0.5, { vol: 0.2, filter: ['lowpass', 500, 60, 1] }); },
+    // The theme coming in under the title: a minor-key pad, a pulse and a slow bell.
+    themeIn(dur = 9) {
+      [[110, 0], [130.8, 0.3], [164.8, 0.6], [196, 1]].forEach(([f, d]) => note(f, dur, { type: 'sawtooth', vol: 0.07, delay: d, attack: 1.4, slide: f * 0.995, filter: ['lowpass', 500, 1800, 1.2], detune: R(-6, 6) }));
+      for (let i = 0; i < 16; i++) note(i % 4 === 0 ? 55 : 82.4, 0.28, { type: 'triangle', vol: 0.14, delay: 0.8 + i * 0.5, slide: 40, filter: ['lowpass', 400, 0, 1] });
+      [[659.3, 1.2], [587.3, 2.8], [523.3, 4.4], [493.9, 6.0]].forEach(([f, d]) => note(f, 2.2, { type: 'sine', vol: 0.06, delay: d, attack: 0.01, filter: ['lowpass', 2200, 800, 0.8] }));
+    },
+    // A black-out: everything dips for a beat (the sudden silence before a slam)
+    duck(dur = 0.6) {
+      if (!bus || !busCtx) return;
+      try { const t = busCtx.currentTime; bus.gain.cancelScheduledValues(t); bus.gain.setTargetAtTime(0.02, t, 0.015); bus.gain.setTargetAtTime(1, t + dur, 0.05); } catch { /* context gone */ }
+    },
+
     stopAll() {
       if (!bus || !busCtx) return;
       try { const t = busCtx.currentTime; bus.gain.cancelScheduledValues(t); bus.gain.setTargetAtTime(0, t, 0.04); } catch { /* context gone */ }
