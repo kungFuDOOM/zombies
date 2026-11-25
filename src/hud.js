@@ -326,11 +326,16 @@ function drawBanner(ctx, g, top = 0) {
   grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(0.5, 'rgba(0,0,0,0.55)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, y - 56, VIEW_W, 96);
+  // the top corners hold the P1 / P2 panels, so keep all banner text inside the gap between them
+  const maxW = VIEW_W - 2 * (PANEL_W + M) - 16;
   if (g.banner.sub) {
     ctx.font = `italic 16px ${SERIF}`;
-    outlined(ctx, g.banner.sub, VIEW_W / 2, y - 30, '#d8c8a0', '#000', 3);
+    const rows = wrap(ctx, g.banner.sub, maxW);
+    rows.forEach((r, i) => outlined(ctx, r, VIEW_W / 2, y - 30 - (rows.length - 1 - i) * 19, '#d8c8a0', '#000', 3));
   }
-  ctx.font = `bold 38px ${SERIF}`;
+  let ts = 38;
+  do { ctx.font = `bold ${ts}px ${SERIF}`; ts -= 2; } while (ts > 22 && ctx.measureText(g.banner.text).width > maxW);
+  ctx.font = `bold ${ts + 2}px ${SERIF}`;
   const tg = ctx.createLinearGradient(0, y - 30, 0, y + 6);
   tg.addColorStop(0, '#fff4c0'); tg.addColorStop(0.5, '#f2c14e'); tg.addColorStop(1, '#a0601a');
   outlined(ctx, g.banner.text, VIEW_W / 2, y + 6, tg, '#1a0a00', 6);

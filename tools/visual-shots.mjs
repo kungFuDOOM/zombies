@@ -145,6 +145,19 @@ for (const [name, vp] of [['phone-portrait', { width: 390, height: 844 }], ['pho
   await record(name, page, errors);
   await ctx.close();
 }
+// area banner vs player panels: re-enter the Food Court and grab the banner while it is up
+for (const [vp, mobile] of [[{ width: 1280, height: 720 }, false], [{ width: 844, height: 390 }, true], [{ width: 390, height: 844 }, true]]) {
+  if (!want('banner')) continue;
+  const { ctx, page, errors } = await open(mobile ? { viewport: vp, isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : { viewport: vp });
+  await intoPlay(page, mobile);
+  await page.evaluate(() => { document.body.classList.add('rotate-ok'); window.__motd.game.startLevel(1); });
+  await sleep(500);
+  await page.evaluate(() => { const g = window.__motd.game; if (g.banner) g.banner.t = Math.max(g.banner.t, 2); });
+  await page.screenshot({ path: `${OUT}/${prefix}-banner-${vp.width}x${vp.height}.png` });
+  report[`banner-${vp.width}x${vp.height}`] = { consoleErrors: errors.length, errors: errors.slice(0, 3) };
+  console.log('banner', vp.width, vp.height, errors.length, 'errors');
+  await ctx.close();
+}
 writeFileSync(`${OUT}/${prefix}-report.json`, JSON.stringify(report, null, 2));
 await browser.close();
 if (srv) srv.kill();
