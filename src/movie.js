@@ -4,11 +4,12 @@
 // main.js drives it: preload(), start(), play() (from the user's tap or key), then polls waiting / ended / failed
 // each frame, and release() puts everything away. The files stream from the network: sw.js never caches them.
 
-const FILM = 'assets/film/opener-v1';
+const FILM = 'assets/film/opener-v2';
 const TYPE = 'video/mp4; codecs="avc1.640028, mp4a.40.2"';
 export const STALL_MS = 8000; // no first frame by then: use the in-engine opener
-// The speakers' colours, as in the in-engine opener (intro.js); Pam is amber. Anyone else gets the caption colour.
-export const SPEAKERS = { 'PAM (PA)': '#ffd89a', BIKER: '#ff7a50', 'MALL COP': '#6aa0ff', SKATER: '#50e890', 'MALL GOTH': '#d070ff' };
+// The speakers' colours, as in the in-engine opener (intro.js); Pam is amber, and Dale (only in the movie) is orange.
+// Anyone else gets the caption colour.
+export const SPEAKERS = { 'PAM (PA)': '#ffd89a', DALE: '#ffa630', BIKER: '#ff7a50', 'MALL COP': '#6aa0ff', SKATER: '#50e890', 'MALL GOTH': '#d070ff' };
 const TEXT = '#f2ecdc';
 
 /** A WebVTT cue's raw text -> { speaker, text, italic } (<v NAME> is the speaker, <i> a time caption). */

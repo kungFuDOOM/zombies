@@ -30,8 +30,8 @@ function fakePage({ playable = true, play = () => Promise.resolve() } = {}) {
 const settle = () => new Promise((r) => setImmediate(r));
 
 test('every caption in the VTT has text, and every speaker has a colour (Pam in amber)', () => {
-  const cues = read('assets/film/opener-v1.vtt').split(/\n\n+/).filter((b) => b.includes('-->')).map((b) => parseCue(b.split('\n').slice(b.split('\n').findIndex((l) => l.includes('-->')) + 1).join('\n')));
-  assert.equal(cues.length, 10);
+  const cues = read('assets/film/opener-v2.vtt').split(/\n\n+/).filter((b) => b.includes('-->')).map((b) => parseCue(b.split('\n').slice(b.split('\n').findIndex((l) => l.includes('-->')) + 1).join('\n')));
+  assert.equal(cues.length, 16);
   for (const c of cues) {
     assert.ok(c.text && !c.text.includes('<'), c.text);
     if (c.speaker && c.speaker !== 'BUTCHER') assert.ok(SPEAKERS[c.speaker], c.speaker);
@@ -41,7 +41,7 @@ test('every caption in the VTT has text, and every speaker has a colour (Pam in 
   assert.deepEqual(parseCue('<i>4:59 AM. Security Room.</i>'), { speaker: '', text: '4:59 AM. Security Room.', italic: true });
   // the same colours as the in-engine opener
   const intro = read('src/intro.js');
-  for (const color of Object.values(SPEAKERS)) assert.ok(intro.includes(`'${color}'`), color);
+  for (const [name, color] of Object.entries(SPEAKERS)) if (name !== 'DALE') assert.ok(intro.includes(`'${color}'`), color); // Dale only speaks in the movie
 });
 
 test('captions start in the black under the picture on phones, with room for two lines', () => {
@@ -131,8 +131,8 @@ test('an unplayable, broken or stalled movie is reported so the in-engine opener
 test('the movie streams from the network: the service worker leaves its files alone and the page policy allows them', () => {
   const sw = read('sw.js');
   const patterns = ['CODE', 'ASSET', 'IMMUTABLE'].map((n) => new RegExp(sw.match(new RegExp(`const ${n} = /(.*)/;`))[1]));
-  for (const f of ['mp4', 'jpg', 'vtt']) for (const re of patterns) assert.ok(!re.test(`/zombies/assets/film/opener-v1.${f}`), `${re} matches .${f}`);
-  assert.doesNotMatch(sw, /opener-v1|assets\/film/);
+  for (const f of ['mp4', 'jpg', 'vtt']) for (const re of patterns) assert.ok(!re.test(`/zombies/assets/film/opener-v2.${f}`), `${re} matches .${f}`);
+  assert.doesNotMatch(sw, /opener-v2|assets\/film/);
   assert.match(read('index.html'), /media-src 'self'/);
 });
 
@@ -145,13 +145,13 @@ test('the dev server streams the movie, with byte ranges', async () => {
     req.end();
   });
   try {
-    const size = statSync(new URL('../assets/film/opener-v1.mp4', import.meta.url)).size;
-    const part = await get('/assets/film/opener-v1.mp4', { Range: 'bytes=100-199' });
+    const size = statSync(new URL('../assets/film/opener-v2.mp4', import.meta.url)).size;
+    const part = await get('/assets/film/opener-v2.mp4', { Range: 'bytes=100-199' });
     assert.deepEqual([part.status, part.n, part.headers['content-range'], part.headers['content-type']], [206, 100, `bytes 100-199/${size}`, 'video/mp4']);
-    const tail = await get('/assets/film/opener-v1.mp4', { Range: `bytes=${size - 10}-` });
+    const tail = await get('/assets/film/opener-v2.mp4', { Range: `bytes=${size - 10}-` });
     assert.deepEqual([tail.status, tail.n], [206, 10]);
-    assert.equal((await get('/assets/film/opener-v1.vtt')).headers['content-type'], 'text/vtt; charset=utf-8');
-    assert.equal((await get('/assets/film/opener-v1.jpg')).status, 200);
+    assert.equal((await get('/assets/film/opener-v2.vtt')).headers['content-type'], 'text/vtt; charset=utf-8');
+    assert.equal((await get('/assets/film/opener-v2.jpg')).status, 200);
   } finally {
     server.close();
   }
