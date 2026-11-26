@@ -300,9 +300,9 @@ function ensureMusic() {
 }
 
 // name: a track id from music-data.js; playing the same one again does nothing
-export function playMusic(name) {
+export function playMusic(name, fadeOut = 0.8) {
   if (!ensureMusic()) return;
-  if (!name) { engine.stop(0.8); return; } // null: silence (the opening cinematic scores itself)
+  if (!name) { engine.stop(fadeOut); return; } // null: silence (the openers score themselves)
   engine.play(name);
 }
 export const currentMusic = () => (engine ? engine.current : null);

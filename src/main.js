@@ -8,12 +8,13 @@ import { Input } from './input.js';
 import { TouchControls } from './touch.js';
 import { Tutorial, tutorialView } from './tutorial.js';
 import { Game } from './game.js';
-import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap } from './audio.js';
+import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap, isMuted } from './audio.js';
 import { Host, Guest, showCode } from './net.js';
 import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanGame } from './netstate.js';
 import { Lobby } from './lobby.js';
 import { Renderer3D, defaultQuality } from './render3d.js';
 import { Intro } from './intro.js';
+import { Movie } from './movie.js';
 import { StoryFilm } from './storyFilm.js';
 import { loadAssets } from './assets.js';
 import { startLineup, renderLineup, lineupActive } from './lineup.js';
@@ -69,12 +70,32 @@ input.touch = new TouchControls({
 });
 // Taps and clicks on the screen itself (not the on-screen buttons), in game coordinates.
 const taps = [];
-window.addEventListener('pointerdown', (e) => {
-  if (e.button > 0 || (e.target.closest && e.target.closest('.btn, #rotate, #lobby, #online-bar'))) return;
+const offScreen = (e) => e.button > 0 || !!(e.target.closest && e.target.closest('.btn, #rotate, #lobby, #online-bar, #movie-sound'));
+function stagePoint(e) {
   const r = stage.getBoundingClientRect();
-  if (!r.width) return;
-  taps.push({ x: (e.clientX - r.left) * VIEW_W / r.width, y: (e.clientY - r.top) * VIEW_H / r.height });
+  return r.width ? { x: (e.clientX - r.left) * VIEW_W / r.width, y: (e.clientY - r.top) * VIEW_H / r.height } : null;
+}
+window.addEventListener('pointerdown', (e) => {
+  const p = !offScreen(e) && stagePoint(e);
+  if (p) taps.push(p);
 }, true);
+// Phones only let a video start with sound from inside the tap or key handler itself, not from the frame loop, so the
+// movie's gate and WATCH INTRO / I are handled here.
+let introDown = false; // this press went down on WATCH INTRO
+const titleOpen = () => state === 'title' && !net && !lobby.isOpen && !titleControls && performance.now() >= titleGrace;
+const onWatchIntro = (e) => { const p = !offScreen(e) && stagePoint(e); return !!p && titleButtonAt(p.x, p.y) === 'intro'; };
+function watchIntro() { initAudio(); sfx.select(); startIntro({ gate: false }); }
+function playMovie() { initAudio(); movie.play(isMuted()); }
+window.addEventListener('pointerdown', (e) => { introDown = titleOpen() && onWatchIntro(e); }, true);
+window.addEventListener('pointerup', (e) => {
+  if (state === 'intro' && movie.waiting) { if (!offScreen(e)) playMovie(); } else if (introDown && titleOpen() && onWatchIntro(e)) watchIntro();
+  introDown = false;
+}, true);
+window.addEventListener('keydown', (e) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (state === 'intro' && movie.waiting) playMovie();
+  else if (e.code === 'KeyI' && titleOpen()) watchIntro();
+});
 function toggleQuality() {
   const q = r3d.quality === 'high' ? 'low' : 'high';
   toast = { text: r3d.setQuality(q), t: 1.5, local: true };
@@ -119,7 +140,8 @@ loadAssets((p) => (loadProgress = p)).then(() => {
   else if (!introSeen() && !navigator.webdriver) startIntro({ gate: true });
 }).catch((err) => { loadError = err; console.error(err); });
 let stateT = 0;
-let intro = null;          // the opening cinematic (intro.js)
+const movie = new Movie();  // the live-action opener (movie.js)
+let intro = null;          // the in-engine opener (intro.js): the movie's fallback
 let titleGrace = 0;        // ms timestamp: the title ignores presses until then (the press that skipped the intro)
 let titleFade = false;     // the title comes up out of black after the intro
 let slots = [];       // character select: { source, cls, ready }
@@ -184,6 +206,9 @@ function announceRuns(placed) {
 
 function setState(s) {
   if (window.__traceStates) console.log(`state ${state} -> ${s}`);
+  // the opener movie buffers while the title and hero select are up (not right after a showing), and is dropped for play
+  if (s !== 'intro' && (movie.active || s === 'play')) movie.release();
+  else if ((s === 'title' || s === 'select') && state !== 'intro') movie.preload();
   if (s === 'title') { wantTraining = false; input.split = false; announceRuns(stats.endRuns()); } // a new party starts with one keyboard player
   if (s === 'stats' && recordsTab === 3) loadGlobal();
   if (s === 'gameover' || s === 'recap') offerPending = true;
@@ -257,14 +282,20 @@ const INTRO_KEY = 'motd-intro-seen';
 function introSeen() { try { return localStorage.getItem(INTRO_KEY) === '1'; } catch { return true; } }
 function markIntroSeen() { try { localStorage.setItem(INTRO_KEY, '1'); } catch { /* storage unavailable */ } }
 
-// Play the cinematic. gate: wait for a key / tap first (browsers only start sound after a gesture; skipped when sound is already on).
-function startIntro({ gate = false } = {}) {
+// Play the opener: the movie, or the in-engine film if the movie can't play (engine: ask for that one).
+// gate: wait for a key / tap first (browsers only start sound after a gesture; skipped when sound is already on).
+function startIntro({ gate = false, engine = false } = {}) {
   if (net) return false; // never while online
   try {
-    if (!intro) intro = new Intro(r3d);
+    const video = !engine && movie.start();
+    if (!video && !intro) intro = new Intro(r3d);
     if (gate && !audioReady()) { /* the gate stays up */ } else { initAudio(); gate = false; }
     stopVoice();
-    intro.start({ gate });
+    if (video) {
+      stopCine();
+      playMusic(null, 0.05); // nothing of ours plays over the movie
+      if (!gate) movie.play(isMuted());
+    } else intro.start({ gate });
     markIntroSeen(); // opening it counts as seen, so a crash can never trap anyone in it
     setState('intro');
     return true;
@@ -276,20 +307,37 @@ function startIntro({ gate = false } = {}) {
 }
 
 function endIntro() {
+  const video = movie.active;
+  movie.release();
   try { stopCine(); stopVoice(); } catch { /* audio not ready */ }
   if (intro && intro.active) intro.finish();
   markIntroSeen();
   titleGrace = performance.now() + 450;
-  titleFade = true;
+  titleFade = !video; // the movie hard-cuts to the title
   setState('title');
 }
 
+// any key, tap or gamepad button
+function introPressed(ids = input.sources()) {
+  return ids.some((id) => { const p = input.get(id).pressed; return p.attack || p.magic || p.turbo || p.start || p.up || p.down || p.left || p.right; });
+}
+
+function updateMovie() {
+  if (movie.failed) { // unplayable, broken or stalled: the in-engine opener instead (still gated if nothing was pressed)
+    const gate = movie.waiting;
+    movie.release();
+    startIntro({ gate, engine: true });
+  } else if (movie.ended) endIntro();
+  else if (movie.waiting) { // taps and keys start it from their own handlers (above); a gamepad can only start it here
+    if (introPressed(input.sources().filter((id) => id.startsWith('pad')))) playMovie();
+  } else if (movie.age() >= 0.35 && (taps.length || (input.frameGlobal && input.frameGlobal.size) || introPressed())) endIntro();
+}
+
 function updateIntro(dt) {
+  if (movie.active) { updateMovie(); return; }
   if (!intro || intro.done) { endIntro(); return; }
-  // any key, tap or gamepad button: the first one wakes the sound (gate), a later one skips
-  let pressed = taps.length > 0 || (input.frameGlobal && input.frameGlobal.size > 0);
-  if (!pressed) for (const id of input.sources()) { const p = input.get(id).pressed; if (p.attack || p.magic || p.turbo || p.start || p.up || p.down || p.left || p.right) { pressed = true; break; } }
-  if (pressed) {
+  // the first press wakes the sound (gate), a later one skips
+  if (taps.length > 0 || (input.frameGlobal && input.frameGlobal.size > 0) || introPressed()) {
     initAudio();
     if (intro.press() === 'skip') { endIntro(); return; }
   }
@@ -318,8 +366,6 @@ function updateTitle() {
   if (!net && !lobby.isOpen && (input.key('KeyC') || hit === 'controls')) { initAudio(); sfx.select(); titleControls = true; return; }
   // the CO-OP LOBBY button: tap or click it, or press O
   if (!net && !lobby.isOpen && (input.key('KeyO') || hit === 'coop')) { initAudio(); sfx.select(); lobby.open(); return; }
-  // WATCH INTRO: the opening cinematic again (tap or click it, or press I)
-  if (!net && !lobby.isOpen && (input.key('KeyI') || hit === 'intro')) { initAudio(); sfx.select(); startIntro({ gate: false }); return; }
   if (lobby.isOpen) { if (input.key('Escape')) lobby.close(); return; } // don't start the game under the panel
   // the STATS & LEADERBOARD button: tap or click it, or press L
   if (!net && (input.key('KeyL') || taps.some((t) => titleRecordsAt(t.x, t.y)))) { initAudio(); sfx.select(); setState('stats'); return; }
@@ -1124,6 +1170,8 @@ function render() {
   const heroes = guest ? net.ui.heroes || {} : save.heroes;
   if (state === 'loading') {
     drawLoading(ctx, loadProgress, loadError);
+  } else if (state === 'intro' && movie.active) {
+    drawIntro(ctx, { gate: true }, stateT); // the black and the tap-to-begin words; the video covers them once it plays
   } else if (state === 'intro' && intro) {
     try { intro.render(); drawIntro(ctx, intro.view(), stateT); } catch (err) { console.error(err); endIntro(); }
   } else if (state === 'title' || state === 'confirm') {
@@ -1317,7 +1365,7 @@ function loop(now) {
 }
 
 // Debug/test hook (used by automated smoke tests).
-window.__motd = { startTutorial, cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate }), get intro() { return intro; }, introSeen, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
+window.__motd = { startTutorial, cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate, engine: !!opts.engine }), get movie() { return movie; }, get intro() { return intro; }, introSeen, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
 
 // Scale canvas to fit window while keeping aspect ratio.
 function fit() {

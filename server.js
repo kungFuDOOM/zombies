@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.PORT) || 8080;
 const host = process.env.HOST || '127.0.0.1';
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.glb': 'model/gltf-binary', '.mp3': 'audio/mpeg', '.webmanifest': 'application/manifest+json' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.glb': 'model/gltf-binary', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4', '.jpg': 'image/jpeg', '.vtt': 'text/vtt; charset=utf-8', '.webmanifest': 'application/manifest+json' };
 // only the game's files are served (not the source of tools, tests, node_modules or git)
-const SERVED = /^(index\.html|sw\.js|manifest\.webmanifest|icon-\d+\.png|src\/[\w.-]+\.js|vendor\/[\w./-]+\.js|assets\/[\w./-]+\.(glb|png|mp3|json))$/;
+const SERVED = /^(index\.html|sw\.js|manifest\.webmanifest|icon-\d+\.png|src\/[\w.-]+\.js|vendor\/[\w./-]+\.js|assets\/[\w./-]+\.(glb|png|mp3|mp4|jpg|vtt|json))$/;
 const LOCAL_CONNECT = 'http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*';
 const SECURITY = {
   'X-Content-Type-Options': 'nosniff',
@@ -43,8 +43,16 @@ export const server = createServer(async (req, res) => {
     // Local play: let the page reach a PeerJS server on this computer (?peer=127.0.0.1:9000).
     // The published page's policy doesn't allow localhost at all.
     if (rel === 'index.html') data = data.toString().replace("connect-src 'self'", `connect-src 'self' ${LOCAL_CONNECT}`);
-    res.writeHead(200, { ...SECURITY, 'Content-Type': types[extname(file)] || 'application/octet-stream' });
-    res.end(req.method === 'HEAD' ? undefined : data);
+    // one byte range ("bytes=a-b" or "bytes=a-"): video players ask for these, and Safari won't play without them
+    const range = /^bytes=(\d+)-(\d*)$/.exec(req.headers.range || '');
+    const from = range ? Number(range[1]) : 0;
+    const to = range && range[2] ? Math.min(Number(range[2]), data.length - 1) : data.length - 1;
+    const partial = !!range && from <= to;
+    res.writeHead(partial ? 206 : 200, {
+      ...SECURITY, 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Accept-Ranges': 'bytes',
+      ...(partial ? { 'Content-Range': `bytes ${from}-${to}/${data.length}` } : {}),
+    });
+    res.end(req.method === 'HEAD' ? undefined : partial ? Buffer.from(data).subarray(from, to + 1) : data);
   } catch {
     res.writeHead(404, SECURITY).end('Not found');
   }
