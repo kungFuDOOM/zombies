@@ -376,6 +376,81 @@ export function makeCine(get) {
       note(987.77, 0.08, { type: 'square', vol: 0.07, delay: 2.15 }); note(1318.5, 0.5, { type: 'square', vol: 0.07, delay: 2.23 });
     },
 
+    // ----- the horror kit (all synthesized here) -----
+    // A low drone for dread: three detuned saws through a slowly opening filter, with a slow tremble.
+    drone(dur = 8, vol = 0.1, root = 41.2) {
+      [root, root * 1.005, root * 1.498].forEach((f, i) => note(f, dur, { type: 'sawtooth', vol: vol * (i === 2 ? 0.55 : 1), attack: dur * 0.4, filter: ['lowpass', 120, 260, 2], vib: [0.13 + i * 0.04, 14] }));
+      hiss(dur, { vol: vol * 0.3, attack: dur * 0.45, filter: ['bandpass', 200, 260, 2] });
+    },
+    // A heartbeat that speeds up: the gap closes from gap0 to gap1.
+    heartbeatRamp(n = 10, gap0 = 0.9, gap1 = 0.45, vol = 0.32) {
+      let at = 0;
+      for (let i = 0; i < n; i++) {
+        note(62, 0.18, { type: 'sine', vol, delay: at, slide: 38 }); note(58, 0.2, { type: 'sine', vol: vol * 0.7, delay: at + 0.16, slide: 34 });
+        at += gap0 + (gap1 - gap0) * (i / Math.max(1, n - 1)) ** 1.5;
+      }
+    },
+    // The sub hit under a scare: a falling sine, a distorted low cluster and a burst of air.
+    braam(vol = 0.5) {
+      note(52, 2.2, { type: 'sine', vol, slide: 30, attack: 0.008 });
+      [65.4, 69.3, 98].forEach((f, i) => note(f, 2, { type: 'sawtooth', vol: vol * 0.3, attack: 0.012, slide: f * 0.94, detune: i * 7, filter: ['lowpass', 900, 150, 1.4], drive: 4 }));
+      hiss(0.5, { vol: vol * 0.5, filter: ['lowpass', 700, 90, 0.8] });
+    },
+    // A scream a long way off, with the mall's echo.
+    screamFar(vol = 0.06) {
+      for (const [d, k] of [[0, 1], [0.11, 0.5], [0.23, 0.3], [0.37, 0.18]]) {
+        note(520, 0.35, { type: 'sawtooth', vol: vol * k, delay: d, attack: 0.04, slide: 740, filter: ['bandpass', 900, 0, 5], vib: [6, 40], drive: 2 });
+        note(740, 0.75, { type: 'sawtooth', vol: vol * k * 0.8, delay: d + 0.3, attack: 0.02, slide: 430, filter: ['bandpass', 2400, 1500, 6], vib: [6.5, 55], drive: 2 });
+      }
+    },
+    // A close scream, cut off dead. The silence after it is the point.
+    screamCut(vol = 0.16) {
+      note(610, 0.46, { type: 'sawtooth', vol, attack: 0.03, slide: 830, filter: ['bandpass', 1100, 0, 4], vib: [7, 60], drive: 5 });
+      note(622, 0.46, { type: 'sawtooth', vol: vol * 0.7, attack: 0.03, slide: 905, filter: ['bandpass', 2500, 0, 6], vib: [9, 80], drive: 4 });
+      hiss(0.45, { vol: vol * 0.5, attack: 0.05, filter: ['bandpass', 2100, 2600, 2] });
+    },
+    neckCrack() {
+      for (let i = 0; i < 3; i++) hiss(0.018, { vol: 0.3, delay: i * 0.015, filter: ['bandpass', 2400, 0, 6], drive: 4 });
+      note(140, 0.08, { type: 'square', vol: 0.09, slide: 70, filter: ['lowpass', 600, 0, 1] });
+    },
+    // A dead fluorescent trying to restrike.
+    tubeTink() {
+      note(3200, 0.018, { type: 'square', vol: 0.06, attack: 0.002 }); note(3200, 0.018, { type: 'square', vol: 0.05, delay: 0.07, attack: 0.002 });
+      note(120, 0.55, { type: 'sawtooth', vol: 0.07, delay: 0.1, attack: 0.38, filter: ['bandpass', 240, 0, 4], drive: 5 });
+    },
+    breathPanic(dur = 2, rate = 2.2) {
+      for (let i = 0; i < dur * rate; i++) {
+        const d = i / rate, half = 0.45 / rate;
+        hiss(half, { vol: 0.09, delay: d, attack: half * 0.6, filter: ['bandpass', 1400, 1100, 2.4] });
+        hiss(half, { vol: 0.065, delay: d + half * 1.1, attack: half * 0.25, filter: ['bandpass', 900, 700, 2] });
+      }
+    },
+    // Weight hitting something soft.
+    bodyHit() {
+      hiss(0.28, { vol: 0.45, filter: ['lowpass', 600, 90, 0.8] });
+      note(90, 0.35, { type: 'sine', vol: 0.45, slide: 45 });
+      hiss(0.22, { vol: 0.16, delay: 0.03, filter: ['bandpass', 1200, 350, 8] });
+    },
+    glassThud() {
+      hiss(0.4, { vol: 0.55, filter: ['lowpass', 300, 70, 0.8] });
+      note(70, 0.5, { type: 'sine', vol: 0.55, slide: 32 });
+      note(2800, 0.07, { type: 'sine', vol: 0.06, slide: 2500 });
+    },
+    // The tape grinding to a stop.
+    tapeStop() { note(400, 0.5, { type: 'sawtooth', vol: 0.09, slide: 40, filter: ['lowpass', 2200, 90, 1.4], drive: 2 }); hiss(0.45, { vol: 0.05, filter: ['bandpass', 1800, 200, 1.4] }); },
+    // The studio card's cue: a projector starting to run, and one far cold bell.
+    studioCue() {
+      for (let i = 0; i < 40; i++) hiss(0.012, { vol: 0.05 * Math.min(1, (i + 1) / 12), delay: 0.2 + i * (0.09 - Math.min(0.048, i * 0.002)), filter: ['bandpass', 1900, 0, 3] });
+      note(55, 3.4, { type: 'sine', vol: 0.2, delay: 0.5, attack: 0.9 });
+      note(659.3, 3, { type: 'sine', vol: 0.05, delay: 1.2, attack: 0.008, filter: ['lowpass', 2000, 700, 0.8] });
+      note(622.3, 2.6, { type: 'sine', vol: 0.03, delay: 1.9, attack: 0.4 });
+    },
+    // The credits: a slow minor figure over a held low fifth, resolving upward and not landing.
+    creditsCue(dur = 9) {
+      [[110, 0], [164.8, 0.4], [261.6, 2.4], [329.6, 2.8]].forEach(([f, d]) => note(f, dur - d, { type: 'sawtooth', vol: 0.045, delay: d, attack: 1.6, slide: f * 0.997, filter: ['lowpass', 420, 1200, 1], detune: d * 3 }));
+      [[440, 0.4], [523.25, 1.5], [493.88, 2.6], [415.3, 3.9], [440, 5.2], [622.25, 6.6]].forEach(([f, d]) => cue.piano(f, 0.1, d));
+    },
+
     // A black-out: everything dips for a beat (the sudden silence before a slam)
     duck(dur = 0.6) {
       if (!bus || !busCtx) return;

@@ -25,6 +25,31 @@ export function flicker(t, seed, dying = false) {
 }
 
 /**
+ * A failing fluorescent: mains hum, stutters, dead spells and the ballast restriking. health 1 = fine, 0 = dying.
+ * Random-looking but a pure function of time. For flicker that a sound must match, use scriptedFail.
+ */
+export function failing(t, seed = 0, health = 0.7) {
+  const hum = 1 + 0.025 * Math.sin(t * 754);
+  const slot = Math.floor(t * 1.7);
+  if (hash(slot * 3.1 + seed) >= 1 - health) return hum;
+  const u = t * 1.7 - slot;
+  if (u < 0.35) return hash(Math.floor(t * 30) + seed) > 0.55 ? 0.05 : 0.9;
+  if (u < 0.6) return 0.03;
+  return Math.min(1.15, 0.2 + 1.1 * ((u - 0.6) / 0.4) * 1.3) * hum;
+}
+
+/** The same tube on cue: events [[start, duration], ...] in seconds. Stutters in, goes dead, restrikes with a flare. */
+export function scriptedFail(t, events) {
+  for (const [t0, dur] of events) {
+    if (t >= t0 - 0.12 && t < t0) return Math.floor((t - t0) * 40) % 2 ? 0.2 : 0.9;
+    if (t >= t0 && t < t0 + dur) return 0.03;
+    const r = t - t0 - dur;
+    if (r >= 0 && r < 0.25) return r < 0.06 ? 1.35 : Math.floor(r * 34) % 2 ? 0.45 : 1;
+  }
+  return 1;
+}
+
+/**
  * Key + rim + fill + accent lights with a hemisphere ambient and a moon. `set()` takes target values; update(dt) eases to them,
  * so a cut is instant (call snap()) and a within-shot change glides. Light colour/position/power are in game units.
  */

@@ -7,7 +7,9 @@ import { hubRayLabel } from './story.js';
 import { Input } from './input.js';
 import { SHOP, priceOf, maxed } from './campaign.js';
 import { BOSS_ROSTER } from './bossRoster.js';
-import { drawCine, drawDialog } from './cineOverlay.js';
+import { drawCine, drawScopeSub, drawScopeBars, drawTopHint, drawCredits, drawVignette } from './cineOverlay.js';
+import { drawSplat, drawFlares, drawGrain } from './cineLens.js';
+import { handoffTint, handoffHud, SCOPE_BAR_PX } from './camMath.js';
 
 const SERIF = '"Arial Black", Impact, "Trebuchet MS", sans-serif'; // arcade display type
 const SANS = '"Trebuchet MS", Verdana, sans-serif';
@@ -1252,7 +1254,7 @@ function drawBarks(ctx, g) {
 // bars, a dark translucent dialogue plaque, a bottom bar of four choices (three actions and "..."),
 // and a thin timer line that drains. The 3D scene behind it is the real mall and the real survivors.
 
-const LB = 42; // default letterbox bar height (cutscenes ask for their own: see Cutscene.view)
+const LB = SCOPE_BAR_PX; // the 2.39:1 scope letterbox (see Cutscene.view)
 const CH = { x: 30, y: 504, w: 210, h: 66, gap: 10 };
 // CSS pixels per canvas pixel: 0.41 on a phone held upright (390 wide), 0.61 held sideways (390 tall).
 const cssScale = () => (typeof window === 'undefined' || !window.innerWidth ? 1 : Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H));
@@ -1264,7 +1266,7 @@ function choiceLayout(bar = LB) {
   if (s >= 0.9) return { compact: false, s, rects: [0, 1, 2, 3].map((i) => ({ x: CH.x + i * (CH.w + CH.gap), y: CH.y, w: CH.w, h: CH.h })), x: CH.x, w: 4 * CH.w + 3 * CH.gap, top: CH.y };
   const x = 22, gap = 10, w = (VIEW_W - x * 2 - gap) / 2;
   const h = Math.round(Math.max(66, 41 / s));
-  const top = VIEW_H - Math.min(bar, 42) - 8 - h * 2 - gap;
+  const top = VIEW_H - Math.min(bar, 42) - 8 - h * 2 - gap; // (a small screen's big buttons may overlap the bottom bar)
   return { compact: true, s, rects: [0, 1, 2, 3].map((i) => ({ x: x + (i % 2) * (w + gap), y: top + Math.floor(i / 2) * (h + gap), w, h })), x, w: VIEW_W - x * 2, top };
 }
 
@@ -1283,53 +1285,70 @@ export function cutChoiceAt(x, y, view) {
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const easeOut = (x) => 1 - (1 - clamp01(x)) ** 3;
 
-export function drawCutscene(ctx, v, time) {
+// fx: what the film puts on the lens ({ flares, blood, graded }), and for the cut to gameplay, drawHud(ctx) which draws
+// the game's HUD so it can be faded in.
+export function drawCutscene(ctx, v, time, fx = null) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   if (!v) return;
-  const card = !!v.card;
-  // letterbox: as tall as the scene asks on a desktop; a phone (390px tall) keeps the picture and the text clear
-  let bar = Math.max(0, Math.min(v.bar == null ? LB : v.bar, 110));
-  if (device === 'touch') bar = Math.min(bar, card ? 64 : 38);
-  // a heavy vignette so every shot falls away at the edges (the HD film has its own on High: only a touch more here)
-  ctx.globalAlpha = v.film ? 0.45 : 1;
-  const vg0 = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.34, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.92);
-  vg0.addColorStop(0, 'rgba(0,0,0,0)'); vg0.addColorStop(1, 'rgba(2,0,8,0.62)');
-  ctx.fillStyle = vg0;
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  ctx.globalAlpha = 1;
+  // letterbox: 2.39:1 on every screen
+  const bar = Math.max(0, Math.min(v.bar == null ? LB : v.bar, 130));
+  if (v.handoff != null && v.handoff >= 0) { drawHandoff(ctx, v.handoff, bar, time, fx); return; }
+  const graded = !!(v.film && fx && fx.graded);
+  if (!graded) { // the game-world fallback (and a film without its develop pass) gets a heavy vignette
+    drawVignette(ctx, 0.6);
+    if (v.film && !(fx && fx.lean)) drawGrain(ctx, time, 0.06, bar, VIEW_H - bar);
+  }
   // an alarm pulse around the edges (red, clean: no pattern)
   if (v.alarm) {
-    const a = 0.12 + (Math.sin(time * 8) * 0.5 + 0.5) * 0.2;
+    const a = 0.1 + (Math.sin(time * 7) * 0.5 + 0.5) * 0.14;
     const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.3, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.85);
     vg.addColorStop(0, 'rgba(255,0,40,0)');
-    vg.addColorStop(1, `rgba(255,20,60,${a})`);
+    vg.addColorStop(1, `rgba(200,16,46,${a})`);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   } else if (v.mood === 'kitchen' || v.mood === 'fire') { // a warm throb at the edges: the fryers / the burning locker
-    const a = 0.1 + (Math.sin(time * 5.3) * 0.5 + 0.5) * 0.1 + (Math.sin(time * 31) > 0.93 ? 0.08 : 0);
+    const a = 0.07 + (Math.sin(time * 5.3) * 0.5 + 0.5) * 0.08 + (Math.sin(time * 31) > 0.93 ? 0.06 : 0);
     const vg = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.9);
     vg.addColorStop(0, 'rgba(255,120,20,0)');
-    vg.addColorStop(1, `rgba(255,110,20,${a})`);
+    vg.addColorStop(1, `rgba(220,100,20,${a})`);
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
+  if (fx) { drawFlares(ctx, fx.flares, fx.high ? 0.75 : 1); drawSplat(ctx, fx.blood); }
   if (v.flash > 0) { ctx.fillStyle = `rgba(255,240,230,${Math.min(0.85, v.flash * 0.8)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
-  drawBars(ctx, bar);
-  if (v.card) drawChapterCard(ctx, v.card, time);
+  drawScopeBars(ctx, bar);
+  if (v.card && v.card.credits) drawCredits(ctx, v.card.age, v.card.dur, cssScale(), time, { SANS, SERIF });
+  else if (v.card) drawChapterCard(ctx, v.card, time);
   else if (v.beat === 'line') drawDialogue(ctx, v, bar);
   else if (v.beat === 'choice') drawChoiceBar(ctx, v, time, bar);
   if (v.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, v.fade)})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 }
 
-// Black bars with a thin neon edge (shared with the opening cinematic).
-export function drawBars(ctx, bar) {
-  if (bar <= 0) return;
-  ctx.fillStyle = 'rgba(2,1,8,0.97)';
-  ctx.fillRect(0, 0, VIEW_W, bar);
-  ctx.fillRect(0, VIEW_H - bar, VIEW_W, bar);
-  ctx.strokeStyle = 'rgba(46,230,255,0.45)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, bar + 0.5); ctx.lineTo(VIEW_W, bar + 0.5); ctx.moveTo(0, VIEW_H - bar - 0.5); ctx.lineTo(VIEW_W, VIEW_H - bar - 0.5); ctx.stroke();
+// The film cuts to the game: its look washes out, the bars slide away and the HUD fades up.
+let hudLayer = null;
+export function releaseHandoffLayer() { if (hudLayer) { hudLayer.width = hudLayer.height = 0; hudLayer = null; } }
+function drawHandoff(ctx, k, bar, time, fx) {
+  const tint = handoffTint(k);
+  if (tint > 0.004) {
+    ctx.fillStyle = `rgba(8,22,20,${0.22 * tint})`;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    drawVignette(ctx, 0.6 * tint);
+    drawGrain(ctx, time, 0.05 * tint);
+  }
+  drawScopeBars(ctx, bar);
+  const a = handoffHud(k);
+  if (a <= 0.004 || !fx || !fx.drawHud || typeof document === 'undefined') return;
+  if (!hudLayer) hudLayer = document.createElement('canvas');
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  if (hudLayer.width !== w || hudLayer.height !== h) { hudLayer.width = w; hudLayer.height = h; }
+  const lx = hudLayer.getContext('2d');
+  lx.setTransform(w / VIEW_W, 0, 0, h / VIEW_H, 0, 0);
+  lx.textBaseline = 'alphabetic';
+  fx.drawHud(lx);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.drawImage(hudLayer, 0, 0, VIEW_W, VIEW_H);
+  ctx.restore();
 }
 
 // Chapter and boss title cards: big type slammed into the middle of the picture, between the bars.
@@ -1413,18 +1432,11 @@ function drawChapterCard(ctx, c, time) {
   }
 }
 
-// A spoken line: the cinema toolkit's subtitle and speaker box (the same one the opening film uses), sized in CSS pixels.
+// A spoken line: the cinema toolkit's subtitle (the same one the opening film uses), sized in CSS pixels.
 function drawDialogue(ctx, v, bar) {
   const s = cssScale(), color = BARK_COLORS[v.who] || '#2ee6ff';
-  drawDialog(ctx, { sub: { speaker: v.speaker, color, text: v.text, full: v.full || v.text, a: 1 } }, bar, s, { SANS });
-  // how to move on, in the bottom bar's right-hand corner (under the top bar on a phone held upright, where the bars are thin)
-  const px = Math.max(11, Math.min(26, 10 / s)), upright = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.05;
-  ctx.save();
-  ctx.globalAlpha = 0.7;
-  ctx.textAlign = 'right';
-  ctx.font = `${px}px ${SANS}`;
-  outlined(ctx, device === 'touch' ? 'tap: next' : `${btn('attack')} / click: next`, VIEW_W - 16, upright ? bar + px + 6 : VIEW_H - Math.max(5, (bar - px) / 2), '#b8acd8', '#000', 2);
-  ctx.restore();
+  drawScopeSub(ctx, { speaker: v.speaker, color, text: v.text, full: v.full || v.text, a: 1 }, bar, s, { SANS });
+  drawTopHint(ctx, device === 'touch' ? 'tap: next' : `${btn('attack')} / click: next`, bar, s, { SANS });
 }
 
 function drawChoiceBar(ctx, v, time, bar) {

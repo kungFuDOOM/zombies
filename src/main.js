@@ -17,11 +17,12 @@ import { Intro } from './intro.js';
 import { StoryFilm } from './storyFilm.js';
 import { loadAssets } from './assets.js';
 import { startLineup, renderLineup, lineupActive } from './lineup.js';
-import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, selectCardAt, drawTouchButtons, touchButtonAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, drawIntro, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
+import { titleButtonAt, drawGameOverlay, drawLoading, drawTitle, drawSelect, drawOverlay, drawStory, drawRealmPick, drawShop, drawRecords, recordsTapAt, titleRecordsAt, selectArrowAt, selectCardAt, drawTouchButtons, touchButtonAt, shopItemAt, wingAt, titleOnlineAt, setDevice, btn, titleShowcase, selectShowcase, storyShowcase, drawCutscene, releaseHandoffLayer, drawIntro, drawRecap, drawStoryToasts, cutChoiceAt } from './hud.js';
 import { unlockedClasses, loadSave, writeSave, newSave, hasProgress, isUnlocked, levelNumber, nextStage, completeLevel, SHOP, buy, STORY, wingOpen, REALMS } from './campaign.js';
 import { levelInfo, WINGS, FOOD_COURT } from './level.js';
 import { applyChoice, resetWing1, writeStory, recap, hubRayPresent, newStory, sanitizeStory, DEFAULT_PICKS } from './story.js';
-import { Cutscene } from './cutscenes.js';
+import { Cutscene, HANDOFF_SECONDS } from './cutscenes.js';
+import { handoffBar } from './camMath.js';
 import { trackFor } from './music-data.js';
 import { phaseOf } from './bosses.js';
 import { Stats } from './stats.js';
@@ -543,12 +544,14 @@ function enterLevel(n) {
     resetWing1(save.story); // a fresh run of the wing forgets its old decisions
     persist();
     game.stageCutscene('opening');
-    const go = () => { game.endCutscene(); game.startLevel(n); setState('play'); };
+    // the Food Court is built under the film (once no choice is left), so the handoff can crane straight into it
+    const under = prebuiltLevel(n);
+    const go = () => { game.endCutscene(); if (!under.built) game.startLevel(n); setState('play'); };
     if (!save.progress.seenRealm[info.realm]) {
       save.progress.seenRealm[info.realm] = true;
       writeSave(save);
-      showStory(STORY.realms[info.realm] || [], () => startCutscene('opening', go));
-    } else startCutscene('opening', go);
+      showStory(STORY.realms[info.realm] || [], () => startCutscene('opening', go, null, under.opts));
+    } else startCutscene('opening', go, null, under.opts);
   } else {
     game.startLevel(n);
     game.stageCutscene('boss');
@@ -557,6 +560,25 @@ function enterLevel(n) {
 }
 
 // ---------- cutscenes (Telltale-style timed choices, see cutscenes.js) ----------
+
+// A scene whose level starts afterwards (Scene 1): the level is loaded on the cut into the handoff instead, and its stage
+// banner gets the handoff's seconds on top, so it has its full time in play.
+function prebuiltLevel(n) {
+  let banner = null;
+  const under = {
+    built: false,
+    opts: {
+      prepare() {
+        under.built = true;
+        game.startLevel(n);
+        game.cutCenter = null;
+        banner = game.banner && { ...game.banner, t: game.banner.t + HANDOFF_SECONDS.opening };
+      },
+      onHandoff() { if (banner) game.banner = { ...banner }; },
+    },
+  };
+  return under;
+}
 
 // Debug / capture hook: window.__motd.cutscene('opening' | 'ticket' | 'crisis' | 'boss' | 'ending') plays that scene on a
 // fresh Biker, then returns to the title. It works on a throwaway copy of the story: nothing it picks is ever saved.
@@ -571,7 +593,7 @@ function debugCutscene(id = 'opening', ray = null) {
   game.addPlayer(0, 'kb', 'biker');
   if (id === 'opening') game.startHub(); else game.startLevel(id === 'boss' || id === 'ending' ? 2 : 1);
   game.stageCutscene(id);
-  startCutscene(id, () => { game.endCutscene(); game = null; setState('title'); }, story);
+  startCutscene(id, () => { game.endCutscene(); game = null; setState('title'); }, story, id === 'opening' ? prebuiltLevel(1).opts : {});
   return true;
 }
 
@@ -581,14 +603,22 @@ function jumpToScene(name, ray) {
 }
 
 // `sandbox` is the debug hook's own story: choices made on it are not written to the save.
-function startCutscene(id, done, sandbox = null) {
+// A scene that leads into play ends on the cut to the gameplay camera (not the ending, and not the ticket when the
+// crisis is already waiting to play next).
+function startCutscene(id, done, sandbox = null, { prepare = null, onHandoff = null } = {}) {
   cutDone = done;
   const story = sandbox || save.story;
   cut = new Cutscene(id, {
     story,
     skip: skipCutscenes && !sandbox,
     party: game.allPlayers().map((p) => p.cls),
+    handoff: id !== 'ending' && !(id === 'ticket' && game.pendingScene === 'crisis'),
     hooks: {
+      prepare,
+      handoffStart() { // the stand-ins slip away on the cut, not on the last frame (the same filter as endCutscene)
+        game.npcs = game.npcs.filter((n) => n.id === 'ray' && !n.cornered);
+        if (onHandoff) onHandoff();
+      },
       choose(choiceId, pick) {
         const res = applyChoice(story, choiceId, pick);
         if (!res) return null;
@@ -601,6 +631,16 @@ function startCutscene(id, done, sandbox = null) {
   if (cut.done) { finishCutscene(); return; }
   game.cutCam = cut.camera(game);
   setState('cutscene');
+}
+
+// the mid-wing crisis: Ray, the locker and a decision
+function playPendingScene() {
+  const id = game.pendingScene;
+  if (!id) return false;
+  game.pendingScene = null;
+  game.stageCutscene(id);
+  startCutscene(id, () => { game.endCutscene(); setState('play'); });
+  return true;
 }
 
 function finishCutscene() {
@@ -626,10 +666,11 @@ function syncStoryFilm(dt) {
   const fv = view && view.film;
   if (!fv || fv.key === storyFilmFailed) { endStoryFilm(); return; }
   try {
+    // the film hides the game, so a level that was just entered (or built mid-scene for the handoff, here or by a
+    // guest's host) is built now, under the film, not at the cut to play
+    if (game && game.level && r3d.level !== game.level) r3d.render(game);
     if (!storyFilm || storyFilm.key !== fv.key) {
       endStoryFilm();
-      // the film hides the game, so a level that was just entered is built now, under the fade, not when play starts
-      if (game && r3d.level !== game.level) r3d.render(game);
       storyFilm = new StoryFilm(r3d, fv);
     }
     storyFilm.update(dt, fv);
@@ -660,10 +701,9 @@ function updateCutscene(dt) {
   cut.update(dt);
   for (const t of cut.toasts.splice(0)) { storyToasts.push(t); sfx.select(); }
   for (const c of cut.cues.splice(0)) { // stings, camera shake and a spike in the key lights, on the beat
-    if (c.sting && Object.prototype.hasOwnProperty.call(sfx, c.sting)) sfx[c.sting]();
+    if (c.sting && Object.prototype.hasOwnProperty.call(sfx, c.sting)) sfx[c.sting](...(c.args || []));
     if (c.shake) game.shake = Math.max(game.shake, c.shake);
     if (c.shake || c.flash) r3d.cineHit(Math.min(2, (c.shake || 4) / 8 + c.flash));
-    if (storyFilm && storyFilm.key === cut.key) storyFilm.hit(c.shake, c.flash);
   }
   if (cut.done) { finishCutscene(); return; }
   game.cutCam = cut.camera(game);
@@ -954,17 +994,12 @@ function updatePlay(dt) {
   // Scene 1.5, "The Ticket": halfway to Ray's stall (and always before the crisis, however the party got there)
   if (game.level.foodCourt && game.scene && !game.scene.ticket && (game.pendingScene === 'crisis' || game.livePlayers().some((p) => p.x > (FOOD_COURT.sceneTrigger - TICKET_LEAD) * TILE))) {
     game.scene.ticket = true;
-    startCutscene('ticket', () => { game.endCutscene(); setState('play'); }); // (a crisis already waiting plays next)
+    // (a crisis already waiting plays next, straight away: no frame of gameplay between the two films)
+    startCutscene('ticket', () => { game.endCutscene(); if (!playPendingScene()) setState('play'); });
     return;
   }
 
-  if (game.pendingScene) { // the mid-wing crisis: Ray, the locker and a decision
-    const id = game.pendingScene;
-    game.pendingScene = null;
-    game.stageCutscene(id);
-    startCutscene(id, () => { game.endCutscene(); setState('play'); });
-    return;
-  }
+  if (playPendingScene()) return;
   if (game.exitReached) {
     const n = game.levelNum;
     const info = levelInfo(n);
@@ -1061,10 +1096,12 @@ function updateGameOver() {
 // Background music for whatever is on screen (the track table is in music-data.js).
 function currentTrack() {
   if (state === 'intro') return null; // the cinematic scores itself
+  const handoff = state === 'cutscene' && (cut ? !!(cut.beat && cut.beat.handoff) : !!(net && net.ui && net.ui.cut && net.ui.cut.handoff >= 0));
+  const as = handoff ? 'play' : state; // (J-cut: the level's music leads the picture into play)
   const inLevel = !!(game && game.level && ['play', 'paused', 'levelclear', 'gameover', 'realm', 'shop', 'cutscene', 'recap'].includes(state));
   return trackFor({
-    state, inLevel,
-    hub: inLevel && !!game.level.hub, tutorial: inLevel && !!game.level.tutorial, cutscene: state === 'cutscene' ? (cut ? cut.id : (net && net.ui && net.ui.cut && net.ui.cut.id) || 'opening') : '',
+    state: as, inLevel,
+    hub: inLevel && !!game.level.hub, tutorial: inLevel && !!game.level.tutorial, cutscene: as === 'cutscene' ? (cut ? cut.id : (net && net.ui && net.ui.cut && net.ui.cut.id) || 'opening') : '',
     isBoss: inLevel && !!game.info.isBoss, levelNum: game ? game.levelNum : 0,
   });
 }
@@ -1078,6 +1115,8 @@ function musicIntensity() {
 
 function render() {
   ctx.textBaseline = 'alphabetic';
+  document.body.classList.toggle('film', state === 'intro' || state === 'cutscene'); // (no stage glow around the scope bars)
+  if (state !== 'cutscene') releaseHandoffLayer();
   if (lineupActive() && state !== 'loading') { ctx.clearRect(0, 0, VIEW_W, VIEW_H); renderLineup(r3d, 1 / 60); return; }
   // an online guest shows the host's quest
   const guest = net && net.role === 'guest';
@@ -1116,7 +1155,14 @@ function render() {
       try { storyFilm.render(view.bar); drawn = true; } catch (err) { console.error(err); storyFilmFailed = storyFilm.key; endStoryFilm(); }
     }
     if (!drawn) r3d.render(game);
-    drawCutscene(ctx, drawn || !view ? view : { ...view, film: null }, stateT);
+    let shown = view;
+    if (guest && view && view.handoff >= 0) { // snapshots step at 20 Hz: follow the smooth clock the camera runs on
+      const k = Math.max(view.handoff, (r3d.hoK || 0) * 0.8), D = (game.cutCam && game.cutCam.hdur) || 2.4;
+      shown = { ...view, handoff: k, bar: Math.round(handoffBar(k * D, D)) };
+    }
+    const fx = drawn ? storyFilm.fxView() : {};
+    fx.drawHud = (layer) => drawGameOverlay(layer, game, r3d, { minimap: showMinimap && !game.level.hub, tutorial: null, controls: false });
+    drawCutscene(ctx, drawn || !shown ? shown : { ...shown, film: null }, stateT, fx);
   } else if (state === 'recap' && game) {
     r3d.render(game);
     drawRecap(ctx, stateT, guest ? net.ui.rc : recap(save.story), game);

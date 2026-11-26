@@ -6,6 +6,7 @@
 //   biker.raise('R', 0.8);       // lift the right arm (weapon arm) toward the camera
 //   biker.lean(0.15);            // shoulders forward
 //   biker.play('2H_Melee_Attack_Chop', { upper: true });   // any clip the game already has
+//   biker.breathe(0.6); biker.tremble(0.5); biker.flinch();  // fear: breathing, shaking, a recoil on the hit
 //
 // The bone tweaks are layered AFTER the animation mixer each frame, and are eased, so gestures blend in and out rather than snap.
 // (The mixer does not rewrite a bone whose animated value has not changed, so each tweak is taken off again before the next
@@ -30,6 +31,8 @@ export class CineActor {
     this.g = { headYaw: 0, headPitch: 0, armR: 0, armL: 0, lean: 0, twist: 0 };
     this.target = { ...this.g };
     this.rate = 6;
+    this.clock = (pos[0] || 0) * 0.37;   // (so two actors never breathe in step)
+    this.resetActing();
     this.bones = {};
     for (const n of ['Head', 'Neck', 'Chest', 'Torso', 'UpperArmR', 'UpperArmL', 'LowerArmR', 'LowerArmL']) this.bones[n] = actor.bone(n);
     this.tweaked = new Map();   // bone -> { base: its pose before the gesture, out: what we wrote, on } (records are reused)
@@ -38,6 +41,21 @@ export class CineActor {
   /** Take last frame's gestures off any bone nothing else has rewritten since. */
   untweak() {
     for (const [bone, q] of this.tweaked) { if (q.on && bone.quaternion.equals(q.out)) bone.quaternion.copy(q.base); q.on = false; }
+  }
+
+  /** Breathing (k 0..1+, breaths per second; panic is about 1.1), and a slow weight shift. */
+  breathe(k = 0.4, rate = 0.3) { this.breathK = k; this.breathRate = rate; return this; }
+  /** Fear: a fine high shake in the head and arms. 0 = steady. */
+  tremble(k = 0.5) { this.shiverK = k; return this; }
+  /** A recoil that decays over about a third of a second. */
+  flinch(amount = 1) { this.flinchK = amount; this.flinchAge = 0; return this; }
+  resetActing() { this.breathK = 0; this.breathRate = 0.3; this.shiverK = 0; this.flinchK = 0; this.flinchAge = 9; return this; }
+  /** An eye-line: turn the head toward a world point (clamped to what a neck can do). */
+  lookAtPoint(x, y, z, rate = 4) {
+    const w = this.boneWorld('Head', this.eyeV || (this.eyeV = new THREE.Vector3()));
+    const dx = x - w.x, dz = z - w.z, want = Math.atan2(dx, dz) - this.root.rotation.y;
+    const yaw = Math.atan2(Math.sin(want), Math.cos(want)) / D2R, pitch = Math.atan2(y - w.y, Math.hypot(dx, dz) || 1) / D2R;
+    return this.look(Math.max(-60, Math.min(60, yaw)), Math.max(-30, Math.min(30, pitch)), rate);
   }
 
   /** Head turn in degrees: +yaw looks to the model's left, +pitch looks up. */
@@ -56,8 +74,8 @@ export class CineActor {
   get visible() { return this.root.visible; }
   /** World position of a bone (for flames, sparks, muzzle flashes). */
   boneWorld(name, out = new THREE.Vector3()) {
-    this.root.updateMatrixWorld(true);
     const b = this.actor.bone(name);
+    if (b) b.updateWorldMatrix(true, false); // (just the bone and its parents, not the whole skeleton)
     return b ? b.getWorldPosition(out) : out.copy(this.root.position).add(new THREE.Vector3(0, 30, 10));
   }
 
@@ -76,12 +94,23 @@ export class CineActor {
       Q.setFromEuler(E.set(x * D2R, y * D2R, z * D2R)); bone.quaternion.multiply(Q);
       r.out.copy(bone.quaternion); r.on = true;
     };
-    rot(B.Neck, g.headPitch * 0.35, g.headYaw * 0.4, 0);
-    rot(B.Head, g.headPitch * 0.65, g.headYaw * 0.6, 0);
-    rot(B.Chest, g.lean * 18, g.twist * 0.5, 0);
-    rot(B.Torso, g.lean * 12, g.twist * 0.5, 0);
-    if (g.armR) rot(B.UpperArmR, -g.armR * 80, 0, g.armR * 25);
-    if (g.armL) rot(B.UpperArmL, -g.armL * 80, 0, -g.armL * 25);
+    // involuntary movement is added on top of the eased gestures (never fed back into them)
+    this.clock += dt;
+    this.flinchAge += dt;
+    const c = this.clock, br = this.breathK, sh = this.shiverK;
+    const wave = br ? Math.sin(c * Math.PI * 2 * this.breathRate) : 0;
+    const jit = (a1, a2) => (sh ? (Math.sin(c * a1) * 0.65 + Math.sin(c * a2 + 1.9) * 0.35) * sh * 1.6 : 0);
+    const fl = this.flinchAge < 0.6 ? this.flinchK * Math.exp(-this.flinchAge * 7) * Math.min(1, this.flinchAge * 24) : 0;
+    const yaw = g.headYaw + jit(61, 79), pitch = g.headPitch + jit(71, 57) - wave * 0.8 * br + fl * 12;
+    const armR = g.armR + jit(67, 83) * 0.012 + fl * 0.35, armL = g.armL + jit(73, 59) * 0.012 + fl * 0.35;
+    const chest = g.lean * 18 + wave * 2.5 * br - fl * 5;
+    const shift = br ? Math.sin(c * Math.PI * 2 * 0.15) * 3 * Math.min(1, br) : 0;
+    rot(B.Neck, pitch * 0.35, yaw * 0.4, 0);
+    rot(B.Head, pitch * 0.65, yaw * 0.6, 0);
+    rot(B.Chest, chest, (g.twist + shift) * 0.5, 0);
+    rot(B.Torso, g.lean * 12 - fl * 3, (g.twist + shift) * 0.5, 0);
+    if (armR) rot(B.UpperArmR, -armR * 80, 0, armR * 25);
+    if (armL) rot(B.UpperArmL, -armL * 80, 0, -armL * 25);
   }
 }
 

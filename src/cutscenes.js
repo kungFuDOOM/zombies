@@ -8,6 +8,7 @@
 
 import { CHOICES, CHOICE_SECONDS, SURVIVOR_NAMES, DEFAULT_PICKS, isSilence, bossModifiers } from './story.js';
 import { TILE } from './config.js';
+import { SCOPE_BAR_PX, handoffStart, handoffCamK, handoffBar } from './camMath.js';
 
 const NAMES = { ...SURVIVOR_NAMES, ray: 'Ray', butcher: 'The Deep-Fry Butcher', pa: 'Pam (PA)' };
 export const speakerName = (who) => NAMES[who] || '';
@@ -26,12 +27,19 @@ const TOAST_SECONDS = 2.6;
 // `s` names the 3D shot in storyFilm.js ('name' or 'name=args'). Beats in a row with the same `s` are one continuous
 // shot. `cam` is the older camera on the live game world, kept as the fallback if the HD scene cannot be built.
 // Every beat can also carry `cues`: little events fired once as the beat's own clock passes `at`
-// seconds: { at, sting: 'stingHit' (any sfx name), shake: 0-18, flash: 0-1, slow: [scale, seconds] }.
+// seconds: { at, sting: 'stingHit' (any sfx name), args, shake: 0-18, flash: 0-1, slow: [scale, seconds],
+// blood / grease: 0-1 (on the lens), punch: 0-0.1 (the lens snaps tighter) }. A NEGATIVE `at` is a J-cut: the sound leads
+// the picture, firing that long before the previous beat auto-advances (or at this beat's start if it was pressed past).
+//
+// A scene that leads into play can end on a HANDOFF beat (the `handoff` option): the film is dropped on a hard cut and the
+// camera cranes from behind the party into the exact gameplay camera while the bars slide away and the HUD fades in.
 // `hold` keeps an unattended line up at least that long (a press still moves on).
 
 const line = (who, text, s, cam, extra = {}) => ({ t: 'line', who, text, s, cam: cam || { shot: 'who', who: who === 'pa' ? '' : who }, ...extra });
 const silent = (s, dur, cam, extra = {}) => ({ t: 'shot', s, dur, cam: cam || { shot: 'wide' }, ...extra });
 const cue = (at, sting, o = {}) => ({ at, sting, ...o });
+// A scare: real silence (cinema bus and music) scheduled BEFORE the hit, then the hit on one frame.
+export const scare = (at, sting, { silence = 0.45, ...o } = {}) => [cue(at - silence, 'duckAll', { args: [silence - 0.04] }), cue(at, sting, o)];
 // the ticking clock under a choice (it stops the moment the beat is gone)
 const ticking = (extra = []) => [...Array.from({ length: CHOICE_SECONDS }, (_, i) => cue(i + 0.02, 'clockTick')), ...extra].sort((a, b) => a.at - b.at);
 
@@ -45,11 +53,11 @@ export function openingScene() {
     line('mallCop', 'Every shutter just dropped. Our only route out is the Food Court.', 'plan.wide', who('mallCop'), { ...alarm, hold: 5, cues: [cue(0.9, 'shutterSlams')] }),
     line('biker', "Food Court's packed with hungry dead. Good. So's my chainsaw.", 'plan.biker', who('biker', 'orbit'), { ...alarm, hold: 5, cues: [cue(0.4, 'chainsawRev', { shake: 4 })] }),
     // the chime catches him mid-sentence: a silent beat while he stands there, then he picks it up as if nothing happened
-    silent('plan.freeze', 2.6, who('mallCop'), { cues: [cue(0.15, 'duck'), cue(0.5, 'pamChime'), cue(1.0, 'ringing')] }),
+    silent('plan.freeze', 2.6, who('mallCop'), { cues: [cue(0.05, 'duckAll', { args: [0.36] }), cue(0.45, 'tubeTink'), cue(0.5, 'pamChime'), cue(1.0, 'ringing'), cue(1.6, 'heartbeat', { args: [1, 0.9, 0.3] })] }),
     line('mallCop', '...Per procedure. Sorry. Where was I?', 'plan.freeze', who('mallCop'), { hold: 3.4, cues: [cue(0.5, '', { flash: 0.12 })] }),
     line('mallGoth', 'Or we hijack the PA. The customers go where the noise is.', 'plan.goth', who('mallGoth'), { ...alarm, hold: 5, cues: [cue(1.05, 'boomboxClick')] }),
-    line('skater', "Dudes. Escalator's eating a guy. Pick in like ten seconds.", 'plan.monitor', { ...who('skater'), roll: 0.05 }, { ...alarm, hold: 5, cues: [cue(1.4, 'whoosh'), cue(1.9, 'monitorGlitch'), cue(2.4, 'escalatorGroan', { shake: 3 }), cue(3.4, 'moan')] }),
-    { t: 'choice', id: 'outbreak', s: 'plan.four', cam: { shot: 'wide', move: 'tension' }, ...alarm, then: openingResponse, cues: ticking() },
+    line('skater', "Dudes. Escalator's eating a guy. Pick in like ten seconds.", 'plan.monitor', { ...who('skater'), roll: 0.05 }, { ...alarm, hold: 5, cues: [cue(1.4, 'whoosh'), cue(1.9, 'monitorGlitch'), cue(2.4, 'escalatorGroan', { shake: 3 }), cue(2.6, 'screamCut'), cue(3.4, 'moan')] }),
+    { t: 'choice', id: 'outbreak', s: 'plan.four', cam: { shot: 'wide', move: 'tension' }, ...alarm, then: openingResponse, cues: ticking([cue(0.1, 'heartbeatRamp', { args: [9, 1.0, 0.55] })]) },
   ];
 }
 
@@ -59,7 +67,7 @@ function openingResponse(res) {
     case 'cop': return [line('mallCop', "Gate first. Nothing gets behind us. That's Section Four.", two('mallCop', 'biker'), null, { cues: [cue(0.1, 'doorSlam', { shake: 8 })] }), line('biker', "Slow. Boring. Fine, Badge. I'm first through the door.", two('mallCop', 'biker'))];
     case 'goth': return [line('mallGoth', "One bass drop and they'll follow it anywhere. Like boys at a show.", two('mallGoth', 'mallCop'), null, { cues: [cue(0.1, 'bassDrop', { shake: 6 })] }), line('mallCop', 'Copy. Keep it under a noise complaint, please.', two('mallGoth', 'mallCop'))];
     case 'biker': return [line('biker', "THAT'S the plan! Somebody hold the door. Never mind, I'll make one.", two('biker', 'mallCop'), null, { cues: [cue(0.05, 'chainsawRev', { shake: 7, slow: [0.35, 0.7] })] }), line('mallCop', 'For the record, I hate this plan.', two('biker', 'mallCop'))];
-    default: return [line('skater', 'Okay, nobody? Cool. Cool cool cool. Running in anyway.', two('skater', 'mallGoth'), null, { cues: [cue(0.1, 'stingDread')] }), line('pa', 'Indecision is natural. Hunger is natural too.', 'plan.pa', { shot: 'wide', move: 'tension' }, { hold: 4.2, cues: [cue(0.05, 'pamChime')] })];
+    default: return [line('skater', 'Okay, nobody? Cool. Cool cool cool. Running in anyway.', two('skater', 'mallGoth'), null, { cues: [cue(0.1, 'stingDread')] }), line('pa', 'Indecision is natural. Hunger is natural too.', 'plan.pa', { shot: 'wide', move: 'tension' }, { hold: 4.2, cues: [cue(-0.3, 'pamChime')] })];
   }
 }
 
@@ -70,14 +78,15 @@ export function ticketScene(story) {
   const opening = fate === 'overrun' || fate === 'lost'
     ? [silent('tk.spike', 6, ray, { cues: [cue(0.1, 'fryerSizzle'), cue(1.2, 'stingDread')] })]
     : [
-      line('ray', "Hey! Pizza guy, still alive! Dale's gone nuts back there!", 'tk.approach', ray, { hold: 5, cues: [cue(0.05, 'shutterRattle', { shake: 4 }), cue(0.2, 'fryerSizzle')] }),
+      // the fake-out: a silent creep, then Ray pops up
+      line('ray', "Hey! Pizza guy, still alive! Dale's gone nuts back there!", 'tk.approach', ray, { hold: 5, cues: [...scare(0.6, 'shutterRattle', { silence: 0.55, shake: 9, punch: 0.05 }), cue(0.6, 'stingHit'), cue(0.8, 'fryerSizzle')] }),
       line('ray', "Gave out samples at four. Even you, Officer. Two of 'em!", 'tk.spike', ray, { hold: 5, cues: [cue(0.1, 'whoosh'), cue(1.9, 'stingDread')] }),
     ];
   return [
     ...opening,
-    line('skater', 'Wait. Badge ate one? Badge ate the meat?', 'tk.two', { shot: 'who', who: 'skater' }, { hold: 4, cues: [cue(0.02, 'duck')] }),
+    line('skater', 'Wait. Badge ate one? Badge ate the meat?', 'tk.two', { shot: 'who', who: 'skater' }, { hold: 4, cues: [cue(0.02, 'duckAll', { args: [1.2] })] }),
     line('mallCop', "That's... community relations. I feel fine.", 'tk.cop', { shot: 'who', who: 'mallCop', move: 'push' }, { hold: 4.2, cues: [cue(1.9, 'gurgle')] }),
-    silent('tk.fountain', 3.1, { shot: 'plaza' }, { cues: [cue(0.15, 'pamChime'), cue(2.1, 'bassDrop', { shake: 7, flash: 0.2 })] }),
+    silent('tk.fountain', 3.1, { shot: 'plaza' }, { cues: [cue(0, 'duckAll', { args: [0.1] }), cue(0.15, 'pamChime'), cue(0.2, 'neckCrack'), cue(0.62, 'neckCrack'), cue(1.04, 'neckCrack'), cue(2.1, 'bassDrop', { shake: 7, flash: 0.2 })] }),
     line('mallGoth', "Huh. They'd rather listen to me. Finally.", 'tk.fountain', { shot: 'who', who: 'mallGoth' }, { hold: 3.6, cues: [cue(0.4, 'moan')] }),
   ];
 }
@@ -86,12 +95,12 @@ export function ticketScene(story) {
 export function crisisScene() {
   const fire = { fx: 'fire' };
   return [
-    line('ray', "Guys! Counter's caving! I'm pinned, I'm pinned!", 'cr.cave', { shot: 'ray', move: 'dolly' }, { ...fire, hold: 4.6, cues: [cue(0.02, 'metalGroan', { shake: 12 }), cue(0.5, 'stingFire', { shake: 5 })] }),
+    line('ray', "Guys! Counter's caving! I'm pinned, I'm pinned!", 'cr.cave', { shot: 'ray', move: 'dolly' }, { ...fire, hold: 4.6, cues: [cue(0.02, 'metalGroan', { shake: 12, punch: 0.05 }), cue(0.5, 'stingFire', { shake: 5 }), cue(0.8, 'breathPanic', { args: [2] })] }),
     line('mallCop', "Security Locker's fire-sealing in ten. Last heavy gear in the mall.", 'cr.locker', { shot: 'locker', move: 'dolly' }, { ...fire, hold: 5.2, cues: [cue(0.05, 'whoosh'), cue(0.7, 'klaxon', { shake: 5 })] }),
-    line('biker', "Pizza or payload. Can't carry both.", 'cr.biker', { shot: 'who', who: 'biker' }, { ...fire, hold: 4.6, cues: [cue(0.05, 'heartbeat', { shake: 3 })] }),
-    line('mallGoth', '...He gave me garlic knots. Every night. For a year.', 'cr.goth', { shot: 'who', who: 'mallGoth', move: 'push' }, { hold: 5.6, cues: [cue(0.02, 'duck'), cue(0.6, 'musicBox')] }),
-    silent('cr.crane', 3.4, { shot: 'plaza', move: 'push' }, { ...fire, cues: [cue(0.05, 'horde', { shake: 6 }), cue(1.2, 'metalGroan')] }),
-    { t: 'choice', id: 'rayLocker', s: 'cr.four', cam: { shot: 'plaza', move: 'tension' }, ...fire, then: crisisResponse, cues: ticking([cue(0.05, 'klaxon'), cue(3.05, 'klaxon'), cue(6.05, 'klaxon')]) },
+    line('biker', "Pizza or payload. Can't carry both.", 'cr.biker', { shot: 'who', who: 'biker' }, { ...fire, hold: 4.6, cues: [cue(0.05, 'heartbeatRamp', { args: [6, 0.8, 0.55], shake: 3 })] }),
+    line('mallGoth', '...He gave me garlic knots. Every night. For a year.', 'cr.goth', { shot: 'who', who: 'mallGoth', move: 'push' }, { hold: 5.6, cues: [cue(0.02, 'duckAll', { args: [0.52] }), cue(0.6, 'musicBox')] }),
+    silent('cr.crane', 3.4, { shot: 'plaza', move: 'push' }, { ...fire, cues: [cue(-0.4, 'horde'), cue(0.05, '', { shake: 6 }), cue(1.2, 'metalGroan'), ...scare(2.6, 'stingHit', { silence: 0.35, shake: 10, punch: 0.06 }), cue(2.6, 'screamFar', { args: [0.08] })] }),
+    { t: 'choice', id: 'rayLocker', s: 'cr.four', cam: { shot: 'plaza', move: 'tension' }, ...fire, then: crisisResponse, cues: ticking([cue(0.05, 'klaxon'), cue(0.1, 'heartbeatRamp', { args: [9, 0.9, 0.45] }), cue(3.05, 'klaxon'), cue(6.05, 'klaxon')]) },
   ];
 }
 
@@ -103,15 +112,15 @@ function crisisResponse(res) {
       line('ray', "I'm out! I'm out! Somebody kiss the Biker!", 'cr.lift', ray, { hold: 3.4, cues: [cue(0.05, 'brassSwell'), cue(0.1, 'doorSlam', { shake: 7 })] }),
     ];
     case 'loot': return [
-      line('mallCop', "Copy. Gear secured. ...Ray, I'm sorry.", 'cr.open', locker, { hold: 4, cues: [cue(0.05, 'lockerOpen', { shake: 8, flash: 0.2 }), cue(1.9, 'metalGroan', { shake: 12 })] }),
+      line('mallCop', "Copy. Gear secured. ...Ray, I'm sorry.", 'cr.open', locker, { hold: 4, cues: [cue(0.05, 'lockerOpen', { shake: 8, flash: 0.2 }), cue(1.9, 'metalGroan', { shake: 12 }), cue(2.05, 'screamCut')] }),
       line('mallGoth', "Don't. Don't talk to me for a while.", 'cr.open', { shot: 'who', who: 'mallGoth' }, { hold: 3.6, cues: [cue(0.1, 'stingSad')] }),
     ];
     case 'hold': return [
-      line('skater', 'Holding it! Holding it! Dude, my arms are spaghetti!', 'cr.brace', locker, { hold: 3.6, cues: [cue(0.05, 'shutterRattle', { shake: 11 }), cue(1.5, 'shutterSlams', { shake: 9 })] }),
+      line('skater', 'Holding it! Holding it! Dude, my arms are spaghetti!', 'cr.brace', locker, { hold: 3.6, cues: [cue(0.05, 'shutterRattle', { shake: 11 }), cue(0.3, 'breathPanic', { args: [3, 2.6] }), cue(1.5, 'shutterSlams', { shake: 9 })] }),
       line('ray', 'Got... most of me out. Most is good, right?', 'cr.rayout', ray, { hold: 3.8, cues: [cue(0.05, 'stingSad')] }),
     ];
     default: return [
-      line('ray', 'Guys? GUYS?', 'cr.empty', ray, { hold: 3, cues: [cue(0.8, 'metalGroan', { shake: 14, slow: [0.3, 0.9] }), cue(1.6, 'stingDread')] }),
+      line('ray', 'Guys? GUYS?', 'cr.empty', ray, { hold: 3, cues: [cue(0.8, 'metalGroan', { shake: 14, slow: [0.3, 0.9] }), cue(0.95, 'screamCut', { blood: 0.6, punch: 0.08 }), cue(0.95, 'bodyHit'), cue(1.6, 'stingDread')] }),
       line('pa', "Ray's Slice of Heaven is now closed.", 'cr.empty', { shot: 'plaza', move: 'push' }, { hold: 4.6, cues: [cue(0.05, 'pamChime')] }),
     ];
   }
@@ -135,15 +144,16 @@ export function bossIntroScene(story) {
   return [
     // the cold open: a low crane up out of the fryer steam, and the title slams in over him
     { t: 'card', title: 'THE DEEP-FRY BUTCHER', sub: "DALE BRISKET · PORKO'S CARVERY", dur: 6.2, s: 'bk.reveal', cam: { shot: 'boss', move: 'reveal', dur: 6.2 }, boss: true, ...kitchen,
-      cues: [cue(0.05, 'fryerSizzle', { shake: 2 }), cue(0.5, 'riser'), cue(2.7, 'stingReveal', { shake: 15, flash: 0.55, slow: [0.3, 0.8] }), cue(3.2, 'hookClank')] },
-    line('biker', '...Huh. Seen those before.', 'bk.drums', { shot: 'who', who: 'biker', move: 'orbit' }, { ...kitchen, hold: 6, cues: [cue(0.05, 'fryerSizzle'), cue(3.6, 'chainsawRev', { shake: 5 })] }),
+      cues: [cue(0.05, 'fryerSizzle', { shake: 2 }), cue(0.5, 'riser'), ...scare(2.7, 'stingReveal', { silence: 0.45, shake: 15, flash: 0.55, punch: 0.08, slow: [0.3, 0.8] }), cue(3.2, 'hookClank')] },
+    line('biker', '...Huh. Seen those before.', 'bk.drums', { shot: 'who', who: 'biker', move: 'orbit' }, { ...kitchen, hold: 6, cues: [cue(0.05, 'fryerSizzle'), cue(0.05, 'drone', { args: [6, 0.07] }), cue(3.3, 'tubeTink'), cue(3.9, 'chainsawRev', { shake: 5 })] }),
     silent('bk.ots', 3.9, { shot: 'boss' }, { ...kitchen, cues: [cue(0.05, 'fryerSizzle'), cue(0.97, 'cleaverThunk'), cue(2.12, 'cleaverThunk'), cue(3.27, 'cleaverThunk')] }),
-    silent('bk.turn', 2.3, him, { ...kitchen, cues: [cue(0.2, 'hookClank'), cue(0.4, 'riser')] }),
-    line('butcher', "Welcome to Porko's!", 'bk.turn', him, { ...kitchen, hold: 2.8, cues: [cue(0.05, 'orderUp', { shake: 14, flash: 0.35, slow: [0.35, 0.7] })] }),
+    // the chopping stops: dead silence, then the hook
+    silent('bk.turn', 2.3, him, { ...kitchen, cues: [cue(0, 'duckAll', { args: [0.9] }), cue(1.05, 'hookClank'), cue(1.1, 'riser', { args: [1.3, 0.08] })] }),
+    line('butcher', "Welcome to Porko's!", 'bk.turn', him, { ...kitchen, hold: 2.8, cues: [cue(0.05, 'orderUp', { shake: 14, flash: 0.35, punch: 0.1, slow: [0.35, 0.7] })] }),
     line('butcher', 'Officer. Back for seconds?', 'bk.cop', him, { ...kitchen, hold: 4.8, cues: [cue(1.9, 'stingHit', { shake: 9 }), cue(2.1, 'ringing')] }),
     line(a, first, two, { shot: 'who', who: a }, { ...kitchen, hold: 3.2, cues: [cue(0.05, v.sting)] }),
     line(b, second, two, { shot: 'who', who: b }, { ...kitchen, hold: 3 }),
-    line('butcher', "Take a number! I'll carve you one!", 'bk.roar', him, { ...kitchen, hold: 4, cues: [cue(0.08, 'butcherRoar', { shake: 18, flash: 0.6, slow: [0.22, 0.9] }), cue(0.6, 'hookClank'), cue(1.5, 'titleSlam', { shake: 8 })] }),
+    line('butcher', "Take a number! I'll carve you one!", 'bk.roar', him, { ...kitchen, hold: 4, cues: [cue(0.08, 'butcherRoar', { shake: 18, flash: 0.6, punch: 0.1, grease: 0.7, slow: [0.22, 0.9] }), cue(0.08, 'braam', { args: [0.4] }), cue(0.6, 'hookClank'), cue(1.5, 'titleSlam', { shake: 8 })] }),
   ];
 }
 
@@ -155,21 +165,24 @@ export function endingScene(story) {
     : fate === 'injured' ? ['ray', 'Badge... the samples...']
       : ['mallGoth', 'Ray tried to tell us. At the counter.'];
   return [
-    line('butcher', "...Tell Pam... I'm off the clock.", 'en.kneel', him, { hold: 7, cues: [cue(1.3, 'cleaverClang', { shake: 10, slow: [0.35, 0.8] }), cue(1.7, 'fryerDown')] }),
-    silent('en.gauge', 2.2, him, { cues: [cue(0.2, 'gurgle'), cue(0.9, 'metalGroan')] }),
+    line('butcher', "...Tell Pam... I'm off the clock.", 'en.kneel', him, { hold: 7, cues: [cue(1.3, 'cleaverClang', { shake: 10, grease: 0.45, slow: [0.35, 0.8] }), cue(1.7, 'fryerDown')] }),
+    silent('en.gauge', 2.2, him, { cues: [cue(0.05, 'drone', { args: [6, 0.06] }), cue(0.2, 'gurgle'), cue(0.9, 'metalGroan')] }),
     line('pa', "Porko's Carvery is now closed. Thank you, Dale.", 'en.gauge', him, { hold: 4.2, cues: [cue(0.05, 'pamChime'), cue(2.4, 'gurgle')] }),
     line('skater', "Dude. The door log's printing.", 'en.office', { shot: 'who', who: 'skater' }, { hold: 4.6, cues: [cue(0.05, 'printer'), cue(3, 'printer')] }),
-    silent('en.print', 5.6, cop, { cues: [cue(0.05, 'printer'), cue(1.6, 'duck'), cue(1.7, 'revealSting', { slow: [0.5, 0.6] }), cue(2.7, '', { shake: 9, flash: 0.22 })] }),
+    silent('en.print', 5.6, cop, { cues: [cue(0.05, 'printer'), cue(1.7, 'revealSting', { slow: [0.5, 0.6] }), cue(2.15, 'duckAll', { args: [0.5] }), cue(2.7, '', { shake: 9, flash: 0.22 })] }),
     silent('en.feed', 3.4, cop, { cues: [cue(0.05, 'tapeRewind'), cue(1.5, 'monitorGlitch'), cue(3, 'stingDread', { shake: 5 })] }),
     line('mallCop', "That's... that's not... I was at the loading dock.", 'en.feed', cop, { hold: 4 }),
     line(witness[0], witness[1], 'en.orbit', { shot: 'who', who: witness[0] }, { hold: 5, cues: [cue(0.1, 'rain'), cue(0.6, 'softPiano')] }),
     line('biker', 'Not your fault, Badge.', 'en.orbit', { shot: 'who', who: 'biker' }, { hold: 5 }),
-    silent('en.reflect', 1.8, { shot: 'wide' }, { cues: [cue(0.1, 'receiptRattle'), cue(0.9, 'stingDread')] }),
-    line('pa', "Officer, your shift isn't over. We still need you.", 'en.reflect', { shot: 'wide' }, { hold: 5.4, cues: [cue(0.05, 'pamChime'), cue(4.6, 'zap', { flash: 0.25 })] }),
-    silent('en.hand', 3.2, cop, { cues: [cue(0.4, 'heartbeat'), cue(1.4, 'pamChime')] }),
+    // the quiet scare: no sting. A tube drops out, and it is simply there. Only Pam's chime lands.
+    silent('en.reflect', 1.8, { shot: 'wide' }, { cues: [cue(0.1, 'receiptRattle'), cue(0.9, 'duckAll', { args: [0.58] }), cue(1.55, 'tubeTink')] }),
+    line('pa', "Officer, your shift isn't over. We still need you.", 'en.reflect', { shot: 'wide' }, { hold: 5.4, cues: [cue(0.05, 'pamChime'), cue(4.2, 'tubeTink'), cue(4.6, 'zap', { flash: 0.25 })] }),
+    silent('en.hand', 3.2, cop, { cues: [cue(0.4, 'heartbeatRamp', { args: [5, 1.0, 0.7] }), cue(1.4, 'pamChime')] }),
     line('mallCop', '...Copy.', 'en.hand', cop, { hold: 4.4, cues: [cue(1.0, 'riser', { shake: 3 })] }),
     // smash cut to black: silence, then the next wing's cabinet wakes up
     { t: 'card', title: 'NEXT: THE ARCADE', sub: '5:19 AM', dur: 5, s: 'en.black', cam: { shot: 'wide' }, cues: [cue(0.02, 'duck'), cue(0.8, 'arcadeJingle')] },
+    // the end credits (the kungFuDOOM brand only)
+    { t: 'card', title: '', sub: '', credits: true, dur: 9, s: 'en.black', cam: { shot: 'wide' }, cues: [cue(0.1, 'creditsCue', { args: [9] })] },
   ];
 }
 
@@ -177,14 +190,19 @@ export const SCENES = { opening: openingScene, ticket: ticketScene, crisis: cris
 
 // ---------- the player ----------
 
-const BAR_CARD = 90;    // letterbox bar height (virtual px) on a chapter / boss card
-const BAR_LINE = 42;    // ... on a spoken line, a silent shot or a choice
+const RUSH = 6;         // a press during the handoff runs it out this much faster (it never jumps)
+export const HANDOFF_SECONDS = { opening: 2.6, ticket: 2.2, crisis: 2.2, boss: 2.4 };
+// when an unattended line moves on
+const lineEnd = (b) => Math.max(b.hold || 0, b.text.length / TYPE_SPEED + LINE_HOLD + b.text.length / 60);
+const autoEnd = (b) => (b.t === 'line' ? lineEnd(b) : b.t === 'choice' ? Infinity : b.dur);
 let played = 0;         // numbers each scene played, so the film knows a new one from the last
 
 export class Cutscene {
   // hooks.choose(choiceId, pick) -> { option, toasts, effects, silence } (applies the choice to the
   // story and the game); hooks.done(results) when the scene is over. party: the classes people are playing.
-  constructor(id, { story, hooks, skip = false, seconds = CHOICE_SECONDS, party = [] } = {}) {
+  // handoff: end on the cut-to-gameplay beat. On the cut into it, hooks.prepare() (optional) builds the level it lands
+  // in, then hooks.handoffStart() runs.
+  constructor(id, { story, hooks, skip = false, seconds = CHOICE_SECONDS, party = [], handoff = false } = {}) {
     this.id = id;
     this.key = `${id}-${++played}`;
     this.story = story;
@@ -208,7 +226,12 @@ export class Cutscene {
     this.alarm = 0;
     this.timeScale = 1;   // 1, or a slow-motion factor while a big hit lands (the scene's world only: never the timers)
     this.slowLeft = 0; this.slowScale = 1;
-    this.bar = BAR_CARD;  // letterbox height right now, easing toward the beat's target
+    this.bar = SCOPE_BAR_PX; // letterbox height: true 2.39:1 scope, constant until the handoff slides it away
+    this.hits = 0;        // numbers each frame's camera hit, so the film (ours or a guest's) applies it once
+    this.lastHit = [0, 0, 0, 0, 0]; // shake, flash, blood, grease, punch
+    this.pre = new Set(); // J-cut cues already fired ahead of their beat
+    this.rush = false;
+    if (handoff && HANDOFF_SECONDS[id]) this.beats.push({ t: 'shot', s: '', handoff: id === 'boss' ? 'boss' : 'rise', dur: HANDOFF_SECONDS[id], cam: { shot: 'handoff' } });
     this.flash = 0;       // a white hit-flash that decays
     this.prevKey = null;
     this.snapNow = true;
@@ -239,6 +262,12 @@ export class Cutscene {
     if (!b) { this.finish(); return; }
     if (b.t === 'choice') { this.timer = this.seconds; this.picked = null; }
     if (b.s !== this.shot) { this.shot = b.s; this.shotN++; }
+    if (b.handoff) {
+      // the level behind the handoff is built here, so its one stall lands on the hard cut (the last film frame holds)
+      if (this.hooks.prepare) this.hooks.prepare();
+      this.rush = false;
+      if (this.hooks.handoffStart) this.hooks.handoffStart();
+    }
     const cam = b.cam || { shot: 'wide' };
     const key = `${cam.shot}:${cam.who || ''}:${cam.move || ''}`;
     this.snapNow = key !== this.prevKey; // a new angle is a hard cut; the same angle carries on
@@ -258,6 +287,7 @@ export class Cutscene {
   advance() {
     const b = this.beat;
     if (!b || this.done) return;
+    if (b.handoff) { this.rush = true; return; } // (never a camera jump: the blend just runs out fast)
     if (b.t === 'line') {
       if (this.isTyping()) { this.typed = b.text.length; return; }
       this.next();
@@ -296,23 +326,36 @@ export class Cutscene {
     for (const text of res.toasts) this.toasts.push({ text, t: TOAST_SECONDS });
   }
 
-  // A beat's cues, once each, as its own clock passes them.
+  fire(c, hit) {
+    this.cues.push({ sting: c.sting || '', args: c.args || null, shake: c.shake || 0, flash: c.flash || 0 });
+    if (c.flash) this.flash = Math.max(this.flash, c.flash);
+    if (c.slow) { this.slowScale = c.slow[0]; this.slowLeft = c.slow[1]; }
+    [c.shake, c.flash, c.blood, c.grease, c.punch].forEach((v, k) => { if (v) hit[k] = Math.max(hit[k], v); });
+  }
+
+  // A beat's cues, once each, as its own clock passes them; then any J-cut cues of the beat about to come.
   fireCues(b) {
+    const hit = [0, 0, 0, 0, 0];
     const list = b.cues;
-    if (!list) return;
-    while (this.fired < list.length && this.t >= list[this.fired].at) {
-      const c = list[this.fired++];
-      this.cues.push({ sting: c.sting || '', shake: c.shake || 0, flash: c.flash || 0 });
-      if (c.flash) this.flash = Math.max(this.flash, c.flash);
-      if (c.slow) { this.slowScale = c.slow[0]; this.slowLeft = c.slow[1]; }
+    if (list) {
+      if (!b.sorted) { list.sort((x, y) => x.at - y.at); b.sorted = true; }
+      while (this.fired < list.length && this.t >= list[this.fired].at) {
+        const c = list[this.fired++];
+        if (!this.pre.has(c)) this.fire(c, hit);
+      }
     }
+    const nb = this.beats[this.i + 1];
+    if (nb && nb.cues && b.t !== 'choice') {
+      for (const c of nb.cues) if (c.at < 0 && !this.pre.has(c) && this.t >= autoEnd(b) + c.at) { this.pre.add(c); this.fire(c, hit); }
+    }
+    if (hit.some((v) => v)) { this.hits++; this.lastHit = hit; }
   }
 
   update(dt) {
     if (this.done) return;
     const b = this.beat;
     if (!b) { this.finish(); return; }
-    this.t += dt;
+    this.t += b.handoff && this.rush ? dt * RUSH : dt;
     // slow motion: the camera and the set slow down, the typing, the timer and the beat clock do not
     if (this.slowLeft > 0) {
       this.slowLeft -= dt;
@@ -323,12 +366,10 @@ export class Cutscene {
     this.flash = Math.max(0, this.flash - dt * 2.4);
     this.fireCues(b);
     this.alarm = b.fx === 'alarm' ? 1 : 0;
-    // the letterbox: tall on a card, slimmer under the dialogue
-    const want = b.t === 'card' ? BAR_CARD : BAR_LINE;
-    this.bar += (want - this.bar) * Math.min(1, dt * 7);
+    this.bar = b.handoff ? handoffBar(this.t, b.dur) : SCOPE_BAR_PX;
     if (b.t === 'line') {
       this.typed = Math.min(b.text.length, this.typed + TYPE_SPEED * dt);
-      if (this.typed >= b.text.length && this.t > Math.max(b.hold || 0, b.text.length / TYPE_SPEED + LINE_HOLD + b.text.length / 60)) this.next();
+      if (this.typed >= b.text.length && this.t > lineEnd(b)) this.next();
     } else if (b.t === 'card' || b.t === 'shot') {
       if (this.t >= b.dur) this.next();
     } else if (b.t === 'choice') {
@@ -342,12 +383,18 @@ export class Cutscene {
     const b = this.beat;
     const v = { id: this.id, letterbox: 1, bar: Math.round(this.bar), flash: Math.min(1, this.flash), fade: 0, mood: b && b.fx ? b.fx : '', alarm: this.alarm, card: null, speaker: '', who: '', text: '', choices: null, timerFrac: 0, hint: '', beat: b ? b.t : null, film: null };
     if (!b || this.done) return v;
+    if (b.handoff) { // the film is over: the live game, with the bars leaving and the HUD arriving
+      v.handoff = Math.min(1, this.t / b.dur);
+      v.bar = Math.round(handoffBar(this.t, b.dur));
+      v.flash = 0; v.alarm = 0;
+      return v;
+    }
     // everything storyFilm.js needs to draw the HD scene (an online guest gets exactly this)
-    v.film = { key: this.key, id: this.id, shot: this.shot, cut: this.shotN, ts: this.timeScale, tens: b.t === 'choice' ? 1 - Math.max(0, Math.min(1, this.timer / this.seconds)) : 0, ray: (this.story && this.story.flags.rayFate) || '', party: this.party };
+    v.film = { key: this.key, id: this.id, shot: this.shot, cut: this.shotN, ts: this.timeScale, tens: b.t === 'choice' ? 1 - Math.max(0, Math.min(1, this.timer / this.seconds)) : 0, ray: (this.story && this.story.flags.rayFate) || '', party: this.party, hit: [this.hits, ...this.lastHit] };
     // a scene that does not open on a card comes up out of black
     if (this.i === 0 && b.t !== 'card') v.fade = Math.max(0, 1 - this.t / 0.7);
     if (b.t === 'card') {
-      v.card = { title: b.title, sub: b.sub, boss: !!b.boss, t: Math.min(1, this.t / 0.4), out: Math.max(0, 1 - Math.max(0, b.dur - this.t) / 0.4), age: this.t, dur: b.dur };
+      v.card = { title: b.title, sub: b.sub, boss: !!b.boss, credits: !!b.credits, t: Math.min(1, this.t / 0.4), out: Math.max(0, 1 - Math.max(0, b.dur - this.t) / 0.4), age: this.t, dur: b.dur };
       // a chapter card comes up out of black; the Butcher's out of a long, dark nothing
       const fadeIn = b.boss ? 1.1 : 0.7;
       v.fade = this.i === 0 ? Math.max(0, 1 - this.t / fadeIn) : 0;
@@ -367,6 +414,14 @@ export class Cutscene {
   camera(game) {
     const b = this.beat;
     if (!b) return null;
+    if (b.handoff) {
+      if (!b.from) { // fixed on the first frame, so the blend is stable
+        const party = averageParty(game) || { x: 15 * TILE, y: 14 * TILE };
+        b.from = handoffStart(b.handoff, party, game && game.boss, (x, z) => !!(game && game.collides && game.collides(x, z, 8)));
+      }
+      const C = b.from;
+      return { px: C.p[0], py: C.p[1], pz: C.p[2], lx: C.l[0], ly: C.l[1], lz: C.l[2], fov: C.fov, roll: C.roll, handoff: handoffCamK(this.t, b.dur), hdur: b.dur };
+    }
     let cam = b.cam || { shot: 'wide' };
     if (b.t === 'choice') cam = { ...cam, tens: 1 - Math.max(0, Math.min(1, this.timer / this.seconds)) }; // the room closes in as the clock runs down
     const s = resolveShot(game, cam, this.ct, this.id);
@@ -510,7 +565,9 @@ function bossShot(b, move, t, cam, roll, hx, hy, hz) {
 }
 
 function averageParty(game) {
-  const ps = game && game.allPlayers ? game.allPlayers() : [];
+  const all = game && game.allPlayers ? game.allPlayers() : [];
+  const live = all.filter((p) => p.alive !== false);
+  const ps = live.length ? live : all;
   if (!ps.length) return null;
   return { x: ps.reduce((s, p) => s + p.x, 0) / ps.length, y: ps.reduce((s, p) => s + p.y, 0) / ps.length };
 }

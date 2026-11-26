@@ -4,6 +4,8 @@
 
 import * as THREE from 'three';
 import { TILE, VIEW_W, VIEW_H, WORLD_VIEW_W, WORLD_VIEW_H, POWERUPS, LOBBED, BLAST, ENEMIES } from './config.js';
+// The gameplay camera lives in camMath.js: a 3/4 arcade angle, low enough that vertical neon stall signs stay in frame.
+import { CAM_OFFSET, gameplayPose, blendPose, handoffEase } from './camMath.js';
 import { T } from './level.js';
 import { buildMall, WALL_H, neonSignTexture } from './mall3d.js';
 import { setUndeadQuality } from './undead.js';
@@ -12,10 +14,6 @@ import { installSelfLitMask } from './selflit.js';
 import { assets, Actor, cloneProp, MODEL_SCALE, HERO_SCALE } from './assets.js';
 import { glowTexture, glowSprite, buildBoss, buildExit, buildProjectile, buildMarker, buildItem, heroColor } from './models.js';
 
-// 3/4 arcade angle (~40 deg down): low enough that vertical neon stall signs stay in frame,
-// high enough that the party, enemies and pickups stay readable.
-const CAM_OFFSET = new THREE.Vector3(0, 280, 330);
-const CAM_LOOK_Y = 42; // look a little above the floor so wall signs are framed
 const MAX_PARTICLES = 900;
 // Phones get fewer dynamic lights; each one costs on every pixel.
 // Handheld = phones and tablets, including an iPad with a trackpad/mouse (iPadOS reports itself as "MacIntel" with touch points, and
@@ -658,7 +656,20 @@ export class Renderer3D {
     const now = performance.now();
     const rdt = Math.min(0.05, Math.max(0.001, (now - (this.lastReal || now)) / 1000));
     this.lastReal = now;
-    if (cc) {
+    if (!cc || cc.handoff == null) this.hoK = 0;
+    if (cc && cc.handoff != null) {
+      // the cut to gameplay: crane from behind the party into the exact gameplay camera. An online guest gets
+      // snapshots at network rate, so it runs the blend on its own clock (never behind the host's).
+      this.hoK = cc.guest ? Math.min(1, Math.max((this.hoK || 0) + rdt / (0.8 * (cc.hdur || 2.4)), cc.handoff)) : cc.handoff;
+      const P = blendPose({ p: [cc.px, cc.py, cc.pz], l: [cc.lx, cc.ly, cc.lz], fov: cc.fov, roll: cc.roll || 0 }, gameplayPose(g.camX, g.camY, sx, sz), handoffEase(this.hoK));
+      this.camera.position.set(...P.p);
+      this.camera.up.set(0, 1, 0);
+      this.camera.lookAt(...P.l);
+      if (P.roll) this.camera.rotateZ(P.roll);
+      if (this.camera.fov !== P.fov) { this.camera.fov = P.fov; this.camera.updateProjectionMatrix(); }
+      this.cutPos = null; this.cutLook = null; this.cutFov = null; // no smoothing state survives into play
+      for (const l of this.cineLights || []) l.intensity = 0;
+    } else if (cc) {
       // a cutscene shot: a cinematic camera on the real survivors and the real mall. Moves are authored
       // in cutscenes.js, so the camera only smooths them lightly (frame-rate independent); a `snap` is a hard cut.
       const snap = !!cc.snap || this.cutFov == null;
@@ -675,9 +686,12 @@ export class Renderer3D {
       this.camera.lookAt(this.cutLook);
       if (cc.roll) this.camera.rotateZ(cc.roll);
     } else {
-      if (this.cutPos) { this.cutPos = null; this.cutLook = null; this.cutFov = null; this.camera.fov = 42; this.camera.updateProjectionMatrix(); this.camera.up.set(0, 1, 0); }
-      this.camera.position.set(tx + CAM_OFFSET.x + sx, CAM_OFFSET.y, tz + CAM_OFFSET.z + sz);
-      this.camera.lookAt(tx + sx, CAM_LOOK_Y, tz + sz - 10);
+      const G = gameplayPose(g.camX, g.camY, sx, sz);
+      this.cutPos = null; this.cutLook = null; this.cutFov = null;
+      if (this.camera.fov !== G.fov) { this.camera.fov = G.fov; this.camera.updateProjectionMatrix(); }
+      this.camera.up.set(0, 1, 0);
+      this.camera.position.set(...G.p);
+      this.camera.lookAt(...G.l);
     }
     this.sun.position.set(tx - 200, 500, tz + 300);
     this.sun.target.position.set(tx, 0, tz);
@@ -770,7 +784,7 @@ export class Renderer3D {
       this.scene.add(v.root);
     }
     const a = v.actor;
-    v.root.visible = !(p.invuln > 0 && Math.floor(g.time * 16) % 2);
+    v.root.visible = !(p.invuln > 0 && !g.cutCam && Math.floor(g.time * 16) % 2); // (no spawn blink in a film shot)
     const moved = v.px !== undefined ? Math.hypot(p.x - v.px, p.y - v.py) : 0;
     const stepOk = v.px === undefined || moved < 48; // a teleport or an off-screen catch-up is not a step
     const inst = dt > 0 && stepOk ? moved / dt : (v.spd || 0); // actual ground speed, after walls have slid the step

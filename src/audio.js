@@ -150,6 +150,9 @@ export const sfx = {
 const cine = makeCine(() => ({ ctx, master, muted }));
 const { stopAll: stopCine, ...cineCues } = cine;
 Object.assign(sfx, cineCues);
+// True silence before a shock: the cinema bus and the music both drop out for `dur` seconds. (Added before the
+// audioTap wrap below, so online guests get the same silence.)
+sfx.duckAll = (dur = 0.6) => { cine.duck(dur); musicDuck(dur); };
 export { stopCine, cine };
 export const audioReady = () => !!ctx && ctx.state === 'running';
 
@@ -275,13 +278,20 @@ let timer = null;
 let wantPaused = false;
 
 const musicLevel = () => (muted || !musicOn ? 0 : MUSIC_VOL);
+let duckGain = null; // between the music bus and the master: only the films' silences move it
+function musicDuck(dur) {
+  if (!ctx || !duckGain) return;
+  try { const t = ctx.currentTime; duckGain.gain.cancelScheduledValues(t); duckGain.gain.setTargetAtTime(0.02, t, 0.015); duckGain.gain.setTargetAtTime(1, t + dur, 0.08); } catch { /* context gone */ }
+}
 
 function ensureMusic() {
   if (!ctx) return false;
   if (!engine) {
     musicBus = ctx.createGain();
     musicBus.gain.value = musicLevel();
-    musicBus.connect(master);
+    duckGain = ctx.createGain();
+    musicBus.connect(duckGain);
+    duckGain.connect(master);
     engine = createMusic(ctx, musicBus);
     if (wantPaused) engine.setPaused(true);
   }

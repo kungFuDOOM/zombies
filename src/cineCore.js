@@ -6,15 +6,16 @@
 //     exposure: 1, bloom: 0.6, enter(player, shot) {...}, tick(dt, lt, k, player) {...} }
 //
 // Camera helpers (dolly, crane, push, over-the-shoulder, whip, orbit) all produce the same plain spec, so a shot can
-// also be written by hand. The `fov` of a shot is the VISIBLE vertical field of view (the part between the letterbox bars):
-// the player widens the real lens to cover the bars, and widens it more on a phone held upright, so framing is
-// the same at every bar thickness and aspect. Cuts are hard by default; whip-pans smear through the post chain's motion blur.
+// also be written by hand. The `fov` of a shot is the VISIBLE vertical field of view (the part between the 2.39:1 scope
+// bars): the player widens the real lens to cover the bars. The picture is always 3:2 (the stage scales it), so framing is
+// the same on a desktop and on a phone held either way. Cuts are hard by default; fast camera moves smear on High.
 //
-// CinePlayer owns time, the camera, shake, subtitles, name cards and the post chain; the film's own file (intro.js)
+// CinePlayer owns time, the camera, handheld and shake, lens splats, flares, subtitles, name cards and the post chain; the film's own file (intro.js)
 // owns the scene, the lights and the per-shot hooks.
 
 import * as THREE from 'three';
 import { CinePost } from './cinePost.js';
+import { scopeBarFrac } from './camMath.js';
 
 // ----- little maths helpers (shared by every cinematic file) -----
 export const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -104,20 +105,24 @@ export class CinePlayer {
     this.subs = [];           // dialogue / PA lines
     this.cards = [];          // hero name cards
     this.shakes = [];         // [t0, amp, decay]
-    this.barMax = 0.092;      // each letterbox bar as a fraction of the picture height (2.39:1 on the 3:2 canvas is ~0.186)
+    this.barMax = scopeBarFrac(); // each letterbox bar as a fraction of the picture height: true 2.39:1 scope
     this.barIn = [0, 1];      // [start, duration] of the bars sliding in
     this.fadeFn = null;       // t => 0..1 black overlay
-    this.grade = { lift: [0.004, 0.006, 0.014], gain: [1.04, 1.0, 0.97], gamma: 1.05, sat: 1.1 };
+    this.grade = 'NIGHT_RAIN'; // the default look (cineGrade.js); a shot's own `grade` wins
     this.titleAt = -1;
     this.frames = 0; this.ema = 0; this.lastRender = 0;
     this.flashV = 0;          // lightning / muzzle flash 0..1, set by the film
     this.reset();
   }
 
-  reset() { this.t = 0; this.cueI = 0; this.shotI = -1; this.shakes.length = 0; this.flashV = 0; this.prevVP = null; }
+  reset() { this.t = 0; this.cueI = 0; this.shotI = -1; this.shakes.length = 0; this.punches = []; this.splats = []; this.caV = 0; this.lastCa = 0; this.flashV = 0; this.prevVP = null; }
 
   at(t, fn) { this.cues.push([t, fn]); this.cues.sort((a, b) => a[0] - b[0]); }
   shake(t, amp, decay = 4.5) { this.shakes.push([t, amp, decay]); }
+  /** A hit's lens punch: the field of view snaps tighter, and the colour channels split for a moment. */
+  punch(t, amt = 0.07, ca = 0.012) { this.punches.push([t, amt]); this.caV = Math.max(this.caV, ca); if (this.punches.length > 8) this.punches.shift(); }
+  /** Something lands on the lens. */
+  splat(t, amt = 0.8, kind = 'blood', seed = 1) { this.splats.push({ t0: t, amt, kind, seed }); if (this.splats.length > 4) this.splats.shift(); }
   say(a, b, speaker, color, text, kind = 'line') { this.subs.push({ a, b, speaker, color, text, kind }); }
   card(a, b, name, role, color) { this.cards.push({ a, b, name, role, color }); }
 
@@ -126,7 +131,7 @@ export class CinePlayer {
     return 0;
   }
 
-  /** Viewport facts the framing depends on: portrait phones get a wider lens and thinner bars. */
+  /** Viewport facts the overlay's type sizes depend on. */
   viewInfo() {
     const w = window.innerWidth || 960, h = window.innerHeight || 640;
     const portrait = h > w * 1.05;
@@ -139,7 +144,7 @@ export class CinePlayer {
     const t = this.t;
     while (this.cueI < this.cues.length && this.cues[this.cueI][0] <= t) { try { this.cues[this.cueI][1](this); } catch (e) { console.warn('cue failed', e); } this.cueI++; }
     const i = this.shotAt(t);
-    if (i !== this.shotI) { this.shotI = i; const s = this.shots[i]; s.entered = true; if (s.enter) s.enter(this, s); this.cutT = t; }
+    if (i !== this.shotI) { this.shotI = i; const s = this.shots[i]; s.entered = true; this.prevVP = null; if (s.enter) s.enter(this, s); this.cutT = t; }
     const s = this.shots[i];
     if (s.tick) s.tick(dt, t - s.a, clamp01((t - s.a) / s.dur), this);
     this.flashV = Math.max(0, this.flashV - dt * 4);
@@ -151,46 +156,62 @@ export class CinePlayer {
     const t = this.t, s = this.shots[Math.max(0, this.shotI)];
     const k = clamp01((t - s.a) / s.dur);
     const c = evalCam(s.cam, k);
-    const { portrait } = this.viewInfo();
     const bar = this.bar();
-    // handheld + impulse shake, all smooth
-    let sx = 0, sy = 0, sr = 0;
-    const h = c.hand ?? 0.3;
-    sx += wob(t, 1) * h * 0.5; sy += wob(t, 7) * h * 0.3; sr += wob(t, 13) * h * 0.0015;
+    // handheld: smooth, mostly rotational (that is what reads as an operator), plus the impulse shakes
+    const h = c.hand ?? 0.3, f0 = 0.8 + 0.5 * Math.min(3.2, h);
+    const ht = t * f0;
+    let sx = wob(ht, 1) * h * 0.5, sy = wob(ht, 7) * h * 0.3;
+    const rot = 0.55 * h * (Math.PI / 180);
+    let ry = wob(ht, 13) * rot * 0.35, rx = wob(ht, 17) * rot * 0.26, sr = wob(ht, 19) * rot * 0.18;
+    if (c.panic || s.panic) { // operator jolts: running with the camera
+      const slot = Math.floor(t / 0.7);
+      for (let n = slot - 1; n <= slot; n++) {
+        if (hash(n * 1.7) < 0.2) continue;
+        const age = t - (n * 0.7 + hash(n) * 0.3);
+        if (age < 0 || age > 0.6) continue;
+        const j = Math.exp(-14 * age) * Math.sin(38 * age) * (Math.PI / 180) * Math.min(1.4, 0.5 + h * 0.3);
+        rx += j * 1.6; ry += j * 1.1 * (hash(n + 5) > 0.5 ? 1 : -1);
+      }
+    }
     for (const [t0, amp, dec] of this.shakes) {
       const age = t - t0;
       if (age < 0 || age > 2.5) continue;
       const f = amp * Math.exp(-age * dec);
       sx += wob(t * 9, t0) * f * 0.5; sy += wob(t * 9, t0 + 3) * f * 0.35; sr += wob(t * 7, t0 + 5) * f * 0.002;
+      rx += wob(t * 11, t0 + 7) * f * 0.05 * (Math.PI / 180); ry += wob(t * 10, t0 + 9) * f * 0.05 * (Math.PI / 180);
     }
     const cam = this.camera;
     cam.position.set(c.p[0] + sx, c.p[1] + sy, c.p[2]);
     cam.up.set(0, 1, 0);
     cam.lookAt(c.l[0], c.l[1], c.l[2]);
+    cam.rotateY(ry); cam.rotateX(rx);
     const roll = (c.roll || 0) + sr;
     if (roll) cam.rotateZ(roll);
-    // the shot's FOV is what shows between the bars; widen the lens to cover them, and more on a phone held upright
-    const vis = c.fov ?? (s.fov ? mix(s.fov[0], s.fov[1] ?? s.fov[0], smooth(k)) : 45);
-    const tanHalf = Math.tan(THREE.MathUtils.degToRad(vis) / 2) / Math.max(0.5, 1 - 2 * bar) * (portrait ? 1.16 : 1);
+    // the shot's FOV is what shows between the bars (a hit punches it tighter); widen the lens to cover the bars
+    let vis = c.fov ?? (s.fov ? mix(s.fov[0], s.fov[1] ?? s.fov[0], smooth(k)) : 45);
+    for (const [t0, amt] of this.punches) {
+      const age = t - t0;
+      if (age >= 0 && age < 1.2) vis *= 1 - amt * (age < 0.05 ? age / 0.05 : Math.exp(-6 * (age - 0.05)));
+    }
+    this.visFov = vis;
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(vis) / 2) / Math.max(0.5, 1 - 2 * bar);
     cam.fov = THREE.MathUtils.radToDeg(2 * Math.atan(tanHalf));
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld(true);
     return { shot: s, k, cam, c };
   }
 
-  bar() {
-    const { portrait } = this.viewInfo();
-    return this.barMax * (portrait ? 0.45 : 1) * smooth((this.t - this.barIn[0]) / this.barIn[1]);
-  }
+  bar() { return this.barMax * smooth((this.t - this.barIn[0]) / this.barIn[1]); }
 
-  /** Render the frame through the post chain (High) or straight to the canvas (Low). */
-  /** Frame-rate guard: if High cannot hold ~20 fps on this machine, fall back to the plain Low render for the rest of the film. */
+  /** Frame-rate guard: if a tier cannot hold ~20 fps on this machine, drop a step (High -> Low pass -> plain render) for the rest of the film. */
   watchFrameRate() {
     const now = performance.now();
     if (this.lastRender) {
       const d = Math.min(250, now - this.lastRender);
       this.ema = this.ema ? this.ema * 0.92 + d * 0.08 : d;
-      if (++this.frames > 90 && this.high && this.ema > 55) { this.high = false; this.post.high = false; }
+      if (++this.frames > 90 && this.ema > 55) {
+        if (this.high) { this.high = false; this.post.high = false; this.frames = 0; this.ema = 0; } else if (this.post.lowOk) { this.post.lowOk = false; this.post.lean = true; }
+      }
     }
     this.lastRender = now;
   }
@@ -199,37 +220,72 @@ export class CinePlayer {
     this.watchFrameRate();
     const { shot, cam, c } = this.frame();
     const t = this.t;
-    // screen-space motion of a point straight ahead of the camera, for the whip-pan smear
+    // camera motion blur (High): how far a point straight ahead moved on screen since the last frame, 180 degree shutter
     let blur = [0, 0];
-    if (this.high && c.blur) {
-      const ahead = new THREE.Vector3(0, 0, -200).applyMatrix4(cam.matrixWorld);
-      const cur = ahead.clone().project(cam);
-      if (this.prevVP) { const pv = ahead.clone().applyMatrix4(this.prevVP); blur = [clamp01(Math.abs(pv.x - cur.x) / 1.2) * Math.sign(cur.x - pv.x) * c.blur * 0.9, 0]; }
+    if (this.high) {
+      const m = this.mb || (this.mb = { vp: new THREE.Matrix4(), ahead: new THREE.Vector3(), cur: new THREE.Vector3() });
+      if (this.prevVP) {
+        const ahead = m.ahead.set(0, 0, -200).applyMatrix4(cam.matrixWorld);
+        const cur = m.cur.copy(ahead).project(cam), pv = ahead.applyMatrix4(this.prevVP);
+        const bx = (cur.x - pv.x) * 0.25, by = (cur.y - pv.y) * 0.25, len = Math.hypot(bx * 1500, by * 1000);
+        if (len > 3) { const cap = Math.min(1, 0.04 / Math.max(1e-6, Math.hypot(bx, by))); blur = [bx * cap, by * cap]; }
+      }
+      this.prevVP = m.vp.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     }
-    this.prevVP = new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
-    // rack focus: focus distance eases between two values over the shot
+    // rack focus: focus distance eases between two values over the shot. A longer lens melts the background more.
     let focus = 0, aperture = 0;
     if (shot.dof && this.high) {
       const k = clamp01((t - shot.a) / shot.dur), f = shot.dof.focus;
       focus = Array.isArray(f) ? mix(f[0], f[1], ease(shot.dof.ease || 'smooth', (k - (shot.dof.from ?? 0)) / ((shot.dof.to ?? 1) - (shot.dof.from ?? 0)))) : f;
-      aperture = shot.dof.aperture ?? 1;
+      aperture = (shot.dof.aperture ?? 1) * Math.min(2.2, Math.max(0.6, (24.3 / this.visFov) ** 1.5 + 0.35));
     }
+    // the channel split decays after a hit (timed on the film clock)
+    this.caV *= Math.exp(-6 * Math.max(0, Math.min(0.1, t - this.lastCa)));
+    this.lastCa = t;
     this.post.render(this.scene, cam, {
       exposure: (shot.exposure ?? 1) * (1 + this.flashV * 0.8),
       bloom: shot.bloom ?? 0.55,
       focus, aperture,
       blur,
-      grain: shot.grain ?? 0.028,
-      vignette: shot.vignette ?? 0.45,
+      ca: 0.004 + this.caV,
+      grain: shot.grain,
+      vignette: shot.vignette,
       grade: shot.grade || this.grade,
       time: t,
+      bar: this.bar(),
     });
+  }
+
+  /** The current shot's practical lights, projected to the overlay's pixels, for the anamorphic flares. */
+  flares() {
+    const s = this.shots[Math.max(0, this.shotI)], out = [];
+    if (!s || !s.flares) return out;
+    const lt = this.t - s.a, v = this.flareV || (this.flareV = new THREE.Vector3());
+    for (const f of s.flares) {
+      const k = typeof f.k === 'function' ? f.k(lt, this) : f.k ?? 0.4;
+      if (!(k > 0.02)) continue;
+      const at = typeof f.at === 'function' ? f.at(lt, this) : f.at;
+      if (!at) continue;
+      v.set(at.x ?? at[0], at.y ?? at[1], at.z ?? at[2]).project(this.camera);
+      if (v.z > 1 || Math.abs(v.x) > 1.15 || Math.abs(v.y) > 1) continue;
+      out.push({ x: (v.x + 1) * 480, y: (1 - v.y) * 320, k, len: f.len ?? 0.5, color: f.color || '#7ab8ff' });
+    }
+    return out;
+  }
+
+  /** The newest splat on the lens, if any. */
+  splatView() {
+    for (let i = this.splats.length - 1; i >= 0; i--) {
+      const sp = this.splats[i], age = this.t - sp.t0;
+      if (age >= 0 && age < 4.2) return { kind: sp.kind, amt: sp.amt, age, seed: sp.seed };
+    }
+    return null;
   }
 
   /** What the 2D overlay draws this frame (see overlay.js). */
   view() {
     const t = this.t, v = this.viewInfo();
-    const out = { t, bar: this.bar(), fade: this.fadeFn ? this.fadeFn(t) : 0, flash: this.flashV, sub: null, card: null, title: null, ui: v, high: this.high };
+    const out = { t, bar: this.bar(), fade: this.fadeFn ? this.fadeFn(t) : 0, flash: this.flashV, sub: null, card: null, title: null, ui: v, high: this.high, graded: this.post.graded, lean: this.post.lean, blood: this.splatView(), flares: this.flares() };
     for (const s of this.subs) {
       if (t < s.a || t > s.b + 0.5) continue;
       const cps = s.kind === 'pa' ? 30 : 48;
