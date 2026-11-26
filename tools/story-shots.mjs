@@ -17,11 +17,11 @@ mkdirSync(OUT, { recursive: true });
 
 // [name, beat, seconds into the shot, { pick: choose this option first (beat then counts from the reply), ray }]
 const SCENES = {
-  scene1: [['card', 0, 1.6], ['wide', 1, 4], ['biker', 2, 3.2], ['freeze', 3, 2.4], ['copline', 4, 4.5], ['goth', 5, 2.6], ['monitor', 6, 4], ['choice', 7, 3], ['reply', 0, 3, { pick: 0 }], ['pam', 1, 3.5, { pick: 3 }]],
-  ticket: [['approach', 0, 4], ['spike', 1, 4], ['two', 2, 2.6], ['cop', 3, 1.6], ['chime', 4, 1.4], ['fountain', 5, 4.4]],
-  scene2: [['cave', 0, 3], ['locker', 1, 3.5], ['biker', 2, 1.2], ['goth', 3, 4], ['crane', 4, 3], ['choice', 5, 4], ['save', 0, 3.2, { pick: 0 }], ['loot', 0, 2.6, { pick: 1 }], ['hold', 0, 2, { pick: 2 }], ['rayout', 1, 2.5, { pick: 2 }], ['empty', 1, 3, { pick: 3 }]],
-  boss: [['title', 0, 4.6], ['drums', 1, 5], ['ots', 2, 1.7], ['turn', 4, 3.4], ['copcu', 5, 1], ['point', 5, 4.4], ['hopeful', 6, 2, { ray: 'saved' }], ['guilt', 6, 2.5, { ray: 'overrun' }], ['strained', 6, 2, { ray: 'injured' }], ['alone', 6, 3, { ray: 'lost' }], ['roar', 8, 1.8]],
-  ending: [['kneel', 0, 6], ['gauge', 2, 5], ['office', 3, 3.4], ['printout', 4, 4.8], ['feed', 6, 7], ['orbit', 7, 3], ['orbit2', 8, 8], ['reflect', 10, 3.2], ['hand', 11, 1.8], ['eyes', 12, 7.5], ['next', 13, 3]],
+  scene1: [['card', 0, 1.6], ['wide', 1, 4], ['biker', 2, 3.2], ['freeze', 3, 2.4], ['copline', 4, 4.5], ['goth', 5, 2.6], ['monitor', 6, 4], ['choice', 7, 3], ['reply', 0, 3, { pick: 0 }], ['pam', 1, 3.5, { pick: 3 }], ['handoffA', 0, 0.2, { pick: 0, handoff: true }], ['handoffB', 0, 1.3, { pick: 0, handoff: true }], ['handoffC', 0, 2.05, { pick: 0, handoff: true }]],
+  ticket: [['approach', 0, 4], ['spike', 1, 4], ['two', 2, 2.6], ['cop', 3, 1.6], ['chime', 4, 1.4], ['fountain', 5, 4.4], ['handoffA', 0, 0.15, { handoff: true }]],
+  scene2: [['cave', 0, 3], ['locker', 1, 3.5], ['biker', 2, 1.2], ['goth', 3, 4], ['crane', 4, 3], ['choice', 5, 4], ['save', 0, 3.2, { pick: 0 }], ['loot', 0, 2.6, { pick: 1 }], ['hold', 0, 2, { pick: 2 }], ['rayout', 1, 2.5, { pick: 2 }], ['empty', 1, 3, { pick: 3 }], ['handoffA', 0, 0.2, { pick: 0, handoff: true }], ['handoffB', 0, 1.2, { pick: 0, handoff: true }]],
+  boss: [['title', 0, 4.6], ['drums', 1, 5], ['ots', 2, 1.7], ['turn', 4, 3.4], ['copcu', 5, 1], ['point', 5, 4.4], ['hopeful', 6, 2, { ray: 'saved' }], ['guilt', 6, 2.5, { ray: 'overrun' }], ['strained', 6, 2, { ray: 'injured' }], ['alone', 6, 3, { ray: 'lost' }], ['roar', 8, 1.8], ['handoffA', 0, 0.2, { handoff: true }], ['handoffB', 0, 1.4, { handoff: true }]],
+  ending: [['kneel', 0, 6], ['gauge', 2, 5], ['office', 3, 3.4], ['printout', 4, 4.8], ['feed', 6, 7], ['orbit', 7, 3], ['orbit2', 8, 8], ['reflect', 10, 3.2], ['hand', 11, 1.8], ['eyes', 12, 7.5], ['next', 13, 3], ['credits', 14, 6.5]],
 };
 
 const port = 8700 + Math.floor(Math.random() * 200);
@@ -45,6 +45,23 @@ try {
         page.on('pageerror', (e) => errors.push(String(e).slice(0, 300)));
         await page.goto(`${url}?cine=${scene}${o.ray ? `&ray=${o.ray}` : ''}`, { waitUntil: 'load' });
         await page.waitForFunction(() => window.__motd && window.__motd.film, null, { timeout: 90000 });
+        if (o.handoff) { // freeze a moment of the cut to gameplay
+          await page.evaluate(async ({ secs, pick }) => {
+            document.body.classList.add('rotate-ok');
+            const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            const c = window.__motd.cut, real = c.update;
+            if (pick != null) { c.i = c.beats.findIndex((b) => b.t === 'choice'); c.enter(); c.pick(pick); }
+            c.i = c.beats.findIndex((b) => b.handoff); c.enter();
+            real.call(c, secs);
+            c.update = () => {};
+            await frame(); await frame();
+          }, { secs, pick: o.pick });
+          await page.screenshot({ path: `${OUT}/${prefix}-${scene}-${name}-${w}x${h}.png` });
+          totalErrors += errors.length;
+          console.log(scene, name, `${w}x${h}`, 'handoff', errors.length ? errors : '');
+          await page.close();
+          continue;
+        }
         await page.evaluate(() => { document.body.classList.add('rotate-ok'); });
         const info = await page.evaluate(async ({ beat, secs, pick }) => {
           const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -58,7 +75,6 @@ try {
           if (b.t === 'card') { c.t = Math.min(secs, b.dur - 0.5); }
           if (b.t === 'line' || b.t === 'shot') c.t = secs;
           if (b.t === 'choice') c.timer = 6;
-          c.bar = b.t === 'card' ? 90 : 42;
           await frame();
           const f = window.__motd.film;
           f.pl.frames = -1e9; // headless GL is slow: keep High for the capture
