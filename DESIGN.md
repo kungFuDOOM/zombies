@@ -88,7 +88,7 @@ Replaying Wing 1 clears that wing's choices first (`resetWing1`), so a fresh run
 
 ### Cinematics
 
-- **Opening intro.** `src/intro.js` plays a ~38s opening cinematic before the title. It plays once on first launch (localStorage key `motd-intro-seen`). Any key, tap or gamepad button skips it. The title has a "WATCH INTRO" button (or the I key) to replay it. `window.__motd.playIntro()` starts it on demand. `?intro=1` forces it with no key-press gate.
+- **Opening intro.** A pre-rendered live-action movie (`assets/film/opener-v1.*`, played by `src/movie.js`, captions from its VTT) shows before the title: once on first launch (localStorage key `motd-intro-seen`), and from "WATCH INTRO" (or the I key). Any key, tap or gamepad button skips it, and it hard-cuts to the title. If it can't play, breaks, or shows no frame within 8 s, the in-engine opener (`src/intro.js`) plays instead. The service worker never caches it. `window.__motd.playIntro()` starts it on demand (`{ engine: true }` for the in-engine one). `?intro=1` forces it with no key-press gate (browsers then start it muted, with a "tap for sound" button, unless they allow autoplay).
 - **Camera and cues.** Cutscene beats can carry `cam: {shot, move, roll, dur}`, where `move` is `push`, `dolly`, `orbit`, `crane`, `tension`, `reveal` or `roar`. They can also carry `cues: [{at, sting, shake, flash, slow: [scale, seconds]}]`. Slow motion only affects the set. It never slows typing, timers or choice timing.
 - **Letterbox.** Desktop bars are 90px on cards and 42px on lines. Touch devices cap them at 64px and 38px.
 - **Capture.** `window.__motd.cutscene('opening' | 'crisis' | 'boss')` plays a scene for screenshots or video capture.
