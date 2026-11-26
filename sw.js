@@ -11,7 +11,7 @@
 //   announcer clips have content-hashed names and never change; models and images are
 //   re-checked quietly in the background so an updated model still arrives.
 
-const CODE_CACHE = 'motd-code-v18';
+const CODE_CACHE = 'motd-code-v19';
 const ASSET_CACHE = 'motd-assets-v7';
 const CODE = /\.(js|mjs|html|json|webmanifest|css)$/;
 const ASSET = /\.(glb|png|mp3)$/;
