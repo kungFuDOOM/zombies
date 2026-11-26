@@ -23,6 +23,12 @@ const BUTTONS = ['attack', 'magic', 'turbo', 'up', 'down', 'left', 'right'];
 const EMPTY = Object.freeze({ x: 0, y: 0, attack: false, magic: false, turbo: false, pressed: {} });
 const PREVENT = new Set(['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Slash', 'Quote']);
 
+/** The keys that are a keyboard source's Attack ('kb' is both halves of an unsplit keyboard; none for other sources). */
+export function attackKeys(source) {
+  if (source === 'kb') return [...KB_SCHEMES.kb1.attack, ...KB_SCHEMES.kb2.attack];
+  return Object.prototype.hasOwnProperty.call(KB_SCHEMES, source) ? KB_SCHEMES[source].attack : [];
+}
+
 export class Input {
   constructor() {
     this.keys = new Set();
