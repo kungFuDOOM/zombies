@@ -31,13 +31,13 @@ test('only the press that readies the last hero completes the party', () => {
 const CHROME = process.env.CHROME_PATH || '/usr/bin/google-chrome';
 const chromium = existsSync(CHROME) ? await import('playwright-core').then((m) => m.chromium, () => null) : null;
 
-test('in the browser: boot -> title; a story run -> in-engine opener -> game; WATCH INTRO -> opener -> title', { skip: !chromium && 'needs Chrome and playwright-core', timeout: 400000 }, async () => {
+test('in the browser: boot -> title; a story run -> opener movie -> game; WATCH INTRO -> movie -> title; no movie -> in-engine opener', { skip: !chromium && 'needs Chrome and playwright-core', timeout: 400000 }, async () => {
   const { server } = await import('../server.js');
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   try {
     // humanPlayer: hide navigator.webdriver, to boot as a first-time player's browser does
-    const open = async (save, { humanPlayer = false, context = { viewport: { width: 960, height: 540 } } } = {}) => {
+    const open = async (save, { humanPlayer = false, blockMovie = false, context = { viewport: { width: 960, height: 540 } } } = {}) => {
       const ctx = await browser.newContext({ ...context, serviceWorkers: 'block' });
       await ctx.addInitScript(([s, human]) => {
         window.__traceStates = true;
@@ -46,6 +46,7 @@ test('in the browser: boot -> title; a story run -> in-engine opener -> game; WA
         if (human) Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false });
       }, [save, humanPlayer]);
       const page = await ctx.newPage();
+      if (blockMovie) await page.route('**/*.mp4', (r) => r.abort());
       const states = [], media = [];
       page.on('request', (r) => { if (/\.(mp4|webm|vtt|jpe?g|ogg|wav)(\?|$)/i.test(r.url())) media.push(r.url()); });
       page.on('console', (m) => { const t = /^state \S+ -> (\S+)$/.exec(m.text()); if (t) states.push(t[1]); });
@@ -54,42 +55,52 @@ test('in the browser: boot -> title; a story run -> in-engine opener -> game; WA
       await reach('title');
       return { ctx, page, states, reach, media };
     };
-    const noMovie = (page) => page.evaluate(() => !document.querySelector('video') && !(window.__motd.intro && window.__motd.intro.active));
-    // the opener is up, running, and old enough to take a skip
-    const rolling = (page) => page.waitForFunction(() => { const i = window.__motd.intro; return window.__motd.state === 'intro' && i && i.active && !i.gate && i.age > 0.5; }, null, { timeout: 120000 });
-    const inPress = (event) => `window.addEventListener('${event}', () => { window.__inPress ??= [window.__motd.state, !!(window.__motd.intro && window.__motd.intro.active)]; })`;
+    // no opener of either kind on screen
+    const noOpener = (page) => page.evaluate(() => !window.__motd.movie.active && !document.querySelector('video') && !(window.__motd.intro && window.__motd.intro.active));
+    // the movie is up, its picture moving, and old enough to take a skip
+    const waitRolling = (page) => page.waitForFunction(() => { const m = window.__motd.movie, v = document.querySelector('#movie video'); return window.__motd.state === 'intro' && m.active && !m.waiting && m.age() > 0.5 && v && !v.paused && v.currentTime > 0; }, null, { timeout: 120000 });
+    // (if it never gets there, say what the page was doing: skipped, still loading, or fallen back to the engine)
+    const rolling = (page) => waitRolling(page).catch(async (err) => {
+      const seen = JSON.stringify(await page.evaluate(() => { const { state, movie: m, intro: i } = window.__motd; return { state, active: m.active, waiting: m.waiting, failed: m.failed, age: m.age(), time: m.el && m.el.currentTime, ready: m.el && m.el.readyState, engine: !!(i && i.active) }; }));
+      throw new Error(`the movie never got rolling: ${seen}`, { cause: err });
+    });
+    // the in-engine opener likewise (the fallback)
+    const engineRolling = (page) => page.waitForFunction(() => { const i = window.__motd.intro; return window.__motd.state === 'intro' && i && i.active && !i.gate && i.age > 0.5; }, null, { timeout: 120000 });
+    const inPress = (event) => `window.addEventListener('${event}', () => { window.__inPress ??= [window.__motd.state, window.__motd.movie.active && !window.__motd.movie.waiting && !!document.querySelector('#movie video')]; })`;
     const toSelect = async ({ page, reach }) => { await page.waitForTimeout(600); await page.keyboard.press('Enter'); await reach('select'); await page.waitForTimeout(600); };
     const veteran = { progress: { completed: {}, seenIntro: true, seenRealm: {} }, heroes: {} };
 
     // a first launch lands on the title and stays there; the story text still comes before hero select
     const first = await open(null, { humanPlayer: true });
     await first.page.waitForTimeout(1500);
-    assert.ok(await noMovie(first.page));
+    assert.ok(await noOpener(first.page));
     assert.deepEqual(first.states, ['title']);
     await first.page.keyboard.press('Enter');
     await first.reach('story');
     await first.page.waitForTimeout(600);
     await first.page.keyboard.press('Escape');
     await first.reach('select');
-    assert.ok(await noMovie(first.page));
+    assert.ok(await noOpener(first.page));
     await first.ctx.close();
 
-    // a story run: the opener after select, and a skip cuts into the hub
+    // a story run: the movie after select, and a skip cuts into the hub
     const run = await open(veteran);
     await toSelect(run);
-    assert.ok(await noMovie(run.page));
-    // (this listener runs after the game's in the same event: the opener must already be on its way, as iOS requires for sound)
+    assert.ok(await noOpener(run.page));
+    // (this listener runs after the game's in the same event: the movie must already be playing, as iOS requires for sound)
     await run.page.evaluate(inPress('keydown'));
     await run.page.keyboard.press('Enter');
     assert.deepEqual(await run.page.evaluate(() => window.__inPress), ['intro', true]);
     await rolling(run.page);
     assert.deepEqual(await run.page.evaluate(() => [window.__motd.state, window.__motd.introThen, window.__motd.music]), ['intro', 'game', null]);
+    assert.deepEqual(await run.page.evaluate(() => { const v = document.querySelector('#movie video'); return [new URL(v.currentSrc).pathname, v.muted, !!(window.__motd.intro && window.__motd.intro.active)]; }),
+      ['/assets/film/opener-v4.mp4', false, false]);
     await run.page.keyboard.press('Space');
     await run.reach('play');
-    assert.ok(await noMovie(run.page));
+    assert.ok(await noOpener(run.page));
     assert.ok(await run.page.evaluate(() => window.__motd.game.level.hub));
     assert.deepEqual(run.states, ['title', 'select', 'intro', 'play']);
-    assert.deepEqual(run.media, [], 'the opener is drawn in the engine: no video, caption or sound files');
+    assert.ok(run.media.some((u) => u.endsWith('/assets/film/opener-v4.mp4')));
     await run.ctx.close();
 
     // left to end, on a brand new player's save (no Training, nothing owed): it cuts into the hub
@@ -97,13 +108,14 @@ test('in the browser: boot -> title; a story run -> in-engine opener -> game; WA
     await toSelect(end);
     await end.page.keyboard.press('Enter');
     await rolling(end.page);
-    await end.page.evaluate(() => { const i = window.__motd.intro; i.pl.t = 82.8; });
+    await end.page.evaluate(() => { const v = document.querySelector('#movie video'); v.currentTime = v.duration - 0.2; });
     await end.reach('play');
     assert.ok(await end.page.evaluate(() => window.__motd.game.level.hub));
     assert.deepEqual(end.states, ['title', 'select', 'intro', 'play']);
+    assert.ok(await noOpener(end.page));
     await end.ctx.close();
 
-    // touch: letting go of the tap that readies the last hero starts the opener
+    // touch: letting go of the tap that readies the last hero starts the movie
     const touch = await open(veteran, { context: { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true } });
     const tap = async (x, y) => { // game coordinates -> the page
       const r = await touch.page.evaluate(() => { const b = document.querySelector('#stage').getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; });
@@ -126,7 +138,7 @@ test('in the browser: boot -> title; a story run -> in-engine opener -> game; WA
     assert.deepEqual(touch.states, ['title', 'select', 'intro', 'play']);
     await touch.ctx.close();
 
-    // there is no Training: T is just another key on the title, and the run still plays the opener
+    // there is no Training: T is just another key on the title, and the run still plays the movie
     const noTraining = await open(veteran);
     assert.equal(await noTraining.page.evaluate(async () => {
       const { titleButtonAt } = await import('/src/hud.js');
@@ -152,8 +164,22 @@ test('in the browser: boot -> title; a story run -> in-engine opener -> game; WA
     await watch.page.keyboard.press('Space');
     await watch.reach('title');
     await watch.page.waitForTimeout(600);
+    assert.ok(await noOpener(watch.page));
     assert.deepEqual(watch.states, ['title', 'intro', 'title']);
     await watch.ctx.close();
+
+    // the movie can't load: the in-engine opener plays instead, and left to end it cuts into the hub
+    const fallback = await open(veteran, { blockMovie: true });
+    await toSelect(fallback);
+    await fallback.page.keyboard.press('Enter');
+    await engineRolling(fallback.page);
+    assert.deepEqual(await fallback.page.evaluate(() => [window.__motd.introThen, window.__motd.movie.active, !!document.querySelector('video')]), ['game', false, false]);
+    await fallback.page.evaluate(() => { window.__motd.intro.pl.t = 82.8; });
+    await fallback.reach('play');
+    assert.ok(await fallback.page.evaluate(() => window.__motd.game.level.hub));
+    // ('intro' twice: the movie takes the showing with a fresh try, then hands it to the in-engine opener)
+    assert.deepEqual(fallback.states, ['title', 'select', 'intro', 'intro', 'play']);
+    await fallback.ctx.close();
   } finally {
     await browser.close();
     server.close();

@@ -1,5 +1,5 @@
 // Bootstrap + state machine:
-//   title -> (intro story) -> survivor select -> in-engine opener -> Security Room hub (play) -> Mall Directory (realm)
+//   title -> (intro story) -> survivor select -> opener movie -> Security Room hub (play) -> Mall Directory (realm)
 //   realm -> cutscene (Scene 1) -> Food Court (play) -> cutscene (Scene 2) -> level clear
 //   -> cutscene (Scene 3) -> the Butcher (play) -> recap ("Your Choices") -> hub
 
@@ -7,12 +7,13 @@ import { VIEW_W, VIEW_H, CLASSES, CLASS_ORDER, MAX_PLAYERS, stagePoints, TILE } 
 import { Input, attackKeys } from './input.js';
 import { TouchControls } from './touch.js';
 import { Game } from './game.js';
-import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap, playLine, voiceLeft, hushLine, preloadLines } from './audio.js';
+import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap, playLine, voiceLeft, hushLine, preloadLines, isMuted } from './audio.js';
 import { Host, Guest, showCode } from './net.js';
 import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanGame } from './netstate.js';
 import { Lobby } from './lobby.js';
 import { Renderer3D, defaultQuality } from './render3d.js';
 import { Intro } from './intro.js';
+import { Movie } from './movie.js';
 import { completingSlot, partyReady } from './storyStart.js';
 import { StoryFilm } from './storyFilm.js';
 import { loadAssets } from './assets.js';
@@ -69,7 +70,7 @@ input.touch = new TouchControls({
 });
 // Taps and clicks on the screen itself (not the on-screen buttons), in game coordinates.
 const taps = [];
-const offScreen = (e) => e.button > 0 || !!(e.target.closest && e.target.closest('.btn, #rotate, #lobby, #online-bar'));
+const offScreen = (e) => e.button > 0 || !!(e.target.closest && e.target.closest('.btn, #rotate, #lobby, #online-bar, #movie-sound'));
 function stagePoint(e) {
   const r = stage.getBoundingClientRect();
   return r.width ? { x: (e.clientX - r.left) * VIEW_W / r.width, y: (e.clientY - r.top) * VIEW_H / r.height } : null;
@@ -78,13 +79,14 @@ window.addEventListener('pointerdown', (e) => {
   const p = !offScreen(e) && stagePoint(e);
   if (p) taps.push(p);
 }, true);
-// Phones only let sound start from inside the tap or key handler itself, not from the frame loop, so WATCH INTRO / I
-// and the press that readies the last hero (a story start, which plays the opener) are handled here.
+// Phones only let a video start with sound from inside the tap or key handler itself, not from the frame loop, so the
+// movie's gate, WATCH INTRO / I, and the press that readies the last hero (a story start) are handled here.
 let introDown = false; // this press went down on WATCH INTRO
 let readyDown = null;  // the hero card this tap went down on, if letting go there readies the whole party
 const titleOpen = () => state === 'title' && !net && !lobby.isOpen && !titleControls && performance.now() >= titleGrace;
 const onWatchIntro = (e) => { const p = !offScreen(e) && stagePoint(e); return !!p && titleButtonAt(p.x, p.y) === 'intro'; };
 function watchIntro() { initAudio(); sfx.select(); startIntro({ gate: false }); }
+function playMovie() { initAudio(); movie.play(isMuted()); }
 // Is a story start one press away? (Online guests don't run the game.)
 const openerAhead = () => state === 'select' && !(net && net.role === 'guest');
 function cardAt(e) {
@@ -101,14 +103,16 @@ window.addEventListener('pointerdown', (e) => {
   taps.pop(); // this tap acts when it lifts (below), where a phone lets the opener have sound
 }, true);
 window.addEventListener('pointerup', (e) => {
-  if (introDown && titleOpen() && onWatchIntro(e)) watchIntro();
+  if (state === 'intro' && movie.waiting) { if (!offScreen(e)) playMovie(); }
+  else if (introDown && titleOpen() && onWatchIntro(e)) watchIntro();
   else if (readyDown !== null && openerAhead() && cardAt(e) === readyDown && completingSlot(slots, (c, k) => k === readyDown) >= 0) { initAudio(); readyAndStart(readyDown); }
   introDown = false;
   readyDown = null;
 }, true);
 window.addEventListener('keydown', (e) => {
   if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.code === 'KeyI' && titleOpen()) watchIntro();
+  if (state === 'intro' && movie.waiting) playMovie();
+  else if (e.code === 'KeyI' && titleOpen()) watchIntro();
   else if (openerAhead()) {
     const i = completingSlot(slots, (c) => attackKeys(c.source).includes(e.code));
     if (i >= 0) { initAudio(); readyAndStart(i); }
@@ -156,7 +160,8 @@ loadAssets((p) => (loadProgress = p)).then(() => {
   if (q.has('intro') && q.get('intro') !== '0') startIntro({ gate: true });
 }).catch((err) => { loadError = err; console.error(err); });
 let stateT = 0;
-let intro = null;          // the opener (intro.js), built when it is first played
+const movie = new Movie(); // the opener movie (movie.js)
+let intro = null;          // the in-engine opener (intro.js), the movie's fallback: built when it is first needed
 let introThen = 'title';   // where the opener leads: back to the 'title' (WATCH INTRO) or into the 'game' (a story start)
 let titleGrace = 0;        // ms timestamp: the title ignores presses until then (the press that skipped the intro)
 let titleFade = false;     // the title comes up out of black after the intro
@@ -219,6 +224,9 @@ function announceRuns(placed) {
 
 function setState(s) {
   if (window.__traceStates) console.log(`state ${state} -> ${s}`);
+  // the opener movie buffers while the title and hero select are up (not right after a showing), and is dropped for play
+  if (s !== 'intro' && (movie.active || s === 'play')) movie.release();
+  else if ((s === 'title' || s === 'select') && state !== 'intro') movie.preload();
   if (s === 'title') { input.split = false; announceRuns(stats.endRuns()); } // a new party starts with one keyboard player
   if (s === 'stats' && recordsTab === 3) loadGlobal();
   if (s === 'gameover' || s === 'recap') offerPending = true;
@@ -289,19 +297,22 @@ function updateStory(dt) {
 
 // ---------- the opening cinematic ----------
 
-// Play the opener, the in-engine film in intro.js.
+// Play the opener: the movie, or the in-engine film if the movie can't play (engine: ask for that one).
 // then: where it leads when it ends or is skipped (see endIntro).
 // gate: wait for a key / tap first (browsers only start sound after a gesture; skipped when sound is already on).
-function startIntro({ then = 'title', gate = false } = {}) {
+function startIntro({ then = 'title', gate = false, engine = false } = {}) {
   if (net && then !== 'game') return false; // no rewatching while online
   introThen = then;
   try {
-    if (!intro) intro = new Intro(r3d);
+    const video = !engine && movie.start();
+    if (!video && !intro) intro = new Intro(r3d);
     if (gate && !audioReady()) { /* the gate stays up */ } else { initAudio(); gate = false; }
     stopVoice();
     stopCine();
     playMusic(null, 0.05); // nothing of ours plays over the opener
-    intro.start({ gate });
+    if (video) {
+      if (!gate) movie.play(isMuted());
+    } else intro.start({ gate });
     setState('intro');
     return true;
   } catch (err) { // nothing about the film may block the way on
@@ -312,6 +323,8 @@ function startIntro({ then = 'title', gate = false } = {}) {
 }
 
 function endIntro() {
+  const video = movie.active;
+  movie.release();
   try { stopCine(); stopVoice(); } catch { /* audio not ready */ }
   if (intro && intro.active) intro.finish();
   const then = introThen;
@@ -319,7 +332,7 @@ function endIntro() {
   // a story start cuts straight into the game (unless everyone left while it played)
   if (then === 'game' && slots.some(Boolean)) { startGame(); return; }
   titleGrace = performance.now() + 450;
-  titleFade = true;
+  titleFade = !video; // the movie hard-cuts to the title
   setState('title');
 }
 
@@ -331,11 +344,26 @@ function introPressed(ids = input.sources().filter((id) => !isNet(id))) {
 // the sound and display toggles work during the opener without skipping it
 const INTRO_IGNORE = /^(Key[MNV]$|Tab$|F\d+$|Meta|Alt|Control|OS|ContextMenu|CapsLock)/;
 
+// a key (not a toggle), or any gamepad button, on this machine
+const skipKey = () => !!input.frameGlobal && [...input.frameGlobal].some((k) => !INTRO_IGNORE.test(k));
+
+function updateMovie() {
+  if (movie.failed) { // unplayable, broken or stalled: the in-engine opener instead (still gated if nothing was pressed)
+    const gate = movie.waiting;
+    movie.release();
+    startIntro({ then: introThen, gate, engine: true });
+  } else if (movie.ended) endIntro();
+  else if (movie.waiting) { // taps and keys start it from their own handlers (above); a gamepad can only start it here
+    if (introPressed(input.sources().filter((id) => id.startsWith('pad')))) playMovie();
+  } else if (movie.age() >= 0.35 && stateT > 0.1
+    && (taps.length || skipKey() || introPressed())) endIntro(); // (stateT: never on the first frames, however slow, which still see the press that started it)
+}
+
 function updateIntro(dt) {
+  if (movie.active) { updateMovie(); return; }
   if (!intro || intro.done) { endIntro(); return; }
   // the first press wakes the sound (gate), a later one skips
-  const anyKey = input.frameGlobal && [...input.frameGlobal].some((k) => !INTRO_IGNORE.test(k));
-  if (taps.length > 0 || anyKey || introPressed()) {
+  if (taps.length > 0 || skipKey() || introPressed()) {
     initAudio();
     if (intro.press() === 'skip') { endIntro(); return; }
   }
@@ -1152,6 +1180,8 @@ function render() {
   const heroes = guest ? net.ui.heroes || {} : save.heroes;
   if (state === 'loading') {
     drawLoading(ctx, loadProgress, loadError);
+  } else if (state === 'intro' && movie.active) {
+    drawIntro(ctx, { gate: true }, stateT); // the black and the tap-to-begin words; the video covers them once it plays
   } else if (state === 'intro' && intro) {
     try { intro.render(); drawIntro(ctx, intro.view(), stateT); } catch (err) { console.error(err); endIntro(); }
   } else if (state === 'title' || state === 'confirm') {
@@ -1252,7 +1282,11 @@ function frame(now) {
   input.poll();
   setDevice(input.lastDevice);
 
-  if (input.key('KeyM')) { initAudio(); toast = { text: toggleMute() ? 'Sound OFF' : 'Sound ON', t: 1.5, local: true }; }
+  if (input.key('KeyM')) {
+    initAudio();
+    toast = { text: toggleMute() ? 'Sound OFF' : 'Sound ON', t: 1.5, local: true };
+    if (movie.active && !movie.waiting) { if (isMuted()) movie.el.muted = true; else movie.unmute(); } // the video follows
+  }
   if (input.key('Tab')) showMinimap = !showMinimap;
   if (input.key('KeyH')) {
     showControls = !showControls;
@@ -1341,7 +1375,7 @@ function loop(now) {
 }
 
 // Debug/test hook (used by automated smoke tests).
-window.__motd = { cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate }), get introThen() { return introThen; }, get intro() { return intro; }, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
+window.__motd = { cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate, engine: !!opts.engine }), get introThen() { return introThen; }, get movie() { return movie; }, get intro() { return intro; }, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
 
 // Scale canvas to fit window while keeping aspect ratio.
 function fit() {

@@ -35,7 +35,7 @@ try {
         info = await page.evaluate(async () => {
           document.body.classList.add('rotate-ok');
           const frame = () => new Promise((r) => requestAnimationFrame(r));
-          window.__motd.playIntro({ gate: false });
+          window.__motd.playIntro({ gate: false, engine: true });
           const it = window.__motd.intro;
           it.pl.frames = -1e9;
           const seen = new Set();
