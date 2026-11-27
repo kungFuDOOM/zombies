@@ -74,6 +74,3 @@ announcement uses the player's own browser speech voice, pushed low and slow.
 
 ## Session 1 visual overhaul (original work, no new third-party assets)
 - `src/undead.js` (procedural zombie gore shader), the zombie face/eye/glow meshes and the survivor outfits in `src/charProps.js` are original procedural geometry and shaders (project licence); no new asset files were added.
-
-## Opener movie
-assets/film/opener-v2.*: original AI-generated live-action opener and original synthesized audio, made for this game.
