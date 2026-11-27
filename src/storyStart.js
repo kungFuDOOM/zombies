@@ -1,5 +1,5 @@
 // Hero select's "is everyone ready?" rules, pure so they can be tested. main.js uses them to start a story run, and to
-// spot the key or tap that is about to ready the last hero: the opener movie has to start inside that press's handler.
+// spot the key or tap that is about to ready the last hero: the opener has to start inside that press's handler.
 
 /** True when somebody has joined and everyone who has is ready. */
 export function partyReady(slots) {

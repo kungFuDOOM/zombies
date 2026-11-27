@@ -44,12 +44,15 @@ export const BASE_CLASSES = ['biker', 'mallCop', 'skater', 'mallGoth'];
 export const CLASS_ORDER = [...BASE_CLASSES];
 
 // Food Court monsters. ai: melee (knock: shove the hero back, atkCd: time between blows),
-// charger (crouches, then lunges), lobber (lob: what it throws), death.
+// charger (crouches, then lunges), lobber (lob: what it throws), rifle (the Abatement Team), death.
 export const ENEMIES = {
   walker:   { name: 'Mall Walker',           hp: 18, speed: 52,  dmg: 10, r: 11, xp: 6,  score: 15, ai: 'melee',   color: '#8aa070', atkCd: 0.9 },
   sprinter: { name: 'Food-Court Sprinter',   hp: 12, speed: 104, dmg: 11, r: 10, xp: 8,  score: 25, ai: 'charger', color: '#d0803a' },
   brute:    { name: 'Security Brute',        hp: 70, speed: 50,  dmg: 22, r: 15, xp: 18, score: 60, ai: 'melee',   color: '#2a4a8a', atkCd: 1.2, knock: 20 },
   spitter:  { name: 'Toxic Spill Spitter',   hp: 16, speed: 62,  dmg: 12, r: 11, xp: 10, score: 35, ai: 'lobber',  color: '#80e030', range: 280, cooldown: 2.2, lob: 'flask' },
+  // Wing 1's second half: the cleanup crew (game.js updateAbatement). Not undead. Suppressed rifles for everyone but the
+  // Skater, who only ever gets a net (netTime: seconds slowed to netSlow).
+  abatement: { name: 'Abatement Team',       hp: 45, speed: 70,  dmg: 13, r: 12, xp: 20, score: 90, ai: 'rifle',   color: '#8a8e94', range: 340, keep: 130, cooldown: 1.9, windup: 0.45, shotSpeed: 540, netSpeed: 340, netTime: 1.4, netSlow: 0.55 },
   death:    { name: 'The Grim Shopper',      hp: 1,  speed: 74,  dmg: 25, r: 13, xp: 60, score: 1000, ai: 'death', color: '#1a1a22', immune: true },
 };
 

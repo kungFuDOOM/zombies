@@ -315,7 +315,7 @@ The FALLOW clock reads 10:00 on every screen. Fog has swallowed Highway 99. Pump
   - Goth: "Not this town. Not on my roll of film."
   - Goth: "Last song of the night. Make it loud."
 - **Skater: the gas and the end of the study.** In Phase 3, THE HUSH floods the pad with gas thick enough to kill anyone else in seconds. The Skater is the only one who can move. He dashes through it, breaks the crop duster's tie-down chain with his bat, and lands the hit that drops Ashby to his knees.
-  - Skater: "Fourteen years. You never once asked me."
+  - Skater: "Seventeen years. You never once asked me."
   - Skater: "Study's over, Doc."
 - **Biker: the bird.** He rips the panel, starts the crop duster the way he watched ag pilots do it in 1977, and holds a shaky hover at the roof edge while the others climb in. He has never flown one alone. When THE HUSH lunges for the skid, he turns the rotor wash into its own gas and drives it back over the sealed stack.
   - Biker: "I flagged for these birds at twenty-two."
@@ -359,7 +359,7 @@ The staffer slides the binder back, approved. Garrity's next tab reads **SITE 2*
 - **What he wants:** to live. Sealing drum #3 in October, he was clawed through a torn glove. He has been turning slowly ever since: gray lips, a cough, a wrist he keeps bandaged. Garrity's protocol classes exposed staff as "inventory," meaning they burn with the site. The Skater, his Participant 14, is the only cure that exists.
 - **Why he poses as CDC:** to keep the four alive and moving toward wherever the Abatement Team can collect the Skater cleanly. His deal with Garrity is to deliver the kid and get a seat on the helicopter. He reports their position at every stop.
 - **Why he grabs the blood himself (Wing 5):** he stops trusting Garrity's promise. He's right not to.
-- **Who he is:** he has drawn the Skater's blood every year for fourteen years and calls it care. He built HUSH and calls it humane. He has never once asked anyone's permission.
+- **Who he is:** he has drawn the Skater's blood every year for seventeen years and calls it care. He built HUSH and calls it humane. He has never once asked anyone's permission.
 - **Fair-play clues:** "champ" (Wing 2), knowing about the Goth's meeting (Wing 3), never opening a door himself (Wing 3), Abatement arriving after every position report (Wings 1-3), the October bandage in the notes (Wing 5).
 
 ### The cover-up, layer by layer (what the player sees)
@@ -378,7 +378,7 @@ The staffer slides the binder back, approved. Garrity's next tab reads **SITE 2*
 - **Abatement Team spares the Skater:** in Wings 1-5, nets on the Skater and live fire on everyone else. If the AI can't support this, cover it with a Cop bark and a cutscene in Wing 2.
 - **Gas immunity:** the Skater takes no damage from HUSH clouds (Wings 1, 4, 5, 6 and the roof). One flag, big story payoff.
 - **Keep all four playable:** the Wing 5 capture is a cutscene, and the Skater is free inside the first minute of Wing 6.
-- **Opener film:** `assets/film/opener-v2.*` (script: `docs/OPENER_SCREENPLAY.md`) was made for the earlier story and still plays. A White Acre cut (Midnight Madness at 11:58, the four pages, the vents at 12:01, the four "why are we standing" moments) waits for the owner's approval.
+- **Opener film:** rendered in-engine by `src/intro.js` (script: `docs/OPENER_SCREENPLAY.md`). It plays when a story run starts, after hero select, and is skippable. No video or image files.
 - **Voice continuity:** the Biker's nicknames (Badge, Kid, Spooky, Pizza, dock rat) and the Cop's "for the record" are part of their voices.
 - **Line length:** every subtitle and spoken line is 70 characters or fewer.
 - **Originality:** WHITE ACRE, HUSH, OSCS, Kern Valley Vector Control, the Abatement Team, Order FALLOW, Lerdo Flats, Lease 99, Action News 17, and every character are invented. Real history (Cold War secret testing on civilians, open-air spraying over American cities, the 1992 riots, 1990s budget cuts) is flavor only. No real program, agency program name, or game property is used as an in-world name.
@@ -387,7 +387,7 @@ The staffer slides the binder back, approved. Garrity's next tab reads **SITE 2*
 
 ## 8. What the Game Plays Today (Wing 1)
 
-The script of record for in-game lines is `src/cutscenes.js`, `src/story.js`, `src/campaign.js` and `src/intro.js`. Wing 1 tells the part of this bible it can stage with its current sets and enemies. The Abatement Team and the pinned PA pages as live gameplay are not built.
+The script of record for in-game lines is `src/cutscenes.js`, `src/story.js`, `src/campaign.js` and `src/intro.js`. Wing 1 tells the part of this bible it can stage with its current sets and enemies. The Abatement Team arrives in the Food Court as live enemies (rifles for everyone but the Skater, who only gets nets). The 11:58 pages play in the opener.
 
 ### Ray
 Ray runs Ray's Slice of Heaven in the Food Court. He is the civilian in Wing 1's timed choice, **Ray vs the Locker**. He was shut in his walk-in dough cooler at 12:01, which is why he is still himself. He saw the "bug crew" eat at his counter at 11:30, and heard them say the Officer let them up. Saved, hurt or lost, that outcome carries through the Butcher fight, the Security Room and the recap.
@@ -400,8 +400,8 @@ The choice ids and options are fixed, so existing saves keep working: `outbreak`
 - **The Plan:** the Skater asks why they are still standing; the TV leak report; the Cop's "nine miles off."
 - **The Ticket:** Ray's order spike (BUG CREW, 11:30, ROOF ACCESS).
 - **The Butcher:** empty Vector Control canisters that match the Cop's work order; "Officer. They pulled my filter."
-- **The Work Order (ending):** the PA's "east doors" page; Vern's OSCS card; the door log; the Cop's first confession; the dispatcher's "How many survivors, Officer?"; Ashby's first radio line.
-- **In-engine opener** (only when the movie can't play): the four 11:58 pages.
+- **The Work Order (ending):** the PA's "east doors" page; Vern's OSCS card; the door log; the Cop's first confession; the Cop's first confession; the Cop recalling the call he made; Ashby's first radio line.
+- **Opener** (`src/intro.js`): the four 11:58 pages, 12:01, the leak report, and the call to Vector Control.
 
 ### Wing 2 recap ("Previously"), for when Wing 2 ships
 "Previously: the Midnight Madness crowd dropped, then got up. The Deep-Fry Butcher was Vern Toller, a federal observer with no filter. The Mall Cop signed the work order for the crew on the roof. A voice on the radio says he's here to help."

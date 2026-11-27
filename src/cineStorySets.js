@@ -276,18 +276,29 @@ export const KITCHEN_X = 9000;
 export const FRYER_XS = [-175, -125, -75, -25, 25, 75, 125, 175];
 export const GAUGE_AT = [212, 78, -142];
 
-function drumTex() {
+// The canister label. The texture wraps the whole drum (512 x 256 onto about 132 x 46 units, so a pixel is wider than it is
+// tall): each stencil is squeezed to match and kept narrow enough to read in full from the front, never round the curve.
+export function drumTex() {
   return canvasTex(512, 256, (c, w, h) => {
     c.fillStyle = '#d8dcd8'; c.fillRect(0, 0, w, h);
     c.fillStyle = '#2a5a4a'; c.fillRect(0, 18, w, 14); c.fillRect(0, h - 32, w, 14);
+    const MAX = 112; // texture pixels: about 50 degrees of the drum
     for (const cx of [w * 0.25, w * 0.75]) {
+      c.save(); c.translate(cx, 0); c.scale(0.72, 1);
       // the agency's stencil: a mosquito in a struck-out ring
       c.strokeStyle = '#1c2a24'; c.lineWidth = 4;
-      c.beginPath(); c.moveTo(cx, 72); c.lineTo(cx, 112); c.moveTo(cx, 86); c.lineTo(cx - 24, 68); c.moveTo(cx, 86); c.lineTo(cx + 24, 68); c.moveTo(cx, 96); c.lineTo(cx - 24, 112); c.moveTo(cx, 96); c.lineTo(cx + 24, 112); c.stroke();
+      c.beginPath(); c.moveTo(0, 54); c.lineTo(0, 92); c.moveTo(0, 68); c.lineTo(-22, 50); c.moveTo(0, 68); c.lineTo(22, 50); c.moveTo(0, 78); c.lineTo(-22, 94); c.moveTo(0, 78); c.lineTo(22, 94); c.stroke();
       c.strokeStyle = '#b0101c'; c.lineWidth = 7;
-      c.beginPath(); c.arc(cx, 92, 40, 0, Math.PI * 2); c.moveTo(cx - 28, 64); c.lineTo(cx + 28, 120); c.stroke();
-      c.fillStyle = '#17241c'; c.textAlign = 'center'; c.font = 'bold 21px sans-serif';
-      c.fillText('KERN VALLEY', cx, 170); c.fillText('VECTOR CONTROL', cx, 204);
+      c.beginPath(); c.arc(0, 73, 33, 0, Math.PI * 2); c.moveTo(-23, 50); c.lineTo(23, 96); c.stroke();
+      c.fillStyle = '#17241c'; c.textAlign = 'center';
+      [['KERN VALLEY', 138], ['VECTOR', 174], ['CONTROL', 208]].forEach(([line, y]) => {
+        let px = 34;
+        c.font = `bold ${px}px sans-serif`;
+        const tw = c.measureText(line).width, room = MAX / 0.72;
+        if (tw > room) c.font = `bold ${Math.floor(px * room / tw)}px sans-serif`;
+        c.fillText(line, 0, y);
+      });
+      c.restore();
     }
   });
 }
@@ -337,7 +348,7 @@ export function buildKitchen({ high }) {
   // ----- the empty Vector Control canisters, stacked beside the line
   const dt = drumTex(), lid = std('#5a625e', { metalness: 0.7, roughness: 0.35 });
   const side = std('#ffffff', { map: dt, metalness: 0.35, roughness: 0.42 });
-  for (const [x, y, z, ry] of [[-236, 0, -66, 0.1], [-190, 0, -84, -0.3], [-246, 0, -112, 0.5], [-215, 47, -90, 0.05]]) {
+  for (const [x, y, z, ry] of [[-236, 0, -66, 0.06], [-190, 0, -84, -0.1], [-246, 0, -112, 0.12], [-215, 47, -90, 0.02]]) {
     const d = add(g, cyl(21, 21, 46, 22), [side, lid, lid], x, y + 23, z, -Math.PI / 2 + ry + 0.5);
     for (const ly of [-19, 19]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(21.2, 1, 6, 24), lid); rim.rotation.x = Math.PI / 2; rim.position.y = ly; d.add(rim); }
   }

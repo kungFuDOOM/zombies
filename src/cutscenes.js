@@ -49,13 +49,13 @@ export function openingScene() {
   const alarm = { fx: 'alarm' };
   const who = (id, move = 'push') => ({ shot: 'who', who: id, move });
   return [
-    { t: 'card', title: 'WING 1: FOOD COURT', sub: 'BLACK FRIDAY OUTBREAK', dur: 4.2, s: 'plan.wide', cam: { shot: 'wide', move: 'crane', dur: 5 }, ...alarm,
+    { t: 'card', title: 'WING 1: FOOD COURT', sub: '12:14 AM · BLACK FRIDAY OUTBREAK', dur: 4.2, s: 'plan.wide', cam: { shot: 'wide', move: 'crane', dur: 5 }, ...alarm,
       cues: [cue(0.05, 'stingAlarm', { shake: 5 }), cue(0.9, 'stingHit', { shake: 9, flash: 0.35 }), cue(1.6, 'shutterSlams', { shake: 6 })] },
     line('skater', "Everybody dropped, man. Why didn't we?", 'plan.wide', who('skater'), { ...alarm, hold: 4 }),
     line('mallCop', 'Every shutter just dropped. Our only route out is the Food Court.', 'plan.wide', who('mallCop'), { ...alarm, hold: 5, cues: [cue(0.9, 'shutterSlams')] }),
     line('biker', "Food Court's packed with hungry dead. Good. So's my chainsaw.", 'plan.biker', who('biker', 'orbit'), { ...alarm, hold: 5, cues: [cue(0.4, 'chainsawRev', { shake: 4 })] }),
     // the fake news: a leak story on the air three minutes after the gas
-    silent('plan.freeze', 2.6, who('mallCop'), { cues: [cue(0.05, 'duckAll', { args: [0.36] }), cue(0.45, 'tubeTink'), cue(0.5, 'pamChime'), cue(1.0, 'ringing'), cue(1.6, 'heartbeat', { args: [1, 0.9, 0.3] })] }),
+    silent('plan.freeze', 2.6, who('mallCop'), { cues: [cue(0.05, 'duckAll', { args: [0.36] }), cue(0.45, 'tubeTink'), cue(0.5, 'paDing'), cue(1.0, 'ringing'), cue(1.6, 'heartbeat', { args: [1, 0.9, 0.3] })] }),
     line('tv', 'Refinery leak reported. Residents, stay indoors.', 'plan.freeze', who(''), { hold: 3.6 }),
     line('mallCop', "Refinery's nine miles off. They knew in three minutes?", 'plan.freeze', who('mallCop'), { hold: 4.2, cues: [cue(0.5, '', { flash: 0.12 })] }),
     line('mallGoth', 'Or we hijack the PA. The customers go where the noise is.', 'plan.goth', who('mallGoth'), { ...alarm, hold: 5, cues: [cue(1.05, 'boomboxClick')] }),
@@ -70,7 +70,7 @@ function openingResponse(res) {
     case 'cop': return [line('mallCop', "Gate first. Nothing gets behind us. That's Section Four.", two('mallCop', 'biker'), null, { cues: [cue(0.1, 'doorSlam', { shake: 8 })] }), line('biker', "Slow. Boring. Fine, Badge. I'm first through the door.", two('mallCop', 'biker'))];
     case 'goth': return [line('mallGoth', "One bass drop and they'll follow it anywhere. Like boys at a show.", two('mallGoth', 'mallCop'), null, { cues: [cue(0.1, 'bassDrop', { shake: 6 })] }), line('mallCop', 'Copy. Keep it under a noise complaint, please.', two('mallGoth', 'mallCop'))];
     case 'biker': return [line('biker', "THAT'S the plan! Somebody hold the door. Never mind, I'll make one.", two('biker', 'mallCop'), null, { cues: [cue(0.05, 'chainsawRev', { shake: 7, slow: [0.35, 0.7] })] }), line('mallCop', 'For the record, I hate this plan.', two('biker', 'mallCop'))];
-    default: return [line('skater', 'Okay, nobody? Cool. Cool cool cool. Running in anyway.', two('skater', 'mallGoth'), null, { cues: [cue(0.1, 'stingDread')] }), line('pa', 'Shoppers, please remain where you are. Thank you.', 'plan.pa', { shot: 'wide', move: 'tension' }, { hold: 4.2, cues: [cue(-0.3, 'pamChime')] })];
+    default: return [line('skater', 'Okay, nobody? Cool. Cool cool cool. Running in anyway.', two('skater', 'mallGoth'), null, { cues: [cue(0.1, 'stingDread')] }), line('pa', 'Shoppers, please remain where you are. Thank you.', 'plan.pa', { shot: 'wide', move: 'tension' }, { hold: 4.2, cues: [cue(-0.3, 'paDing')] })];
   }
 }
 
@@ -89,7 +89,7 @@ export function ticketScene(story) {
     ...opening,
     line('skater', 'Wait. Badge let the bug guys in?', 'tk.two', { shot: 'who', who: 'skater' }, { hold: 4, cues: [cue(0.02, 'duckAll', { args: [1.2] })] }),
     line('mallCop', "That's... a routine fogging order. I checked a badge.", 'tk.cop', { shot: 'who', who: 'mallCop', move: 'push' }, { hold: 4.2, cues: [cue(1.9, 'gurgle')] }),
-    silent('tk.fountain', 3.1, { shot: 'plaza' }, { cues: [cue(0, 'duckAll', { args: [0.1] }), cue(0.15, 'pamChime'), cue(0.2, 'neckCrack'), cue(0.62, 'neckCrack'), cue(1.04, 'neckCrack'), cue(2.1, 'bassDrop', { shake: 7, flash: 0.2 })] }),
+    silent('tk.fountain', 3.1, { shot: 'plaza' }, { cues: [cue(0, 'duckAll', { args: [0.1] }), cue(0.15, 'paDing'), cue(0.2, 'neckCrack'), cue(0.62, 'neckCrack'), cue(1.04, 'neckCrack'), cue(2.1, 'bassDrop', { shake: 7, flash: 0.2 })] }),
     line('mallGoth', "Huh. They'd rather listen to me. Finally.", 'tk.fountain', { shot: 'who', who: 'mallGoth' }, { hold: 3.6, cues: [cue(0.4, 'moan')] }),
   ];
 }
@@ -124,7 +124,7 @@ function crisisResponse(res) {
     ];
     default: return [
       line('ray', 'Guys? GUYS?', 'cr.empty', ray, { hold: 3, cues: [cue(0.8, 'metalGroan', { shake: 14, slow: [0.3, 0.9] }), cue(0.95, 'screamCut', { blood: 0.6, punch: 0.08 }), cue(0.95, 'bodyHit'), cue(1.6, 'stingDread')] }),
-      line('pa', 'Attention. The Food Court is now closed. Thank you.', 'cr.empty', { shot: 'plaza', move: 'push' }, { hold: 4.6, cues: [cue(0.05, 'pamChime')] }),
+      line('pa', 'Attention. The Food Court is now closed. Thank you.', 'cr.empty', { shot: 'plaza', move: 'push' }, { hold: 4.6, cues: [cue(0.05, 'paDing')] }),
     ];
   }
 }
@@ -171,7 +171,7 @@ export function endingScene(story) {
   return [
     line('butcher', "Three hundred a month... just to count heads.", 'en.kneel', him, { hold: 7, cues: [cue(1.3, 'cleaverClang', { shake: 10, grease: 0.45, slow: [0.35, 0.8] }), cue(1.7, 'fryerDown')] }),
     silent('en.gauge', 2.2, him, { cues: [cue(0.05, 'drone', { args: [6, 0.06] }), cue(0.2, 'gurgle'), cue(0.9, 'metalGroan')] }),
-    line('pa', 'Security, please confirm the east doors.', 'en.gauge', him, { hold: 4.2, cues: [cue(0.05, 'pamChime'), cue(2.4, 'gurgle')] }),
+    line('pa', 'Security, please confirm the east doors.', 'en.gauge', him, { hold: 4.2, cues: [cue(0.05, 'paDing'), cue(2.4, 'gurgle')] }),
     line('mallGoth', 'Card in his apron. OSCS. Field Observer 4.', 'en.gauge', him, { hold: 4.2 }),
     line('skater', "Dude. The door log's printing.", 'en.office', { shot: 'who', who: 'skater' }, { hold: 4.6, cues: [cue(0.05, 'printer'), cue(3, 'printer')] }),
     silent('en.print', 5.6, cop, { cues: [cue(0.05, 'printer'), cue(1.7, 'revealSting', { slow: [0.5, 0.6] }), cue(2.15, 'duckAll', { args: [0.5] }), cue(2.7, '', { shake: 9, flash: 0.22 })] }),
@@ -179,12 +179,12 @@ export function endingScene(story) {
     line('mallCop', "I let these men on the roof. I locked the doors.", 'en.feed', cop, { hold: 4 }),
     line(witness[0], witness[1], 'en.orbit', { shot: 'who', who: witness[0] }, { hold: 5, cues: [cue(0.1, 'rain'), cue(0.6, 'softPiano')] }),
     line('biker', 'Not your fault, Badge.', 'en.orbit', { shot: 'who', who: 'biker' }, { hold: 5 }),
-    // the quiet scare: no sting. A tube drops out, and it is simply there. Then the Cop calls the number on the card.
+    // the quiet scare: no sting. A tube drops out, and it is simply there. Then the Cop owns up to the call (it was made in
+    // the opener), now that the party has seen what it brought.
     silent('en.reflect', 1.8, { shot: 'wide' }, { cues: [cue(0.1, 'receiptRattle'), cue(0.9, 'duckAll', { args: [0.58] }), cue(1.55, 'tubeTink')] }),
-    line('dispatch', 'Vector Control base. How many survivors, Officer?', 'en.reflect', { shot: 'wide' }, { hold: 5.4, cues: [cue(0.05, 'pamChime'), cue(4.2, 'tubeTink'), cue(4.6, 'zap', { flash: 0.25 })] }),
-    silent('en.hand', 3.2, cop, { cues: [cue(0.4, 'heartbeatRamp', { args: [5, 1.0, 0.7] }), cue(1.4, 'pamChime')] }),
-    line('mallCop', '...Four.', 'en.hand', cop, { hold: 3, cues: [cue(1.0, 'riser', { shake: 3 })] }),
-    line('dispatch', 'Hold position. Help is coming.', 'en.hand', cop, { hold: 3.6 }),
+    line('mallCop', 'I called the number on my card. I told them four.', 'en.reflect', { shot: 'wide' }, { hold: 5.4, cues: [cue(0.05, 'paDing'), cue(4.2, 'tubeTink'), cue(4.6, 'zap', { flash: 0.25 })] }),
+    silent('en.hand', 3.2, cop, { cues: [cue(0.4, 'heartbeatRamp', { args: [5, 1.0, 0.7] }), cue(1.4, 'paDing')] }),
+    line('mallGoth', 'And they sent rifles. So much for help.', 'en.hand', cop, { hold: 4, cues: [cue(1.0, 'riser', { shake: 3 })] }),
     line('ashby', "Those men aren't here to help you. I am.", 'en.hand', cop, { hold: 4.6 }),
     // smash cut to black: silence, then the next wing's cabinet wakes up
     { t: 'card', title: 'NEXT: THE ARCADE', sub: '1:20 AM', dur: 5, s: 'en.black', cam: { shot: 'wide' }, cues: [cue(0.02, 'duck'), cue(0.8, 'arcadeJingle')] },

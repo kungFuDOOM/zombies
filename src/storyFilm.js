@@ -959,7 +959,7 @@ const SHOTS = {
       if (lt >= 6.35) cop.look(14, 0, 8);
     } };
   },
-  // 8: extreme close-up: his hand finds the federal card, and he makes the call
+  // 8: extreme close-up: his hand finds the federal card he called
   'en.hand'(F) {
     office(F);
     F.light({ sky: '#101828', ground: '#030406', hemi: 0.22, moon: 0, moonColor: '#101020' }, { key: ['#5a8ac8', [OX - 50, 70, 80], 80], rim: ['#4af0a0', [OX + 40, 74, -20], 130], fill: ['#b8d0ff', [OX + 34, 36, 90], 55], fx: ['#ff8a18', [OX + 8, 30, 70], 0] });

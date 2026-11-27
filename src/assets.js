@@ -7,7 +7,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { buildHero } from './heroes.js';
 import { buildMonster, BUILT_MONSTERS } from './monsters.js';
-import { dressSurvivor, dressZombie, dressShopper, dressUndead } from './charProps.js';
+import { dressSurvivor, dressZombie, dressShopper, dressUndead, dressTrooper } from './charProps.js';
 import { undeadMaterial } from './undead.js';
 import { keepTree, keep } from './gpu.js';
 
@@ -387,6 +387,9 @@ export class Actor {
     const vm = /^(z_[a-z]+)([12])$/.exec(charName);
     let zvariant = 0;
     if (vm) { charName = vm[1]; zvariant = +vm[2]; tint = tint || ZOMBIE_VARIANT_TINT[zvariant]; }
+    // the Abatement Team re-uses the guard's body, painted as plain gray coveralls and dressed in dressTrooper
+    const coverall = charName === 'abatement';
+    if (coverall) charName = 'mallCop';
     this.model = SkeletonUtils.clone(assets.chars[charName]);
     const natKey = assets.chars[charName].userData.native;
     this.nat = natKey ? { key: natKey, clips: assets.chars[charName].userData.clips } : null;
@@ -409,10 +412,11 @@ export class Actor {
     this.model.traverse((o) => {
       if (!o.isMesh) return;
       const eyes = !!(emissiveEyes && /Eyes/i.test(o.name));
-      const key = [o.material.uuid, tint || '', ghost || '', undead ? 'u' : '', eyes ? emissiveEyes : ''].join('|');
+      const key = [o.material.uuid, tint || '', ghost || '', undead ? 'u' : '', eyes ? emissiveEyes : '', coverall ? 'c' : ''].join('|');
       let m = matPool.get(key);
       if (!m) {
         m = o.material.clone();
+        if (coverall) { m.map = null; m.vertexColors = false; m.color.set('#6c717a'); }
         if (tint) m.color.multiply(new THREE.Color(tint));
         if (ghost) { // a colour string picks the ghost's glow
           m.transparent = true; m.opacity = 0.55; m.depthWrite = false;
@@ -431,7 +435,8 @@ export class Actor {
       this.parts.push({ mesh: o, base: m });
     });
     this.mixer = new THREE.AnimationMixer(this.model);
-    if (this.nat && NATIVE_SURVIVORS.includes(this.nat.key)) dressSurvivor(this, this.nat.key);
+    if (coverall) { if (this.nat) dressTrooper(this); }
+    else if (this.nat && NATIVE_SURVIVORS.includes(this.nat.key)) dressSurvivor(this, this.nat.key);
     if (this.nat && zvariant && (charName === 'z_walker' || charName === 'z_sprinter')) dressZombie(this, zvariant);
     if (this.nat && charName === 'z_shopper') dressShopper(this);
     if (this.nat && this.undead && /^z_(walker|sprinter|brute|spitter)$/.test(charName)) dressUndead(this, charName, zvariant);

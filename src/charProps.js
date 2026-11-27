@@ -204,6 +204,59 @@ export function dressSurvivor(actor, cls) {
   DRESS[cls](actor);
 }
 
+// A half-face respirator: black rubber over nose and mouth, two filter cartridges, straps. Returns its holder (on the
+// head), so a film can show it going on, or pull it down to the neck.
+export function respirator(actor, drop = 0) {
+  if (!actor.bone('Head')) return null;
+  measureHead(actor);
+  const h = holder(actor, 'Head');
+  if (!h) return null;
+  addMask(h, drop);
+  return h;
+}
+function addMask(g, drop = 0) { // drop: how much lower on the face (head radii), for a head measured high by tall hair
+  const { r, zf, zc, hw } = HEAD, y = HEAD.y - r * drop;
+  const rubber = mat('#101218', { roughness: 0.55 }), filter = mat('#4a5058', { roughness: 0.5 }), rim = metal('#8a909a');
+  add(g, roundedBox(0.5), rubber, [0, y - r * 0.58, zf + r * 0.02], [0, 0, 0], [r * 0.98, r * 0.66, r * 0.5]);
+  for (const s of [-1, 1]) {
+    add(g, cylinder(1, 1, 14), filter, [s * r * 0.56, y - r * 0.68, zf + r * 0.14], [Math.PI / 2, 0, s * 0.5], [r * 0.3, r * 0.3, r * 0.3]);
+    add(g, cylinder(1, 1, 14), rim, [s * r * 0.58, y - r * 0.69, zf + r * 0.3], [Math.PI / 2, 0, s * 0.5], [r * 0.2, r * 0.05, r * 0.2]);
+    add(g, box(), rubber, [s * hw * 0.98, y - r * 0.4, zc + r * 0.1], [0, 0, 0], [r * 0.08, r * 0.14, (zf - zc) * 1.7]);
+  }
+}
+
+// The Abatement Team: the guard's body under gray coveralls (assets.js paints it), with a hood, a full-face respirator, a
+// plain gear vest and a suppressed rifle. No badge, no cap, no insignia: it must never read as the Mall Cop.
+export function dressTrooper(a) {
+  a.hand = 'Wrist.R';
+  measureHead(a);
+  const h = holder(a, 'Head');
+  if (h) {
+    const { y, r, zc, zf, top, hw } = HEAD;
+    const hood = mat('#6e737c', { roughness: 0.85 }), lens = mat('#0c1a22', { roughness: 0.12, emissive: '#2a5a6a', emissiveIntensity: 0.55 });
+    add(h, cap(), hood, [0, top - hw * 0.95, zc - hw * 0.04], [0, 0, 0], [hw * 1.28, hw * 1.35, hw * 1.34]);
+    add(h, box(), hood, [0, y - r * 0.35, zc - hw * 0.95], [0, 0, 0], [hw * 2.1, r * 1.7, r * 0.35]);
+    add(h, roundedBox(0.4), lens, [0, y - r * 0.02, zf + r * 0.03], [0, 0, 0], [r * 1.3, r * 0.46, r * 0.18]);
+    addMask(h);
+  }
+  const w = holder(a, a.hand, { ...WEAPON.mallCop, scale: 0.78 });
+  if (w) {
+    shotgun(w);
+    const black = metal('#0c0e12', { roughness: 0.45 });
+    add(w, cylinder(0.044, 0.044, 12), black, [0, 1.19, 0], [0, 0, 0], [1, 0.34, 1]);   // the suppressor
+    add(w, cylinder(0.024, 0.024, 10), black, [0, 0.46, -0.07], [0, 0, 0], [1, 0.26, 1]); // the sight
+    a.aim = { h: w, dir: [0.05, 0.12, 0.99], roll: 0 };
+  }
+  const t = holder(a, 'Torso', { pos: [0, 0.02, 0] });
+  if (t) {
+    const suit = mat('#767b84', { roughness: 0.85 }), vest = mat('#33373e', { roughness: 0.7 });
+    add(t, roundedBox(0.2), suit, [0, -0.04, 0], [0, 0, 0], [0.36, 0.35, 0.23]);
+    add(t, roundedBox(0.2), vest, [0, -0.02, 0], [0, 0, 0], [0.37, 0.2, 0.245]);
+    add(t, box(), vest, [0, -0.2, 0], [0, 0, 0], [0.38, 0.05, 0.25]);
+    for (const sx of [-1, 1]) add(t, roundedBox(0.3), suit, [sx * 0.09, -0.06, 0.13], [0, 0, 0], [0.09, 0.09, 0.05]); // pouches
+  }
+}
+
 // The Grim Shopper: an oxblood apron with a grimy hem, a mall name tag, a wire shopping basket on the
 // left wrist with a glowing green jar in it, and two burning red eyes (props, so they keep glowing in a hurt flash).
 export function dressShopper(actor) {

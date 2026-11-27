@@ -90,6 +90,9 @@ export const sfx = {
   melee() { if (throttle('melee', 60)) { noise(0.08, { vol: 0.25, freq: 2500 }); tone(180, 0.08, { vol: 0.1, slide: 90 }); } },
   hit() { if (throttle('hit', 40)) noise(0.06, { vol: 0.18, freq: 1800 }); },
   enemyShot() { if (throttle('eshot', 80)) tone(240, 0.12, { type: 'sawtooth', vol: 0.06, slide: 160 }); },
+  // the Abatement Team: a suppressed rifle's flat cough, and a net launcher's thump
+  suppressed() { if (throttle('rifle', 70)) { noise(0.07, { vol: 0.16, freq: 900 }); tone(130, 0.06, { type: 'square', vol: 0.06, slide: 60 }); } },
+  netShot() { if (throttle('net', 120)) { tone(190, 0.16, { type: 'sine', vol: 0.16, slide: 70 }); noise(0.18, { vol: 0.08, freq: 2400 }); } },
   hurt() { if (throttle('hurt', 140)) tone(140, 0.14, { type: 'square', vol: 0.15, slide: 70 }); },
   die() { tone(400, 0.6, { type: 'sawtooth', vol: 0.2, slide: 50 }); },
   food() { tone(392, 0.08, { vol: 0.12 }); tone(523, 0.08, { vol: 0.12, delay: 0.07 }); tone(659, 0.12, { vol: 0.12, delay: 0.14 }); },

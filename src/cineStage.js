@@ -70,6 +70,28 @@ export class CineActor {
   faceTo(x, z, k = 1) { const want = Math.atan2(x - this.root.position.x, z - this.root.position.z); this.root.rotation.y += (Math.atan2(Math.sin(want - this.root.rotation.y), Math.cos(want - this.root.rotation.y))) * k; return this; }
   loop(name, speed = 1) { this.actor.base(name, speed); return this; }
   play(name, o = {}) { this.actor.play(name, o); return this; }
+  /** Fall, and stay down until getUp() (or standUp()). */
+  fall(timeScale = 1) { this.standUp(); this.actor.play('Death_A', { clamp: true, timeScale }); this.downed = this.actor.oneShot; this.actor.locked = true; return this; }
+  /** Push back up: the fall played in reverse, then back to the base loop. */
+  getUp(speed = 0.8) {
+    const a = this.downed;
+    if (!a) return this;
+    this.actor.locked = false;
+    a.clampWhenFinished = false;
+    a.paused = false;
+    a.enabled = true;
+    a.timeScale = -speed;
+    this.downed = null;
+    return this;
+  }
+  /** On their feet at once (a film being rewound). */
+  standUp() {
+    const A = this.actor;
+    A.locked = false;
+    if (A.oneShot) { A.oneShot.stop(); A.oneShot = null; A.setBaseMode('full'); if (A.baseAction) A.baseAction.setEffectiveWeight(1); }
+    this.downed = null;
+    return this;
+  }
   set visible(v) { this.root.visible = v; }
   get visible() { return this.root.visible; }
   /** World position of a bone (for flames, sparks, muzzle flashes). */
@@ -118,6 +140,13 @@ export class CineActor {
 export function makeHero(cls, o = {}) {
   const a = new Actor(cls);
   a.base(HERO_STYLE[cls].idle);
+  return new CineActor(a, { scale: 1.15, ...o });
+}
+
+/** One of the Abatement Team, rifle held ready. */
+export function makeTrooper(o = {}) {
+  const a = new Actor('abatement');
+  a.base('2H_Melee_Idle');
   return new CineActor(a, { scale: 1.15, ...o });
 }
 

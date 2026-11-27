@@ -301,14 +301,75 @@ export function makeCine(get) {
       [[659.3, 1.2], [587.3, 2.8], [523.3, 4.4], [493.9, 6.0]].forEach(([f, d]) => note(f, 2.2, { type: 'sine', vol: 0.06, delay: d, attack: 0.01, filter: ['lowpass', 2200, 800, 0.8] }));
     },
     // ----- the story scenes (storyFilm.js) -----
-    // The PA's three-note shopper chime, "ding-dong-ding": two struck bars and a brighter third, too sweet and slightly flat.
-    pamChime(delay = 0) {
-      [[880, 0, 0.19], [698.46, 0.42, 0.17], [1046.5, 0.84, 0.2]].forEach(([f, d, v]) => {
-        note(f, 2.1, { type: 'sine', vol: v, delay: delay + d, attack: 0.006, vib: [4.5, 7] });
-        note(f * 2.76, 0.7, { type: 'sine', vol: v * 0.22, delay: delay + d, attack: 0.003 });   // the metal bar's overtone
-        note(f * 0.997, 1.8, { type: 'triangle', vol: v * 0.2, delay: delay + d, attack: 0.01, filter: ['lowpass', 2000, 0, 0.7] });
+    // ----- the White Acre kit: the 11:58 PA, Midnight Madness, the vents, the cleanup -----
+    // The PA's page tone: two soft struck notes, flat and polite. Nobody is meant to notice it.
+    paDing(delay = 0) {
+      [[784, 0], [659.25, 0.38]].forEach(([f, d]) => {
+        note(f, 1.5, { type: 'sine', vol: 0.17, delay: delay + d, attack: 0.006, filter: ['bandpass', 1500, 0, 0.5] });
+        note(f * 2.76, 0.45, { type: 'sine', vol: 0.03, delay: delay + d, attack: 0.003 });
       });
-      hiss(2.4, { vol: 0.025, delay, filter: ['bandpass', 3000, 0, 0.8] });
+      hiss(1.6, { vol: 0.02, delay, filter: ['bandpass', 3000, 0, 0.8] });
+    },
+    // A calm voice with no words in it: low buzzy syllables through two formants, in an even rhythm (the caption has the words).
+    paMurmur(dur = 3, vol = 0.07, root = 112, delay = 0) {
+      for (let i = 0, d = 0; d < dur - 0.12; i++) {
+        const len = R(0.1, 0.2), f = root * (1 + R(-0.08, 0.1)) * (d > dur - 0.6 ? 0.88 : 1);
+        note(f, len, { type: 'sawtooth', vol: vol * 1.6, delay: delay + d, attack: 0.025, slide: f * 0.96, filter: ['bandpass', [520, 700, 430, 610, 360][i % 5], 0, 5] });
+        note(f * 1.005, len, { type: 'sawtooth', vol: vol * 0.7, delay: delay + d, attack: 0.03, filter: ['bandpass', [1180, 1040, 1500, 920][i % 4], 0, 7] });
+        d += len + (i % 6 === 5 ? 0.22 : 0.02);
+      }
+      hiss(dur, { vol: vol * 0.12, delay, filter: ['bandpass', 2600, 0, 1] });
+    },
+    // One slow stroke of a pumpjack a long way off.
+    pumpjack(n = 3, gap = 2, vol = 0.07) {
+      for (let i = 0; i < n; i++) {
+        note(74, 0.9, { type: 'sawtooth', vol, delay: i * gap, slide: 52, attack: 0.3, filter: ['lowpass', 220, 90, 3] });
+        hiss(0.35, { vol: vol * 0.8, delay: i * gap + 0.85, filter: ['bandpass', 340, 200, 5] });
+      }
+    },
+    // A packed mall: overlapping murmur bands that swell.
+    crowdWalla(dur = 8, vol = 0.07) {
+      hiss(dur, { vol, attack: Math.min(1.2, dur * 0.3), filter: ['bandpass', 520, 640, 1.1] });
+      hiss(dur, { vol: vol * 0.55, attack: Math.min(1.6, dur * 0.4), filter: ['bandpass', 1300, 1100, 1.6] });
+      for (let i = 0; i < dur * 7; i++) { const f = R(130, 330); note(f, R(0.12, 0.34), { type: 'sawtooth', vol: vol * R(0.12, 0.3), delay: R(0, dur - 0.4), attack: 0.05, slide: f * R(0.85, 1.2), filter: ['bandpass', R(450, 1100), 0, 5] }); }
+    },
+    // The countdown crowd: a beat a second, each louder, into a roar.
+    countdownRoar(dur = 4) {
+      for (let i = 0; i < Math.floor(dur); i++) {
+        const k = (i + 1) / dur;
+        hiss(0.5, { vol: 0.07 + 0.14 * k, delay: i, attack: 0.08, filter: ['bandpass', 600 + 300 * k, 800, 1] });
+        [196, 247, 294].forEach((f) => note(f * R(0.97, 1.03), 0.42, { type: 'sawtooth', vol: 0.02 + 0.025 * k, delay: i, attack: 0.06, filter: ['bandpass', 800, 0, 3] }));
+      }
+      hiss(1.6, { vol: 0.22, delay: dur - 0.4, attack: 0.5, filter: ['bandpass', 900, 1300, 0.8] });
+    },
+    // Every vent in the building breathing out at once.
+    ventExhale(dur = 4, vol = 0.2) {
+      hiss(dur, { vol, attack: dur * 0.4, filter: ['lowpass', 1400, 320, 0.7] });
+      hiss(dur, { vol: vol * 0.35, attack: dur * 0.5, filter: ['highpass', 3800, 2400, 0.7] });
+      note(49, dur, { type: 'sine', vol: vol * 0.6, attack: dur * 0.5, slide: 43.6 });
+    },
+    // One bag-and-body thud in a crowd going down.
+    crowdThud(delay = 0, vol = 0.2) { hiss(0.2, { vol, delay, filter: ['lowpass', R(240, 620), 80, 0.8] }); note(R(58, 92), 0.18, { type: 'sine', vol, delay, slide: 40 }); },
+    cough(delay = 0) {
+      [[0, 1], [0.27, 0.8], [0.72, 0.9]].forEach(([d, k]) => {
+        hiss(0.16, { vol: 0.34 * k, delay: delay + d, attack: 0.008, filter: ['bandpass', 1100, 520, 1.6], drive: 2 });
+        note(190, 0.13, { type: 'sawtooth', vol: 0.09 * k, delay: delay + d, slide: 105, filter: ['lowpass', 900, 300, 2], drive: 3 });
+      });
+    },
+    pagerChirp(delay = 0) { for (let i = 0; i < 6; i++) note(i % 2 ? 2600 : 3100, 0.06, { type: 'square', vol: 0.05, delay: delay + i * 0.085 + (i > 2 ? 0.2 : 0), attack: 0.002, filter: ['bandpass', 2900, 0, 3] }); },
+    backupBeeper(n = 5, delay = 0) { for (let i = 0; i < n; i++) note(1050, 0.28, { type: 'square', vol: 0.03, delay: delay + i * 0.6, attack: 0.005, filter: ['bandpass', 1100, 0, 4] }); note(48, n * 0.6, { type: 'sawtooth', vol: 0.06, delay, attack: 0.4, filter: ['lowpass', 150, 0, 2], vib: [9, 40] }); },
+    // The yellow helicopter: blade slaps that come in, pass and go.
+    rotor(dur = 5, vol = 0.22) {
+      for (let d = 0, i = 0; d < dur; i++, d += 0.095) { const k = Math.sin(Math.PI * Math.min(1, (d + 0.2) / dur)); hiss(0.06, { vol: vol * (0.25 + 0.75 * k), delay: d, filter: ['lowpass', 300 + 500 * k, 120, 1.4] }); }
+      note(88, dur, { type: 'sawtooth', vol: vol * 0.2, attack: dur * 0.4, slide: 74, filter: ['lowpass', 300, 0, 2] });
+    },
+    // A news set on a small speaker: wordless, thin and bright.
+    tvMurmur(dur = 3, vol = 0.05) { cue.paMurmur(dur, vol, 150); note(15700, dur, { type: 'sine', vol: 0.004 }); },
+    radioSquelch(delay = 0) { hiss(0.09, { vol: 0.2, delay, filter: ['bandpass', 2200, 0, 1], drive: 4 }); note(1750, 0.05, { type: 'square', vol: 0.03, delay: delay + 0.06 }); },
+    // A rubber strap pulled tight, then two slow breaths through the filters.
+    respirator() {
+      hiss(0.05, { vol: 0.4, filter: ['bandpass', 1500, 700, 2], drive: 3 }); note(220, 0.07, { type: 'triangle', vol: 0.14, delay: 0.01, slide: 90 });
+      for (const d of [0.5, 1.9]) { hiss(0.7, { vol: 0.14, delay: d, attack: 0.3, filter: ['bandpass', 620, 820, 3] }); hiss(0.6, { vol: 0.1, delay: d + 0.75, attack: 0.08, filter: ['bandpass', 380, 260, 3] }); }
     },
     ringing(dur = 3) { note(3150, dur, { type: 'sine', vol: 0.035, attack: 0.5 }); note(3163, dur, { type: 'sine', vol: 0.03, attack: 0.7 }); },
     clockTick() { hiss(0.025, { vol: 0.22, filter: ['bandpass', 3400, 0, 4] }); note(1250, 0.05, { type: 'square', vol: 0.04, slide: 900, filter: ['bandpass', 1500, 0, 3] }); note(52, 0.14, { type: 'sine', vol: 0.2, slide: 36 }); },

@@ -581,6 +581,16 @@ export function buildProjectile(kind) {
   root.add(spin);
   let glow = null, size = 24;
   switch (kind) {
+    case 'round': // a rifle round: a thin hot streak
+      part(spin, G.box(1.4, 1.4, 16), m('#fff4d0', { emissive: '#ffb040', emissiveIntensity: 3 }), 0, 0, 0, false);
+      glow = '#ffb060'; size = 12;
+      break;
+    case 'net': { // a thrown capture net, spread flat
+      const cord = m('#e0e6f0', { emissive: '#8090b0', emissiveIntensity: 0.8 });
+      for (let i = -2; i <= 2; i++) { part(spin, G.box(18, 0.7, 0.7), cord, 0, 0, i * 4.2, false); part(spin, G.box(0.7, 0.7, 18), cord, i * 4.2, 0, 0, false); }
+      for (const x of [-9, 9]) for (const z of [-9, 9]) part(spin, G.ico(1.5), m('#3a3e48'), x, 0, z, false);
+      break;
+    }
     case 'wrench':
       part(spin, G.box(14, 3, 1.6), m('#c8ccd8', { metalness: 0.8, roughness: 0.3 }), 0, 0, 0, false);
       part(spin, G.torus(3, 1.2, Math.PI * 1.6), m('#c8ccd8', { metalness: 0.8 }), 8, 0, 0, false);

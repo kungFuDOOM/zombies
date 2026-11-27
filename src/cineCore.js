@@ -104,6 +104,8 @@ export class CinePlayer {
     this.cues = [];           // [t, fn] sorted
     this.subs = [];           // dialogue / PA lines
     this.cards = [];          // hero name cards
+    this.slates = [];         // place / time cards
+    this.titleEnd = Infinity;
     this.shakes = [];         // [t0, amp, decay]
     this.barMax = scopeBarFrac(); // each letterbox bar as a fraction of the picture height: true 2.39:1 scope
     this.barIn = [0, 1];      // [start, duration] of the bars sliding in
@@ -124,7 +126,8 @@ export class CinePlayer {
   /** Something lands on the lens. */
   splat(t, amt = 0.8, kind = 'blood', seed = 1) { this.splats.push({ t0: t, amt, kind, seed }); if (this.splats.length > 4) this.splats.shift(); }
   say(a, b, speaker, color, text, kind = 'line') { this.subs.push({ a, b, speaker, color, text, kind }); }
-  card(a, b, name, role, color) { this.cards.push({ a, b, name, role, color }); }
+  card(a, b, name, role, color, blurb = '') { this.cards.push({ a, b, name, role, color, blurb }); }
+  slate(a, b, line1, line2 = '') { this.slates.push({ a, b, line1, line2 }); }
 
   shotAt(t) {
     for (let i = this.shots.length - 1; i >= 0; i--) if (t >= this.shots[i].a) return i;
@@ -285,7 +288,7 @@ export class CinePlayer {
   /** What the 2D overlay draws this frame (see overlay.js). */
   view() {
     const t = this.t, v = this.viewInfo();
-    const out = { t, bar: this.bar(), fade: this.fadeFn ? this.fadeFn(t) : 0, flash: this.flashV, sub: null, card: null, title: null, ui: v, high: this.high, graded: this.post.graded, lean: this.post.lean, blood: this.splatView(), flares: this.flares() };
+    const out = { t, bar: this.bar(), fade: this.fadeFn ? this.fadeFn(t) : 0, flash: this.flashV, sub: null, card: null, slate: null, title: null, ui: v, high: this.high, graded: this.post.graded, lean: this.post.lean, blood: this.splatView(), flares: this.flares() };
     for (const s of this.subs) {
       if (t < s.a || t > s.b + 0.5) continue;
       const cps = s.kind === 'pa' ? 30 : 48;
@@ -295,9 +298,12 @@ export class CinePlayer {
       out.sub = { speaker: s.speaker, color: s.color, text, full: s.text, a: Math.max(0, fade), kind: s.kind };
     }
     for (const c of this.cards) {
-      if (t >= c.a && t < c.b) out.card = { name: c.name, role: c.role, color: c.color, in: clamp01((t - c.a) / 0.28), out: clamp01((c.b - t) / 0.3) };
+      if (t >= c.a && t < c.b) out.card = { name: c.name, role: c.role, color: c.color, blurb: c.blurb, in: clamp01((t - c.a) / 0.28), out: clamp01((c.b - t) / 0.3) };
     }
-    if (this.titleAt >= 0 && t >= this.titleAt) out.title = { age: t - this.titleAt };
+    for (const c of this.slates) {
+      if (t >= c.a && t < c.b) out.slate = { line1: c.line1, line2: c.line2, age: t - c.a, a: Math.min(1, (t - c.a) / 0.15, (c.b - t) / 0.35) };
+    }
+    if (this.titleAt >= 0 && t >= this.titleAt && t < this.titleEnd) out.title = { age: t - this.titleAt };
     return out;
   }
 

@@ -171,7 +171,7 @@ export class Game {
     this.flowT = 0; this.exploreT = 0; this.time = 0;
     this.crackHp = new Map();
     this.npcs = []; this.barks = []; this.cutCam = null; this.pendingScene = null;
-    this.scene = { crisis: false, lockShutter: false, ambushT: 0, rayT: 0, shutterShut: false };
+    this.scene = { abatement: false, crisis: false, lockShutter: false, ambushT: 0, rayT: 0, shutterShut: false };
     this.dmgBoost = 1; this.spawnRate = 1; this.bossMods = null; this.opening = null; this.blasts = []; this.bossDown = false;
     this.scoreMul = L.n && !L.hub ? stagePoints(L.n) * (this.isCleared(L.n) ? REPLAY_POINTS : 1) : 1;
     for (const p of this.allPlayers()) { p.stageStart = p.score; p.stageDeaths = 0; }
@@ -196,7 +196,7 @@ export class Game {
       p.x = s.x; p.y = s.y;
       p.alive = true;
       if (p.hp <= 0) p.hp = p.def.hp;
-      p.dash = null; p.invuln = 1.5; p.buffs = {};
+      p.dash = null; p.invuln = 1.5; p.buffs = {}; p.netT = 0;
     });
     this.camX = this.camTargetX(); this.camY = this.camTargetY();
     this.updateFlow();
@@ -485,6 +485,7 @@ export class Game {
     } else if (inp.attack && p.shotCd > -0.05) {
       speed *= 0.55; // slow down while attacking, like the arcade
     }
+    if (p.netT > 0) { p.netT -= dt; if (!p.dash) speed *= ENEMIES.abatement.netSlow; }
     if (mx || my) {
       if (!p.dash) { const l = Math.hypot(mx, my); p.fx = mx / l; p.fy = my / l; }
       p.walk += dt * 10;
@@ -818,6 +819,7 @@ export class Game {
     } else this.burst(e.x, e.y, e.def.color || '#888', e.type === 'boss' ? 80 : 12, e.type === 'boss' ? 300 : 140);
     if (p) { this.addScore(p, e.def.score); this.gainXp(p, Math.round(e.def.xp * this.diff.xp)); p.kills++; this.stat(p, 'kills', 1, e.type); }
     if (e.type === 'death') this.text(e.x, e.y - 20, 'DEATH DEFEATED! +1000', '#ffe070', 2);
+    if (e.type === 'abatement' && Math.random() < 0.35) this.items.push({ type: 'food', sub: 'soda', x: e.x, y: e.y, r: 10, bob: 0 });
     if (e.type === 'boss') this.onBossKilled(e);
   }
 
@@ -922,9 +924,10 @@ export class Game {
     e.cd -= dt;
     e.hurt = Math.max(0, e.hurt - dt);
     e.phase += dt;
-    const [p, d] = this.nearestPlayer(e);
+    const rifle = e.def.ai === 'rifle';
+    const [p, d] = rifle ? this.abatementTarget(e) : this.nearestPlayer(e);
     if (!p) return;
-    if (d > 900 && e.type !== 'boss') return;
+    if (d > 900 && e.type !== 'boss' && !rifle) return; // (the cleanup crew comes looking for you)
     const contact = d < e.r + p.r + 3;
     const def = e.def;
 
@@ -979,6 +982,9 @@ export class Game {
           say('The Grim Shopper!', 'death', 10000);
         }
         break;
+      case 'rifle':
+        this.updateAbatement(e, p, d, dt, contact);
+        break;
       case 'lobber':
         if (d < 110) this.steer(e, p, d, dt, true);
         else if (d > def.range) this.steer(e, p, d, dt);
@@ -1014,8 +1020,79 @@ export class Game {
 
   enemyShot(e, angle, kind, dmg, speed) {
     dmg *= e.dmgMul || 1;
-    this.projs.push({ owner: 'enemy', kind, x: e.x, y: e.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: 6, dmg, life: 3 });
-    sfx.enemyShot();
+    this.projs.push({ owner: 'enemy', kind, x: e.x, y: e.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: kind === 'net' ? 9 : 6, dmg, life: 3 });
+    if (kind === 'round') sfx.suppressed(); else if (kind === 'net') sfx.netShot(); else sfx.enemyShot();
+  }
+
+  // ---------- the Abatement Team ----------
+
+  // Who a trooper goes after: the nearest survivor who isn't the Skater (one in sight before one who isn't). Their orders are
+  // to bring the Skater in alive, so they turn to him only when nobody else is left.
+  abatementTarget(e) {
+    const ps = this.livePlayers().filter((p) => !(p.buffs.invisible && dist(p, e) > 44));
+    const others = ps.filter((p) => p.cls !== 'skater');
+    const pool = others.length ? others : ps;
+    let best = null, bv = Infinity, bd = Infinity;
+    for (const p of pool) {
+      const d = dist(p, e), v = d + (d < e.def.range && this.lineOfSight(e, p) ? 0 : 10000);
+      if (v < bv) { bv = v; bd = d; best = p; }
+    }
+    return [best, bd];
+  }
+
+  // Keep a rifle's distance; stop, take aim (a short tell, the line locked where the target stood), and fire. A Skater is
+  // only ever netted: no damage, a few slowed steps.
+  updateAbatement(e, p, d, dt, contact) {
+    const def = e.def, spare = p.cls === 'skater';
+    if (e.aimT > 0) {
+      e.aimT -= dt;
+      if (e.aimT <= 0) {
+        e.act = { type: 'cast', t: this.time };
+        if (e.aimNet) this.enemyShot(e, e.aimA, 'net', 0, def.netSpeed);
+        else this.enemyShot(e, e.aimA, 'round', def.dmg, def.shotSpeed);
+      }
+      return;
+    }
+    if (contact && !spare) { // a rifle butt
+      if (e.cd <= 0) { e.cd = 1; e.act = { type: 'melee', t: this.time }; this.hurtPlayer(p, def.dmg, e); }
+      return;
+    }
+    const los = d < def.range && this.lineOfSight(e, p);
+    if (los && e.cd <= 0) {
+      e.cd = def.cooldown * rand(0.85, 1.25);
+      e.aimT = def.windup;
+      e.aimNet = spare;
+      e.aimA = Math.atan2(p.y - e.y, p.x - e.x);
+      e.act = { type: 'windup', t: this.time };
+      return;
+    }
+    if (!los || d > def.range * 0.75) this.steer(e, p, d, dt);
+    else if (d < def.keep) this.steer(e, p, d, dt, true);
+  }
+
+  netPlayer(p) {
+    if (p.invuln > 0 || p.buffs.shield || p.dash) return false;
+    p.netT = ENEMIES.abatement.netTime;
+    this.text(p.x, p.y - 24, 'NETTED', '#d8e0ff', 0.9);
+    return true;
+  }
+
+  // The team arrives (once per run of the Food Court), and somebody says what everybody is thinking.
+  sendAbatement() {
+    const A = FOOD_COURT.abatement, n = Math.min(A.spots.length, Math.max(2, this.livePlayers().length + (this.livePlayers().length > 1 ? 1 : 0)));
+    for (let i = 0; i < n; i++) {
+      const [tx, ty] = A.spots[i];
+      const at = this.findOpenSpotNear((tx + 0.5) * TILE, (ty + 0.5) * TILE);
+      const e = this.spawnEnemy('abatement', at.x, at.y);
+      e.cd = 1.5 + i * 0.4; // a moment to see them before the first shot
+    }
+    this.banner = { text: 'ABATEMENT TEAM', sub: 'Help has arrived. It brought rifles.', t: 3.5 };
+    const here = new Set(this.livePlayers().map((p) => p.cls));
+    const [who, text] = here.has('mallGoth') ? ['mallGoth', "That's what help looks like? Rifles?"]
+      : here.has('mallCop') ? ['mallCop', 'Those are rifles. That is not help.']
+        : here.has('biker') ? ['biker', "Gas masks and rifles. That ain't help."]
+          : ['skater', "Dude. Why's their help got guns?"];
+    this.bark(who, text, 4);
   }
 
   updateBoss(e, p, d, dt, contact) {
@@ -1110,8 +1187,16 @@ export class Game {
       return;
     }
     if (pr.owner === 'enemy') {
+      if (pr.kind === 'round') { // they fire on everyone: the dead in the way go down too
+        for (const e of this.enemies) {
+          if (e.hp > 0 && UNDEAD_TYPES.has(e.type) && dist(e, pr) < e.r + pr.r) { this.damageEnemy(e, pr.dmg, null, false); pr.dead = true; return; }
+        }
+      }
       for (const p of this.livePlayers()) {
-        if (dist(p, pr) < p.r + pr.r) { this.hurtPlayer(p, pr.dmg, null); pr.dead = true; return; }
+        if (dist(p, pr) >= p.r + pr.r) continue;
+        if (pr.kind === 'net') { if (p.cls !== 'skater') continue; this.netPlayer(p); pr.dead = true; return; }
+        if (pr.kind === 'round' && p.cls === 'skater') continue; // never the Skater: he is worth more alive
+        this.hurtPlayer(p, pr.dmg, null); pr.dead = true; return;
       }
       return;
     }
@@ -1419,6 +1504,8 @@ export class Game {
         sfx.door();
         this.text(FOOD_COURT.shutter.x * TILE, FOOD_COURT.shutter.y0 * TILE, 'SHUTTERS LOCKED', '#80c0ff', 2);
       }
+      const A = FOOD_COURT.abatement;
+      if (!sc.abatement && !this.pendingScene && ps.length && (this.time > A.after || ps.some((p) => p.x > A.column * TILE))) { sc.abatement = true; this.sendAbatement(); }
       if (!sc.crisis && !this.pendingScene && ps.some((p) => p.x > FOOD_COURT.sceneTrigger * TILE)) { sc.crisis = true; this.pendingScene = 'crisis'; }
     }
     this.updateRay(dt);

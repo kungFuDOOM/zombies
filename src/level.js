@@ -165,6 +165,9 @@ export const FOOD_COURT = {
   start: { x: 5, y: 23 },
   shutter: { x: 11, y0: 21, y1: 26 },       // the security gate between the corridor and the plaza
   sceneTrigger: 36,                          // crossing this column starts the mid-wing crisis
+  // the Abatement Team: sent after the phone call. It comes in from the escalator hall when a survivor crosses `column`
+  // (or after `after` seconds on the stage), one trooper per spot: two for a solo run, up to four.
+  abatement: { column: 26, after: 100, spots: [[64, 22], [64, 24], [66, 21], [66, 25]] },
   ray: { x: 53, y: 38 },                     // Ray, cornered behind the pizza counter
   locker: { x0: 14, y0: 39, x1: 22, y1: 42, door: { x0: 17, x1: 19, y: 38 } },
   exit: { x: 67, y: 23 },

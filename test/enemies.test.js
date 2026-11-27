@@ -17,8 +17,8 @@ function arena(cls = 'biker') {
   return { g, p };
 }
 
-test('there are exactly four zombie kinds (plus the Grim Shopper), and exactly four survivors', () => {
-  assert.deepEqual(Object.keys(ENEMIES).sort(), ['brute', 'death', 'spitter', 'sprinter', 'walker']);
+test('there are exactly four zombie kinds (plus the Grim Shopper and the Abatement Team), and exactly four survivors', () => {
+  assert.deepEqual(Object.keys(ENEMIES).sort(), ['abatement', 'brute', 'death', 'spitter', 'sprinter', 'walker']);
   assert.deepEqual(Object.keys(CLASSES).sort(), ['biker', 'mallCop', 'mallGoth', 'skater']);
   assert.deepEqual(BASE_CLASSES, ['biker', 'mallCop', 'skater', 'mallGoth']);
   const names = Object.values(ENEMIES).map((e) => e.name);

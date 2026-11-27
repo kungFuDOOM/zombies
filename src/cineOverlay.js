@@ -44,6 +44,7 @@ export function drawCine(ctx, v, time, h) {
 
   ctx.textBaseline = 'alphabetic';
   if (v.card) drawCard(ctx, v, barPx, s, h);
+  if (v.slate) drawSlate(ctx, v.slate, barPx, s, h);
   if (v.sub) drawScopeSub(ctx, v.sub, barPx, s, h);
   if (v.title) drawTitle(ctx, v.title, time, h);
   if (v.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, v.fade)})`; ctx.fillRect(0, 0, W, H); }
@@ -188,7 +189,7 @@ function drawCard(ctx, v, barPx, s, h) {
   ctx.save();
   ctx.globalAlpha = a;
   ctx.textAlign = 'left';
-  const bw = 340 * u, bh = 96 * u;
+  const bw = (c.blurb ? 440 : 340) * u, bh = (c.blurb ? 122 : 96) * u;
   const bg = ctx.createLinearGradient(x - 20, 0, x - 20 + bw, 0);
   bg.addColorStop(0, 'rgba(6,2,14,0.78)'); bg.addColorStop(1, 'rgba(6,2,14,0)');
   ctx.fillStyle = bg; ctx.fillRect(x - 20, y - 10 * u, bw, bh);
@@ -204,6 +205,33 @@ function drawCard(ctx, v, barPx, s, h) {
   ctx.fillStyle = c.color; roundRect(ctx, x, y + 50 * u, tw + 24 * u, 26 * u, 4); ctx.fill();
   ctx.fillStyle = '#10061e'; ctx.fillText(c.role, x + 12 * u, y + 70 * u);
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  if (c.blurb) {
+    let px = 15 * u;
+    ctx.font = `${px}px ${h.SANS}`;
+    const wide = ctx.measureText(c.blurb).width;
+    if (wide > bw - 30 * u) { px *= (bw - 30 * u) / wide; ctx.font = `${px}px ${h.SANS}`; }
+    ctx.fillStyle = '#f2ecdc'; ctx.shadowColor = '#000'; ctx.shadowBlur = 5; ctx.fillText(c.blurb, x, y + 96 * u);
+  }
+  ctx.restore();
+}
+
+// A place and time card: typed on in the lower left of the picture, above the subtitle bar.
+function drawSlate(ctx, c, barPx, s, h) {
+  const big = clamp(15 / s, 24, 40), small = big * 0.68;
+  const x = 48, base = H - barPx - 20 - (c.line2 ? small * 1.4 : 0);
+  ctx.save();
+  ctx.globalAlpha = c.a;
+  ctx.textAlign = 'left';
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 8;
+  const type = (text, px, y, color, n) => {
+    ctx.font = `bold ${px}px "Courier New", monospace`;
+    const w = ctx.measureText(text).width;
+    if (w > W - 96) ctx.font = `bold ${Math.floor(px * (W - 96) / w)}px "Courier New", monospace`;
+    ctx.fillStyle = color;
+    ctx.fillText(text.slice(0, Math.max(0, Math.floor(n))), x, y);
+  };
+  type(c.line1, big, base, '#ffffff', c.age * 34);
+  if (c.line2) type(c.line2, small, base + small * 1.4, '#ffd89a', (c.age - 0.5) * 34);
   ctx.restore();
 }
 

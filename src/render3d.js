@@ -58,6 +58,8 @@ export const ENEMY_STYLE = {
   sprinter: { model: 'z_sprinter', slim: 0.98, vis: 1.22, bulk: 1.06, walk: 'Running_C', walkSpeed: 1.0, idleSpeed: 0.4, scale: 1.05, melee: '1H_Melee_Attack_Stab', undead: { lean: 0.2, head: 0.14, reach: 1.0, bend: 0.5, sway: 0.24, hitch: 0.2, rate: 2.0, uneven: 0.75, hunch: 0.45, armY: 0.05, spread: 0.2, flail: 0.9 } },
   brute: { model: 'z_brute', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.25, scale: 1.5, vis: 1.12, wide: 1.2, melee: '2H_Melee_Attack_Chop', undead: { lean: 0.2, head: 0.18, reach: 1.05, bend: 0.25, sway: 0.22, hitch: 0.14, rate: 0.7, stomp: 0.045, drag: 0.4, hunch: 0.34, armY: -0.12, spread: 0.3 } },
   spitter: { model: 'z_spitter', walk: 'Walking_D_Skeletons', walkSpeed: 0.9, idleSpeed: 0.3, scale: 1.12, vis: 1.2, bulk: 1.12, undead: { lean: 0.35, head: 0.25, reach: 1.1, bend: 0.3, sway: 0.18, hitch: 0.25, rate: 0.85, retch: 0.8, hunch: 0.62, armY: -0.32, spread: 0.06 } },
+  // The Abatement Team: the guard's body in gray coveralls (assets.js 'abatement'), rifle held level
+  abatement: { model: 'abatement', walk: 'Walking_A', walkSpeed: 1, idle: '2H_Melee_Idle', shoot: '2H_Ranged_Shoot', melee: '1H_Melee_Attack_Stab', scale: 1, vis: 1.1 },
   // The Grim Shopper: an upright, unhurried undead mall manager (ch_zombie_shopper, dressed in charProps.dressShopper)
   death: { model: 'z_shopper', single: true, tint: '#dfe4e2', walk: 'Walking_D_Skeletons', walkSpeed: 0.8, idleSpeed: 0.3, scale: 1.2, undead: { lean: 0.08, head: 0.1, reach: 0.45, bend: 0.15, sway: 0.06, hitch: 0.08, rate: 0.6, hunch: 0.06, armY: -0.55, spread: 0.12 } },
 };
@@ -715,6 +717,7 @@ export class Renderer3D {
     for (const [obj, v] of this.views) {
       if (seen.has(obj)) continue;
       this.views.delete(obj);
+      if (v.sight) v.sight.visible = false; // a trooper shot mid-aim doesn't keep aiming
       // slain monsters collapse and sink instead of popping out of existence
       if (v.creature && !obj.vanish && v.root.visible) {
         this.corpses.push({ ...v, t: 0 }); // beasts keel over
@@ -855,9 +858,13 @@ export class Renderer3D {
     const visible = PERF !== 'noenemy' && this.near(e.x, e.y);
     v.root.visible = visible;
     if (!visible) return;
-    const [p] = g.nearestPlayer(e);
-    // a charging beast faces where it's going, not the hero
-    const face = e.charging > 0 && v.creature ? Math.atan2(e.cvx || 0, e.cvy || 0) : p ? Math.atan2(p.x - e.x, p.y - e.y) : null;
+    const trooper = e.type === 'abatement';
+    const [p] = trooper ? g.abatementTarget(e) : g.nearestPlayer(e);
+    // a charging beast faces where it's going, not the hero; a trooper holds his aim once he has taken it
+    const aiming = trooper && e.act && e.act.type === 'windup' && g.time - e.act.t < e.def.windup;
+    const face = aiming && v.aimed === e.act ? null : e.charging > 0 && v.creature ? Math.atan2(e.cvx || 0, e.cvy || 0) : p ? Math.atan2(p.x - e.x, p.y - e.y) : null;
+    if (aiming && v.aimed !== e.act && face !== null) { v.aimed = e.act; v.root.rotation.y = face; }
+    if (trooper) this.sightLine(v, aiming);
     if (face !== null) v.root.rotation.y = lerpAngle(v.root.rotation.y, face, 0.18);
     const moved = v.px !== undefined ? Math.hypot(e.x - v.px, e.y - v.py) : 0;
     v.px = e.x; v.py = e.y;
@@ -879,8 +886,8 @@ export class Renderer3D {
     if (st.undead) {
       // idle at rest, walk and run crossfaded, each cycle's timeScale matched to this zombie's ground speed
       if (!a.setGait(dt, v.spd, { idle: 'Idle', walk: 'Walking_A', run: 'Running_A' })) a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : st.idleSpeed);
-    } else a.base(moving ? st.walk : 'Idle', moving ? st.walkSpeed : 1);
-    if (e.act && e.act !== v.lastAct) {
+    } else a.base(moving ? st.walk : st.idle || 'Idle', moving ? st.walkSpeed : 1);
+    if (e.act && e.act !== v.lastAct && !(trooper && e.act.type === 'windup')) {
       v.lastAct = e.act;
       const clip = e.act.type === 'throw' ? 'Throw' : e.act.type === 'cast' ? st.shoot || 'Spellcast_Shoot' : st.melee || '1H_Melee_Attack_Chop';
       a.play(clip, { upper: moving, timeScale: 2 });
@@ -900,6 +907,17 @@ export class Renderer3D {
     a.flash(e.hurt, '#ffd8d0');
     a.poseLod = !this.near(e.x, e.y, 400) ? -1 : this.quality === 'high' ? 0 : 1; // off-screen: no pose; Low: fewer bones
     a.update(dt);
+  }
+
+  // The tell before a trooper fires: a thin red sight along his aim.
+  sightLine(v, on) {
+    if (!v.sight) {
+      if (!on) return;
+      v.sight = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 300), new THREE.MeshBasicMaterial({ color: '#ff2a1a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+      v.sight.position.set(0, 24, 168);
+      v.root.add(v.sight);
+    }
+    v.sight.visible = on;
   }
 
   updateBoss(v, e, g, dt) {
@@ -1016,7 +1034,8 @@ export class Renderer3D {
     if (pr.super) v.root.scale.setScalar(2);
     const ang = Math.atan2(pr.vx, pr.vy);
     if (pr.kind === 'wrench' || pr.kind === 'deck' || pr.kind === 'axe') { v.root.rotation.y = ang; v.spin.rotation.y = pr.spin; }
-    else if (pr.kind === 'arrow') v.root.rotation.y = ang;
+    else if (pr.kind === 'arrow' || pr.kind === 'round') v.root.rotation.y = ang;
+    else if (pr.kind === 'net') v.spin.rotation.set(0, t * 6, 0);
     else v.spin.rotation.set(t * 9, t * 7, 0);
   }
 
