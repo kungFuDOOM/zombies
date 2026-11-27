@@ -150,7 +150,14 @@ export const sfx = {
 
 // Cinematic cues (the opening, the story scenes): see cineAudio.js. They are sfx like any other, so an
 // online host's stings reach the guests too; stopAll is local only.
-const cine = makeCine(() => ({ ctx, master, muted }));
+// (the films' cues go through their own gain, so a spoken line can lean on them without touching the game's sfx)
+let cineMix = null;
+function cineOut() {
+  if (!ctx) return master;
+  if (!cineMix || cineMix.context !== ctx) { cineMix = ctx.createGain(); cineMix.connect(master); }
+  return cineMix;
+}
+const cine = makeCine(() => ({ ctx, master: ctx ? cineOut() : null, muted }));
 const { stopAll: stopCine, ...cineCues } = cine;
 Object.assign(sfx, cineCues);
 // True silence before a shock: the cinema bus and the music both drop out for `dur` seconds. (Added before the
@@ -188,15 +195,21 @@ for (const k of Object.keys(sfx)) {
 // and played through Web Audio. Anything without a recording uses the browser's speech
 // voice, picking the most natural-sounding one available.
 
-let voiceIndex = null; // line text -> recording file
-fetch('assets/voice/index.json').then((r) => (r.ok ? r.json() : null)).then((d) => { voiceIndex = d && d.lines; }).catch(() => {});
+// Story and character lines (assets/voice/lines.json) play by id from assets/voice/<id>.mp3: see "story voices" below.
+
+let voiceIndex = null; // announcer: line text -> recording file
+let voiceIds = {};     // story line id -> recording file
+const lineIds = new Map(); // story line text -> id
+const getJson = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+getJson('assets/voice/index.json').then((d) => { voiceIndex = d && d.lines; voiceIds = (d && d.ids) || {}; });
+getJson('assets/voice/lines.json').then((d) => { for (const l of (d && d.lines) || []) lineIds.set(l.text, l.id); setSpeakers((d && d.lines) || []); });
 const clips = new Map(); // file -> Promise<AudioBuffer>
 let speaking = null;     // { src } while a recording plays
 let queued = null;       // one line waiting for the current one to finish
 
 function loadClip(file) {
   if (!clips.has(file)) {
-    const p = fetch(`assets/voice/${file}`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b));
+    const p = fetch(`assets/voice/${file}`).then((r) => { if (!r.ok) throw new Error(`no clip ${file}`); return r.arrayBuffer(); }).then((b) => ctx.decodeAudioData(b));
     p.catch(() => clips.delete(file));
     clips.set(file, p);
   }
@@ -224,6 +237,7 @@ function playClip(file) {
 }
 
 export function stopVoice() {
+  stopLine();
   queued = null;
   if (speaking && speaking.src) { try { speaking.src.stop(); } catch { /* already stopped */ } }
   speaking = null;
@@ -249,6 +263,12 @@ export function say(text, key = text, cooldown = 8000) {
   if (lastSaid[key] && now - lastSaid[key] < cooldown) return;
   lastSaid[key] = now;
   const story = key.startsWith('story');
+  if (lineIdOf(text)) { // a story line: its own clip, and the browser's voice if that is missing
+    stopVoice();
+    playLine(text, { local: true, onMissing: () => speak(text, true) }); // (guests got the 'v' event above)
+    return;
+  }
+  if (story) stopLine();
   const file = voiceIndex && Object.prototype.hasOwnProperty.call(voiceIndex, text) ? voiceIndex[text] : null;
   if (file && ctx) {
     if (story) stopVoice(); // a new page of the story cuts off the last one
@@ -256,7 +276,11 @@ export function say(text, key = text, cooldown = 8000) {
     playClip(file);
     return;
   }
-  if (!window.speechSynthesis) return;
+  speak(text, story);
+}
+
+function speak(text, story) {
+  if (muted || !voiceOn || typeof window === 'undefined' || !window.speechSynthesis) return;
   if (story) window.speechSynthesis.cancel();
   else if (window.speechSynthesis.speaking && window.speechSynthesis.pending) return;
   const u = new SpeechSynthesisUtterance(text);
@@ -266,6 +290,118 @@ export function say(text, key = text, cooldown = 8000) {
   u.rate = 0.95;
   u.volume = 0.9;
   window.speechSynthesis.speak(u);
+}
+
+// ---------- story voices ----------
+// One character line at a time. Clips are fetched the first time they are wanted (never all at boot); a missing or
+// broken file is silent and the subtitle carries the line. While one plays, the music and the films' cues step back.
+
+const LOAD_GRACE = 2.5;     // seconds a subtitle will wait on a download before giving up on the voice
+const BAND_LIMITED = new Set(['pa', 'news', 'radio', 'ashby']); // voices out of a speaker, a TV or a handset
+const speakers = new Map(); // id -> speaker
+const missing = new Set();  // files that failed this session: not asked for again
+const decoded = new Map();  // file -> AudioBuffer, once it is ready
+let lineNow = null;         // { text, file, state: 'loading'|'playing'|'done'|'failed', asked, endAt, src }
+
+function setSpeakers(lines) { for (const l of lines) speakers.set(l.id, l.speaker); }
+export const lineIdOf = (text) => lineIds.get(text) || null;
+const fileOf = (text) => {
+  const id = lineIdOf(text);
+  return id && Object.prototype.hasOwnProperty.call(voiceIds, id) ? voiceIds[id] : null;
+};
+const nowSec = () => performance.now() / 1000;
+
+function fetchLine(file) {
+  const p = loadClip(file);
+  p.then((buf) => decoded.set(file, buf), () => missing.add(file));
+  return p;
+}
+
+/** Fetch these lines ahead of time (the ones a film is about to speak). */
+export function preloadLines(texts) {
+  if (!ctx || muted || !voiceOn) return;
+  for (const text of texts) { const f = fileOf(text); if (f && !missing.has(f)) fetchLine(f).catch(() => {}); }
+}
+
+/** Is this line's recording downloaded and ready to start at once? */
+export const lineReady = (text) => !muted && voiceOn && !!ctx && decoded.has(fileOf(text));
+
+function duckVoice(on) {
+  if (!ctx) return;
+  try {
+    const t = ctx.currentTime, tc = on ? 0.06 : 0.3;
+    if (voiceDuck) voiceDuck.gain.setTargetAtTime(on ? 0.3 : 1, t, tc);
+    if (cineMix) cineMix.gain.setTargetAtTime(on ? 0.55 : 1, t, tc);
+  } catch { /* context gone */ }
+}
+
+function startLine(me, buf, maxDur, onEnd) {
+  const src = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  gain.gain.value = 0.95;
+  src.buffer = buf;
+  // a film on a fixed clock gives the line a slot: read a little faster rather than be cut off
+  const rate = maxDur > 0 ? Math.min(1.15, Math.max(1, buf.duration / maxDur)) : 1;
+  src.playbackRate.value = rate;
+  let node = src;
+  if (BAND_LIMITED.has(speakers.get(lineIdOf(me.text)))) {
+    for (const [type, freq] of [['highpass', 320], ['lowpass', 3400]]) {
+      const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; node.connect(f); node = f;
+    }
+  }
+  node.connect(gain).connect(ctx.destination);
+  src.onended = onEnd;
+  me.src = src;
+  me.state = 'playing';
+  me.endAt = ctx.currentTime + buf.duration / rate;
+  duckVoice(true);
+  src.start();
+}
+
+/**
+ * Speak a story line by its subtitle text, cutting off the one before it. Never throws.
+ * o: { local: don't send it to online guests, maxDur: seconds before a fixed timeline moves on, onMissing() }
+ */
+export function playLine(text, o = {}) {
+  stopLine(true);
+  if (!lineIdOf(text)) { if (o.onMissing) o.onMissing(); return false; }
+  if (!o.local && audioTap.fn) audioTap.fn(['l', text]);
+  if (muted || !voiceOn) return false;
+  const file = fileOf(text);
+  if (!ctx || !file || missing.has(file)) { if (o.onMissing) o.onMissing(); return false; }
+  const me = lineNow = { text, file, state: 'loading', asked: nowSec(), endAt: 0, src: null };
+  const end = () => { if (lineNow !== me) return; me.state = 'done'; duckVoice(false); };
+  const fail = () => { if (lineNow !== me) return; me.state = 'failed'; duckVoice(false); if (o.onMissing) o.onMissing(); };
+  const begin = (buf) => {
+    if (lineNow !== me || muted || !voiceOn) return;
+    if (nowSec() - me.asked > LOAD_GRACE) { me.state = 'done'; return; } // too late: the scene has moved on
+    try { startLine(me, buf, o.maxDur, end); } catch { fail(); }
+  };
+  if (decoded.has(file)) begin(decoded.get(file));
+  else fetchLine(file).then(begin, fail);
+  return true;
+}
+
+function stopLine(silentDuck = false) {
+  const me = lineNow;
+  lineNow = null;
+  if (me && me.src) { try { me.src.stop(); } catch { /* already stopped */ } }
+  if (me || !silentDuck) duckVoice(false);
+}
+
+/** A scene moved on early: cut the line off, here and on the guests' machines. */
+export function hushLine() {
+  if (audioTap.fn) audioTap.fn(['l', '']);
+  stopLine();
+}
+
+/** Seconds a subtitle should still wait for this line's voice. 0 = no voice (missing, muted, off, finished). */
+export function voiceLeft(text) {
+  const me = lineNow;
+  if (!me || me.text !== text || muted || !voiceOn) return 0;
+  if (me.state === 'loading') return nowSec() - me.asked < LOAD_GRACE ? 0.5 : 0;
+  if (me.state !== 'playing' || !ctx || ctx.state !== 'running') return 0;
+  return Math.max(0, me.endAt - ctx.currentTime);
 }
 
 // ---------- music ----------
@@ -282,6 +418,7 @@ let wantPaused = false;
 
 const musicLevel = () => (muted || !musicOn ? 0 : MUSIC_VOL);
 let duckGain = null; // between the music bus and the master: only the films' silences move it
+let voiceDuck = null; // and one only the story voices move, so the two never undo each other
 function musicDuck(dur) {
   if (!ctx || !duckGain) return;
   try { const t = ctx.currentTime; duckGain.gain.cancelScheduledValues(t); duckGain.gain.setTargetAtTime(0.02, t, 0.015); duckGain.gain.setTargetAtTime(1, t + dur, 0.08); } catch { /* context gone */ }
@@ -293,7 +430,10 @@ function ensureMusic() {
     musicBus = ctx.createGain();
     musicBus.gain.value = musicLevel();
     duckGain = ctx.createGain();
-    musicBus.connect(duckGain);
+    voiceDuck = ctx.createGain();
+    voiceDuck.gain.value = lineNow && lineNow.state === 'playing' ? 0.3 : 1;
+    musicBus.connect(voiceDuck);
+    voiceDuck.connect(duckGain);
     duckGain.connect(master);
     engine = createMusic(ctx, musicBus);
     if (wantPaused) engine.setPaused(true);

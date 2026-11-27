@@ -16,12 +16,13 @@
 // the cinema toolkit in src/cine*.js; the sets only it needs are in cineOpenerSets.js.
 //
 // main.js drives it: start({ gate }), update(dt), render(), view() for the hud overlay, press()/skip().
-// Sound is cineAudio.js (Web Audio only). The PA is a wordless murmur under its ding; the caption carries the words.
+// Sound is cineAudio.js (Web Audio only). Each caption plays its recorded line (assets/voice) when there is one; without
+// it, the PA is a wordless murmur under its ding and the caption carries the words.
 
 import * as THREE from 'three';
-import { cine } from './audio.js';
+import { cine, playLine, voiceLeft, lineReady, preloadLines } from './audio.js';
 import { CinePlayer, dolly, crane, push, clamp01, smooth, mix } from './cineCore.js';
-import { LightRig, makeShaft, DustField, disposeTree, canvasTex, scriptedFail, failing } from './cineFx.js';
+import { LightRig, makeShaft, makeTuleFog, DustField, disposeTree, canvasTex, scriptedFail, failing } from './cineFx.js';
 import { makeHero, makeTrooper } from './cineStage.js';
 import { buildConcourse, buildOffice, FOUNTAIN, OFFICE_X } from './cineSets.js';
 import { buildExterior, buildKiosk, dressConcourse, dressOffice, CrowdField, crowdSpots, drawMallFeed, drawNewsFeed, EXT_X, KIOSK_X, DOCK } from './cineOpenerSets.js';
@@ -41,6 +42,7 @@ const CARDS = {
 const HERO_COLOR = { biker: COLORS.Biker, mallCop: COLORS['Mall Cop'], skater: COLORS.Skater, mallGoth: COLORS['Mall Goth'] };
 const FC = FOUNTAIN;
 const OX = OFFICE_X, KX = KIOSK_X, EX = EXT_X, DX = DOCK[0];
+const SPEAKERS = { Biker: 'biker', 'Mall Cop': 'mallCop', Skater: 'skater', 'Mall Goth': 'mallGoth' };
 const SKATE = [34, 0, 358];                       // where the Skater stands by the fountain
 const FLOOR_HAND = [-24, 0, 470], FLOOR_FACE = [-34, 8, 446];
 // the last shot's end pose: the gameplay camera's three-quarter high angle (camMath.gameplayPose) over the room's middle
@@ -70,7 +72,10 @@ export class Intro {
     if (!this.gate) this.begin();
   }
 
-  begin() { this.gate = false; this.pl.reset(); this.resetFilm(); this.t = this.pl.t = -PREROLL; this.age = 0; }
+  begin() {
+    this.gate = false; this.pl.reset(); this.resetFilm(); this.t = this.pl.t = -PREROLL; this.age = 0;
+    preloadLines(this.pl.subs.map((s) => s.text)); // the opener's own lines: the first is 16 s away
+  }
 
   // Any button / tap while the gate is up starts the show; afterwards it skips.
   press() {
@@ -119,6 +124,8 @@ export class Intro {
     tvFace.position.z = 10.2; this.tv.add(tvFace);
 
     const ext = buildExterior({ high }); this.ext = ext.h; scene.add(ext.group); this.extG = ext.group;
+    this.tule = makeTuleFog(ext.group, { n: high ? 16 : 5, center: [EX, 0, 0], span: [1500, 800], opacity: high ? 0.17 : 0.2 });
+    const sodium = makeShaft({ color: '#ff9a30', len: 136, r0: 5, r1: 66, opacity: high ? 0.16 : 0.12 }); sodium.position.set(DX - 40, 136, 12); ext.group.add(sodium);
     const kiosk = buildKiosk(); this.kiosk = kiosk.h; scene.add(kiosk.group); this.kioskG = kiosk.group;
 
     // the crowd in the food court, clear of the fountain, the Skater's spot and the camera's path down the middle
@@ -239,6 +246,7 @@ export class Intro {
   resetFilm() {
     this.t = 0;
     this.paTalk = 0;
+    for (const s of this.pl.subs) s.b = s.b0;
     for (const a of [...Object.values(this.heroes), ...this.troopers]) {
       a.standUp();
       a.visible = false;
@@ -254,14 +262,20 @@ export class Intro {
   // subtitles, name cards and every sound cue, laid on the timeline (seconds from the start)
   script() {
     const p = this.pl, at = (t, fn) => p.at(t, fn);
-    const say = (a, b, who, text) => p.say(a, b, who, COLORS[who], text, 'line');
+    // each caption starts its recording; the clock is fixed, so the line's slot runs to the next caption
+    const say = (a, b, who, text) => {
+      p.say(a, b, who, COLORS[who], text, 'line');
+      const sub = p.subs[p.subs.length - 1];
+      sub.b0 = b; sub.next = INTRO_END;
+      at(a, () => { if (!this.hold) playLine(text, { local: true, maxDur: sub.next - a - 0.05 }); }); // (guests don't see the opener)
+    };
     // a page: the same two-note ding every time, then the calm wordless voice under the caption
     const page = (a, b, text, vol = 0.07) => {
       say(a, b, 'PA', text);
       at(a - 0.55, () => cine.paDing());
-      at(a + 0.1, () => { cine.paMurmur(b - a - 0.4, vol); this.paTalk = b - a; });
+      at(a + 0.1, () => { if (!lineReady(text)) cine.paMurmur(b - a - 0.4, vol); this.paTalk = b - a; });
     };
-    const radio = (a, b, who, text) => { say(a, b, who, text); at(a - 0.12, () => cine.radioSquelch()); if (who === 'Radio') at(a, () => cine.paMurmur(b - a - 0.3, 0.05, 150)); };
+    const radio = (a, b, who, text) => { say(a, b, who, text); at(a - 0.12, () => cine.radioSquelch()); if (who === 'Radio') at(a, () => { if (!lineReady(text)) cine.paMurmur(b - a - 0.3, 0.05, 150); }); };
     const card = (cls, a, b) => p.card(a, b, CARDS[cls][0], CARDS[cls][1], HERO_COLOR[cls], CARDS[cls][2]);
 
     // the studio card
@@ -321,7 +335,7 @@ export class Intro {
     say(56.2, 58.4, 'Skater', 'Guys? ...Guys. Get up.');
     // 13 the news
     at(58.5, () => cine.neonBuzz(6, 0.03));
-    at(58.8, () => cine.tvMurmur(2.7, 0.06));
+    at(58.8, () => { if (!lineReady('A refinery leak. Stay indoors. Keep windows shut.')) cine.tvMurmur(2.7, 0.06); });
     say(58.8, 61.5, 'Action News 17', 'A refinery leak. Stay indoors. Keep windows shut.');
     say(61.7, 64.4, 'Mall Cop', "Refinery's nine miles off. They knew in three minutes?");
     // 14 the call and the convoy
@@ -345,6 +359,8 @@ export class Intro {
     page(79.8, 82.8, 'Shoppers, please remain where you are. Help is on the way.');
     at(80.4, () => cine.riser(2.4, 0.09));
     at(INTRO_END - 0.06, () => cine.stopAll()); // hard cut to silence on the last frame
+    const order = [...p.subs].sort((x, y) => x.a - y.a);
+    order.forEach((s, i) => { if (order[i + 1]) s.next = order[i + 1].a; });
   }
 
   // ---------------------------------------------------------------- the shot list
@@ -388,7 +404,7 @@ export class Intro {
     };
     const nightAmb = { sky: '#6a7ca8', ground: '#3a2a18', hemi: 1.05, moon: 0.55, moonColor: '#90a8e0' };
     const night = (p, over = {}, fog = {}) => {
-      show(p, 'ext', { near: 600, far: 3200, sky: '#050914', fog: '#141a26', ...fog });
+      show(p, 'ext', { near: 420, far: 2600, sky: '#060a14', fog: '#1a202a', ...fog }); // (Central Valley tule fog)
       self.ext.heli.visible = false; self.ext.tape.visible = false;
       for (const tk of self.ext.trucks) tk.visible = false;
       for (const c of self.ext.cars) c.g.visible = true;
@@ -397,11 +413,11 @@ export class Intro {
 
     return [
       // ---- 2: the oil field, Highway 99, and one bright mall beyond it
-      { id: 'field', dur: 6, fov: [48, 44], exposure: 1.1, bloom: 0.75,
+      { id: 'field', dur: 6, fov: [48, 44], exposure: 1.1, bloom: 0.75, grade: 'TULE_FOG',
         cam: crane([EX - 520, 350, 1080], [EX - 330, 250, 760], [EX - 300, 70, -200], [EX - 160, 60, -420], { ease: 'lin', hand: 0.12 }),
         enter(p) { night(p); } },
       // ---- 3: the queue at the doors; pan right to the dark side, where canisters are going up a ladder
-      { id: 'lot', dur: 6, fov: [40, 36], exposure: 1.1,
+      { id: 'lot', dur: 6, fov: [40, 36], exposure: 1.1, grade: 'TULE_FOG',
         cam: dolly([EX + 40, 66, -40], [EX + 280, 70, -120], [EX - 10, 54, -420], [EX + 408, 64, -424], { ease: 'smoother', hand: 0.3 }),
         enter(p) {
           night(p, { rim: ['#9ac0ff', [EX + 440, 110, -340], 260], fill: ['#c8dcff', [EX + 396, 70, -360], 130] });
@@ -414,11 +430,15 @@ export class Intro {
         enter(p) { show(p, 'con'); self.dust.moveTo(0, 0, 200); open(); self.hall.banners[1].visible = false; } },
       // ---- 5: Mall Cop: answers the page, then shuts his own door and throws the bolt
       { id: 'cop', dur: 6.5, fov: [40, 37], grade: 'SICK_FLUOR',
-        cam: dolly([OX + 34, 74, 206], [OX - 6, 70, 186], [OX - 6, 48, -6], [OX - 40, 48, 18], { ease: 'smooth', hand: 0.22 }),
-        dof: { focus: [185, 165], aperture: 0.4 },
+        cam: { hand: 0.22, seq: [ // close on him answering; the walk to the door pulls the camera back with it
+          { to: 0.38, ...push([OX + 30, 62, 148], [OX + 22, 60, 130], [OX + 2, 47, 18], [OX + 2, 48, 18]), fov: [33, 30] },
+          { to: 0.64, ...dolly([OX + 22, 60, 130], [OX + 4, 71, 192], [OX + 2, 48, 18], [OX - 30, 48, 18], { ease: 'smoother' }), fov: [30, 39] },
+          { to: 1, ...dolly([OX + 4, 71, 192], [OX - 6, 70, 186], [OX - 30, 48, 18], [OX - 40, 48, 18]), fov: [39, 37] },
+        ] },
+        dof: { focus: [118, 180], from: 0.38, to: 0.64, aperture: 0.6 },
         enter(p) {
           show(p, 'off', { near: 200, far: 900 }); self.dust.moveTo(OX, 0, 0);
-          self.lights.set({ amb: { sky: '#4a7a70', ground: '#10141c', hemi: 0.75, moon: 0, moonColor: '#101820' }, key: ['#a8ffd8', [OX - 10, 80, -20], 130], rim: ['#6a8ad0', [OX + 110, 90, 60], 130], fill: ['#ffe8c8', [OX - 20, 96, 130], 110], fx: null }, true);
+          self.lights.set({ amb: { sky: '#4a7a70', ground: '#10141c', hemi: 0.75, moon: 0, moonColor: '#101820' }, key: ['#a8ffd8', [OX - 10, 80, -20], 130, (t) => failing(t, 5, 0.9)], rim: ['#6a8ad0', [OX + 110, 90, 60], 130], fill: ['#ffe8c8', [OX - 20, 96, 130], 110], fx: null }, true);
           self.room.setDoor(1, 0);
           hero('mallCop', [OX + 2, 0, 18], 0.25, 'Idle_Combat').raise('L', 0.55).look(14, -4, 5);
           self.walking = false;
@@ -435,8 +455,12 @@ export class Intro {
         } },
       // ---- 6: Biker: out at Dock B under one sodium light, a pager, and a truck backing in
       { id: 'dock', dur: 5.5, fov: [40, 35],
-        cam: dolly([DX + 52, 62, 150], [DX + 18, 60, 118], [DX + 4, 54, -26], [DX - 18, 62, -26], { hand: 0.3 }),
-        dof: { focus: [170, 142], aperture: 0.7 }, grade: 'HERO_GRIT',
+        cam: { hand: 0.3, seq: [ // wide on the dock; the pager draws the camera in for the line
+          { to: 0.44, ...dolly([DX + 52, 62, 150], [DX + 30, 61, 128], [DX + 4, 54, -26], [DX - 8, 59, -26]), fov: [40, 38] },
+          { to: 0.7, ...dolly([DX + 30, 61, 128], [DX + 16, 70, 60], [DX - 8, 59, -26], [DX - 30, 66, -26], { ease: 'smoother' }), fov: [38, 34] },
+          { to: 1, ...push([DX + 16, 70, 60], [DX + 12, 70, 50], [DX - 30, 66, -26], [DX - 31, 66, -26]), fov: [34, 32] },
+        ] },
+        dof: { focus: [178, 96], from: 0.44, to: 0.7, aperture: 0.9 }, grade: 'SODIUM_DOCK',
         enter(p) {
           night(p, { key: ['#ff9a30', [DX - 40, 134, 20], 330], rim: ['#6a8aff', [DX + 120, 90, -90], 200], fill: ['#c8d8ff', [DX + 110, 40, -10], 60] }, { near: 380, far: 1900 });
           hero('biker', [DX - 34, 22, -26], 0.55, 'Idle_Combat').raise('L', 0.6).look(10, -18, 8);
@@ -536,11 +560,15 @@ export class Intro {
         } },
       // ---- 13: the Security Room: the station already has the story
       { id: 'news', dur: 6, fov: [38, 31], grade: 'SICK_FLUOR',
-        cam: push([OX + 20, 70, 176], [OX - 6, 62, 130], [OX - 14, 52, -10], [OX - 16, 52, -10], { hand: 0.18 }),
-        dof: { focus: [180, 136], aperture: 0.5 },
+        cam: { hand: 0.18, seq: [ // in on the TV, then over to the man who does not believe it
+          { to: 0.46, ...push([OX + 20, 70, 176], [OX + 2, 64, 146], [OX - 14, 52, -10], [OX - 15, 52, -10]), fov: [38, 34] },
+          { to: 0.7, ...dolly([OX + 2, 64, 146], [OX - 8, 58, 96], [OX - 15, 52, -10], [OX + 8, 47, 6], { ease: 'smoother' }), fov: [34, 32] },
+          { to: 1, ...push([OX - 8, 58, 96], [OX - 6, 57, 88], [OX + 8, 47, 6], [OX + 10, 47, 6]), fov: [32, 30] },
+        ] },
+        dof: { focus: [168, 94], from: 0.46, to: 0.7, aperture: 0.8 },
         enter(p) {
           show(p, 'off', { near: 200, far: 900 }); self.dust.moveTo(OX, 0, 0);
-          self.lights.set({ amb: { sky: '#3a5a6a', ground: '#0a0e16', hemi: 0.55, moon: 0, moonColor: '#101820' }, key: ['#7aa8ff', [OX - 40, 62, 30], 150], rim: ['#4af0a0', [OX + 80, 80, -30], 130], fill: ['#ffe8c8', [OX + 20, 96, 110], 70], fx: null }, true);
+          self.lights.set({ amb: { sky: '#3a5a6a', ground: '#0a0e16', hemi: 0.55, moon: 0, moonColor: '#101820' }, key: ['#7aa8ff', [OX - 40, 62, 30], 150, (t) => 0.86 + 0.14 * failing(t * 2.3, 9, 0.7)], rim: ['#4af0a0', [OX + 80, 80, -30], 130], fill: ['#ffe8c8', [OX + 20, 96, 110], 70], fx: null }, true);
           self.room.setDoor(0, 1);
           self.tv.visible = true;
           hero('mallCop', [OX + 20, 0, 8], -0.35, 'Idle_Combat', true).look(-38, -8, 5);
@@ -553,7 +581,7 @@ export class Intro {
           if (lt > 4.3) a.look(-55, -4, 3).raise('L', 0.55);      // the deadbolt. His hand stops.
         } },
       // ---- 14: Highway 99: white trucks, amber beacons, no sirens, and the yellow helicopter
-      { id: 'convoy', dur: 6, fov: [46, 42], exposure: 1.1, bloom: 0.8,
+      { id: 'convoy', dur: 6, fov: [46, 42], exposure: 1.1, bloom: 0.8, grade: 'TULE_FOG',
         cam: dolly([EX - 70, 78, 520], [EX + 60, 66, 470], [EX + 40, 76, 110], [EX + 130, 62, 110], { ease: 'lin', hand: 0.25 }),
         enter(p) {
           night(p, { key: ['#ffa018', [EX + 100, 100, 230], 300], rim: ['#c8d8ff', [EX + 260, 190, 60], 200] }, { near: 380, far: 2200 });
@@ -652,6 +680,15 @@ export class Intro {
     if (this.pl.update(dt)) { this.finish(); return; }
     this.t = this.pl.t;
     const t = this.t;
+    // a caption stays up while its recording runs (never into the next one), and whoever is saying it moves with it
+    let talker = '';
+    for (const s of this.pl.subs) {
+      if (t < s.a || t >= s.next) continue;
+      const left = voiceLeft(s.text);
+      if (left > 0) s.b = Math.max(s.b, Math.min(s.next - 0.1, t + left));
+      if (t <= s.b) talker = SPEAKERS[s.speaker] || '';
+    }
+    for (const k in this.heroes) this.heroes[k].talk(k === talker ? 1 : 0);
     this.paTalk = Math.max(0, this.paTalk - dt);
     if (this.conG.visible) {
       this.con.update(dt, t);
@@ -661,7 +698,7 @@ export class Intro {
       this.friends.update(t);
     }
     if (this.offG.visible) { this.off.update(dt, t); this.room.update(dt, t); }
-    if (this.extG.visible) this.ext.update(dt, t);
+    if (this.extG.visible) { this.ext.update(dt, t); this.tule.update(t); }
     if (this.kioskG.visible) this.kiosk.update(dt, t);
     for (const a of [...Object.values(this.heroes), ...this.troopers]) if (a.visible) a.update(dt);
     this.lights.update(dt, t);

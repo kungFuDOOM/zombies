@@ -6,7 +6,7 @@
 
 import { CLASSES, ENEMIES, POWERUPS, MAX_PLAYERS } from './config.js';
 import { SHOP } from './campaign.js';
-import { sfx, say } from './audio.js';
+import { sfx, say, playLine, hushLine } from './audio.js';
 
 const r1 = (v) => Math.round(v * 10) / 10;
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -124,10 +124,10 @@ export function cleanGame(s) {
 
 // Effects, sounds and announcer lines, with a cap per kind per message (a host sends about
 // 20 messages a second; real play stays well under these).
-const EVENT_CAP = { p: 300, b: 40, t: 20, a: 8, v: 1 };
+const EVENT_CAP = { p: 300, b: 40, t: 20, a: 8, v: 1, l: 2 }; // (l: a story line: one stop and one start)
 export function cleanEvents(fx) {
   const out = [];
-  const count = { p: 0, b: 0, t: 0, a: 0, v: 0 };
+  const count = { p: 0, b: 0, t: 0, a: 0, v: 0, l: 0 };
   const sounds = new Set();
   for (const ev of list(fx, 600)) {
     if (!Array.isArray(ev) || !own(EVENT_CAP, ev[0]) || count[ev[0]] >= EVENT_CAP[ev[0]]) continue;
@@ -140,6 +140,7 @@ export function cleanEvents(fx) {
       // (a sound's numbers are a film cue's duration / count / pace / volume: kept as numbers, and bounded)
       case 'a': if (own(sfx, ev[1])) out.push(['a', ev[1], ...ev.slice(2, 6).map((a, i) => (typeof a === 'number' ? num(a, 0, i ? 3 : 12) : str(a, 16)))]); break;
       case 'v': out.push(['v', str(ev[1], 300), str(ev[2], 80), num(ev[3], 0, 60000)]); break;
+      case 'l': out.push(['l', str(ev[1], 300)]); break;
       default: break;
     }
   }
@@ -159,7 +160,7 @@ function cleanCut(v) {
   const choices = Array.isArray(v.choices) ? list(v.choices, 4).map((c, i) => ({ n: i + 1, label: str(c && c.label, 90), silence: !!(c && c.silence) })) : null;
   const card = v.card && typeof v.card === 'object' ? { title: str(v.card.title, 60), sub: str(v.card.sub, 60), boss: !!v.card.boss, credits: !!v.card.credits, t: num(v.card.t, 0, 1), out: num(v.card.out, 0, 1), age: num(v.card.age, 0, 60), dur: num(v.card.dur, 0, 60) } : null;
   const f = v.film && typeof v.film === 'object' ? v.film : null;
-  const film = f ? { key: str(f.key, 24), id: str(f.id, 12), shot: str(f.shot, 48), cut: int(f.cut, 0, 999), ts: num(f.ts, 0, 1), tens: num(f.tens, 0, 1), ray: str(f.ray, 12), party: list(f.party, 4).map((c) => str(c, 12)), hit: Array.isArray(f.hit) ? [int(f.hit[0], 0, 1e6), ...[1, 2, 3, 4, 5].map((i) => num(f.hit[i], 0, i === 1 ? 20 : i === 5 ? 0.15 : 1.5))] : [0, 0, 0, 0, 0, 0] } : null;
+  const film = f ? { key: str(f.key, 24), id: str(f.id, 12), shot: str(f.shot, 48), cut: int(f.cut, 0, 999), ts: num(f.ts, 0, 1), tens: num(f.tens, 0, 1), ray: str(f.ray, 12), party: list(f.party, 4).map((c) => str(c, 12)), talk: str(f.talk, 12), hit: Array.isArray(f.hit) ? [int(f.hit[0], 0, 1e6), ...[1, 2, 3, 4, 5].map((i) => num(f.hit[i], 0, i === 1 ? 20 : i === 5 ? 0.15 : 1.5))] : [0, 0, 0, 0, 0, 0] } : null;
   return {
     film, id: str(v.id, 12), letterbox: 1, bar: num(v.bar, 0, 130), handoff: v.handoff == null ? -1 : num(v.handoff, 0, 1), flash: num(v.flash, 0, 1), fade: num(v.fade, 0, 1), mood: str(v.mood, 12), alarm: v.alarm ? 1 : 0, card, speaker: str(v.speaker, 40), who: str(v.who, 12), text: str(v.text, 300), full: str(v.full, 300), prompt: str(v.prompt, 120),
     choices, timerFrac: num(v.timerFrac, 0, 1), hint: str(v.hint, 60), beat: ['card', 'line', 'shot', 'choice'].includes(v.beat) ? v.beat : null,
@@ -381,6 +382,7 @@ function playEvent(g, ev) {
 // most every 50 ms and the announcer at most every 400 ms, whatever a host sends.
 const soundAt = new Map();
 let voiceAt = -1e9;
+let lineAt = -1e9;
 export function playSound(ev) {
   const now = performance.now();
   if (ev[0] === 'a' && own(sfx, ev[1])) {
@@ -391,5 +393,10 @@ export function playSound(ev) {
     if (now - voiceAt < 400) return;
     voiceAt = now;
     say(ev[1], ev[2], Math.max(ev[3], 400));
+  } else if (ev[0] === 'l') { // a story line by its text: only lines in the script ever play ('' = stop)
+    if (!ev[1]) { hushLine(); return; }
+    if (now - lineAt < 150) return;
+    lineAt = now;
+    playLine(String(ev[1]));
   }
 }

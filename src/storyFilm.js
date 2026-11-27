@@ -19,11 +19,11 @@
 
 import * as THREE from 'three';
 import { CinePlayer, dolly, crane, push, whip, orbit, clamp01, smooth, mix, hash } from './cineCore.js';
-import { LightRig, makeShaft, DustField, SparkPool, flicker, scriptedFail, disposeTree } from './cineFx.js';
+import { LightRig, makeShaft, DustField, SparkPool, flicker, failing, scriptedFail, disposeTree } from './cineFx.js';
 import { GRADES } from './cineGrade.js';
 import { warmSplat } from './cineLens.js';
 import { SCOPE_BAR_PX } from './camMath.js';
-import { CineActor, makeHero, makeZombie } from './cineStage.js';
+import { CineActor, makeHero, makeZombie, speechBeat } from './cineStage.js';
 import { buildConcourse, buildOffice, FOUNTAIN, OFFICE_X } from './cineSets.js';
 import { buildPizza, buildKitchen, buildBoombox, drawPrintout, glowPlane, SteamPuffs, PIZZA_X, TICKET_AT, KITCHEN_X, GAUGE_AT } from './cineStorySets.js';
 import { Actor } from './assets.js';
@@ -369,7 +369,7 @@ export class StoryFilm {
 
   officeLights(extra = {}) {
     this.light(OFFICE_AMB, {
-      key: ['#8affd0', [OX - 66, 92, 104], 140],
+      key: ['#8affd0', [OX - 66, 92, 104], 140, (t) => failing(t, 4, 0.93)], // a tired fluorescent
       rim: ['#4af0a0', [OX + 4, 84, -34], 190],
       fill: ['#ff9a40', [OX + 112, 56, 40], 90],
       fx: null,
@@ -438,7 +438,11 @@ export class StoryFilm {
       for (const a of this.actors()) if (!this.zombies.includes(a)) a.breathe(0.5 + this.tens * 0.5, 0.3 + this.tens * 0.8);
     }
     this.pl.flashV = Math.max(0, this.pl.flashV - dt * 4);
+    for (const cls of SURVIVORS) this.heroes[cls].talk(fv.talk === cls ? 1 : 0);
+    if (this.rayA) this.rayA.talk(fv.talk === 'ray' ? 1 : 0);
     this.tickShot(sdt);
+    const jaw = this.butcher && fv.talk === 'butcher' && this.butcher.head.userData.jaw;
+    if (jaw) jaw.rotation.x = Math.max(jaw.rotation.x, 0.08 + speechBeat(this.abs) * 0.3);
     // a walk runs even while its actor is still off stage: a walk-in is what brings them on
     for (const a of this.cast()) if (a.walk) a.walk(sdt, this.lt);
     for (const a of this.actors()) if (!a.frozen) a.update(sdt);

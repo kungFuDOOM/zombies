@@ -82,7 +82,9 @@ void main() {
     col = acc / 9.0;
   }
   // ---- bloom, and the anamorphic streak: the wide bloom smeared sideways, in cold blue
-  col += (texture2D(tBloomA, uv).rgb * 0.7 + texture2D(tBloomB, uv).rgb * 0.9) * uBloom;
+  vec3 wide = texture2D(tBloomB, uv).rgb;
+  col += (texture2D(tBloomA, uv).rgb * 0.7 + wide * 0.9) * uBloom;
+  col += wide * vec3(0.2, 0.055, 0.012) * uBloom;   // halation: the warm red fringe film puts round a bright lamp
   if (uStreak > 0.0) {
     vec3 st = vec3(0.0);
     for (int i = 1; i <= 6; i++) {

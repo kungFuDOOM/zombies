@@ -132,6 +132,30 @@ export function makeShaft({ color = '#9ab4ff', len = 190, r0 = 4, r1 = 40, opaci
   return m;
 }
 
+/** Tule fog: soft banks lying low over the valley floor, drifting slowly. Few, large and faint, so phones can afford them. */
+export function makeTuleFog(parent, { n = 8, center = [0, 0, 0], span = [1400, 800], color = '#7d8896', opacity = 0.18 } = {}) {
+  const tex = canvasTex(256, 64, (c, w, h) => {
+    for (let i = 0; i < 22; i++) {
+      const x = 40 + hash(i + 2) * (w - 80), y = h * 0.4 + hash(i + 31) * h * 0.25, r = 14 + hash(i + 57) * 18;
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.34)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  });
+  const mat = new THREE.MeshBasicMaterial({ map: tex, color, transparent: true, opacity, depthWrite: false, fog: false });
+  const geo = new THREE.PlaneGeometry(1, 1);
+  const banks = Array.from({ length: n }, (_, i) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.scale.set(420 + hash(i + 3) * 360, 40 + hash(i + 8) * 24, 1);
+    const home = [center[0] + (hash(i + 13) - 0.5) * span[0], center[1] + 14 + hash(i + 21) * 8, center[2] + ((i + 0.5) / n - 0.5) * span[1]];
+    m.position.set(...home);
+    m.renderOrder = 4;
+    parent.add(m);
+    return { m, x: home[0], ph: hash(i + 44) * 9 };
+  });
+  return { update(t) { for (const b of banks) b.m.position.x = b.x + Math.sin(t * 0.07 + b.ph) * 70; } };
+}
+
 /** Drifting motes that catch the light. A box of N points; slow upward drift with a sideways sway. */
 export class DustField {
   constructor(scene, { n = 120, box = [400, 180, 400], center = [0, 90, 0], color = '#cfd8ff', size = 3.2, opacity = 0.5 } = {}) {

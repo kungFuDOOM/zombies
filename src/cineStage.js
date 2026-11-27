@@ -19,6 +19,9 @@ import { HERO_STYLE, ENEMY_STYLE } from './render3d.js';
 const D2R = Math.PI / 180;
 const Q = new THREE.Quaternion(), E = new THREE.Euler();
 
+/** The rhythm of speech at time t, 0..1: uneven syllables, never on a steady beat (also drives the Butcher's jaw). */
+export const speechBeat = (t) => Math.max(0, Math.sin(t * 13.1)) * 0.6 + Math.max(0, Math.sin(t * 8.3 + 1.3)) * 0.4;
+
 export class CineActor {
   constructor(actor, { pos = [0, 0, 0], yaw = 0, scale = 1 } = {}) {
     this.actor = actor;
@@ -49,7 +52,9 @@ export class CineActor {
   tremble(k = 0.5) { this.shiverK = k; return this; }
   /** A recoil that decays over about a third of a second. */
   flinch(amount = 1) { this.flinchK = amount; this.flinchAge = 0; return this; }
-  resetActing() { this.breathK = 0; this.breathRate = 0.3; this.shiverK = 0; this.flinchK = 0; this.flinchAge = 9; return this; }
+  resetActing() { this.breathK = 0; this.breathRate = 0.3; this.shiverK = 0; this.flinchK = 0; this.flinchAge = 9; this.talkK = 0; this.talkG = 0; return this; }
+  /** Speaking: the head works with the syllables and the chest with the phrase (the models have no jaw). 0 = quiet. */
+  talk(k = 1) { this.talkK = k; return this; }
   /** An eye-line: turn the head toward a world point (clamped to what a neck can do). */
   lookAtPoint(x, y, z, rate = 4) {
     const w = this.boneWorld('Head', this.eyeV || (this.eyeV = new THREE.Vector3()));
@@ -123,9 +128,11 @@ export class CineActor {
     const wave = br ? Math.sin(c * Math.PI * 2 * this.breathRate) : 0;
     const jit = (a1, a2) => (sh ? (Math.sin(c * a1) * 0.65 + Math.sin(c * a2 + 1.9) * 0.35) * sh * 1.6 : 0);
     const fl = this.flinchAge < 0.6 ? this.flinchK * Math.exp(-this.flinchAge * 7) * Math.min(1, this.flinchAge * 24) : 0;
-    const yaw = g.headYaw + jit(61, 79), pitch = g.headPitch + jit(71, 57) - wave * 0.8 * br + fl * 12;
+    this.talkG += (this.talkK - this.talkG) * (1 - Math.exp(-dt * 10));
+    const tk = this.talkG, beat = tk > 0.01 ? speechBeat(c) : 0, phrase = tk > 0.01 ? Math.sin(c * 2.3) : 0;
+    const yaw = g.headYaw + jit(61, 79) + phrase * 3.2 * tk, pitch = g.headPitch + jit(71, 57) - wave * 0.8 * br + fl * 12 + (beat - 0.35) * 6.5 * tk;
     const armR = g.armR + jit(67, 83) * 0.012 + fl * 0.35, armL = g.armL + jit(73, 59) * 0.012 + fl * 0.35;
-    const chest = g.lean * 18 + wave * 2.5 * br - fl * 5;
+    const chest = g.lean * 18 + wave * 2.5 * br - fl * 5 + Math.sin(c * 3.4) * 1.3 * tk;
     const shift = br ? Math.sin(c * Math.PI * 2 * 0.15) * 3 * Math.min(1, br) : 0;
     rot(B.Neck, pitch * 0.35, yaw * 0.4, 0);
     rot(B.Head, pitch * 0.65, yaw * 0.6, 0);

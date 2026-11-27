@@ -107,3 +107,11 @@ npm run build-assets -- kaykit
 ```bash
 npm test
 ```
+
+## Story voices
+
+Character and story lines play from `assets/voice/<id>.mp3`. The script is `assets/voice/lines.json`, the casting notes
+are in `assets/voice/CAST.md`, and `index.json` maps each id to its file. Clips load when a scene needs them. A subtitle
+waits for its clip; with no clip it keeps its normal timing. Music and film cues duck under a line, M and V silence
+it, and online guests hear the in-game and cutscene lines from their own copy of the files. The game never calls a
+voice service. Don't run `tools/build-voice.py`: it overwrites `index.json` and deletes the story clips.

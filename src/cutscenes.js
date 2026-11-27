@@ -16,6 +16,8 @@ export const speakerName = (who) => NAMES[who] || '';
 
 export const TYPE_SPEED = 48;  // characters per second
 const LINE_HOLD = 1.1;         // an unattended line moves on this long after it finishes typing
+const VOICE_TAIL = 0.35;       // and this long after its recording ends, when it has one
+const VOICE_CAP = 14;          // never wait on a recording more than this past the line's own time
 const TOAST_SECONDS = 2.6;
 
 // ---------- the scripts ----------
@@ -206,7 +208,8 @@ let played = 0;         // numbers each scene played, so the film knows a new on
 
 export class Cutscene {
   // hooks.choose(choiceId, pick) -> { option, toasts, effects, silence } (applies the choice to the
-  // story and the game); hooks.done(results) when the scene is over. party: the classes people are playing.
+  // story and the game); hooks.done(results) when the scene is over. Optional voice hooks: line(text) a line has
+  // appeared; voiceLeft(text) -> seconds of its recording still to play (0 = none); hush() a line was pressed past. party: the classes people are playing.
   // handoff: end on the cut-to-gameplay beat. On the cut into it, hooks.prepare() (optional) builds the level it lands
   // in, then hooks.handoffStart() runs.
   constructor(id, { story, hooks, skip = false, seconds = CHOICE_SECONDS, party = [], handoff = false } = {}) {
@@ -269,6 +272,8 @@ export class Cutscene {
     if (!b) { this.finish(); return; }
     if (b.t === 'choice') { this.timer = this.seconds; this.picked = null; }
     if (b.s !== this.shot) { this.shot = b.s; this.shotN++; }
+    this.voiceTail = 0;
+    if (b.t === 'line' && this.hooks.line) this.hooks.line(b.text);
     if (b.handoff) {
       // the level behind the handoff is built here, so its one stall lands on the hard cut (the last film frame holds)
       if (this.hooks.prepare) this.hooks.prepare();
@@ -287,6 +292,11 @@ export class Cutscene {
     if (this.hooks.done) this.hooks.done(this.results);
   }
 
+  voiceLeft() {
+    const b = this.beat;
+    return b && b.t === 'line' && this.hooks.voiceLeft ? this.hooks.voiceLeft(b.text) || 0 : 0;
+  }
+
   textFull() { const b = this.beat; return b && b.t === 'line' ? b.text : ''; }
   isTyping() { return this.beat && this.beat.t === 'line' && this.typed < this.beat.text.length; }
 
@@ -297,6 +307,7 @@ export class Cutscene {
     if (b.handoff) { this.rush = true; return; } // (never a camera jump: the blend just runs out fast)
     if (b.t === 'line') {
       if (this.isTyping()) { this.typed = b.text.length; return; }
+      if (this.hooks.hush) this.hooks.hush();
       this.next();
     } else if (b.t === 'card') { if (this.t > 0.5) this.next(); }
     else if (b.t === 'shot') { if (this.t > 0.35) this.next(); }
@@ -325,6 +336,7 @@ export class Cutscene {
     // the response beats play next, then whatever follows the choice
     const reply = b.then ? b.then(res, this) : [];
     this.beats.splice(this.i + 1, 0, ...reply);
+    if (this.hooks.preload) this.hooks.preload(reply);
     this.next();
     return true;
   }
@@ -353,7 +365,8 @@ export class Cutscene {
     }
     const nb = this.beats[this.i + 1];
     if (nb && nb.cues && b.t !== 'choice') {
-      for (const c of nb.cues) if (c.at < 0 && !this.pre.has(c) && this.t >= autoEnd(b) + c.at) { this.pre.add(c); this.fire(c, hit); }
+      const left = this.voiceLeft(), end = Math.max(autoEnd(b), left > 0 ? this.t + left + VOICE_TAIL : 0, this.voiceTail || 0);
+      for (const c of nb.cues) if (c.at < 0 && !this.pre.has(c) && this.t >= end + c.at) { this.pre.add(c); this.fire(c, hit); }
     }
     if (hit.some((v) => v)) { this.hits++; this.lastHit = hit; }
   }
@@ -376,7 +389,10 @@ export class Cutscene {
     this.bar = b.handoff ? handoffBar(this.t, b.dur) : SCOPE_BAR_PX;
     if (b.t === 'line') {
       this.typed = Math.min(b.text.length, this.typed + TYPE_SPEED * dt);
-      if (this.typed >= b.text.length && this.t > lineEnd(b)) this.next();
+      const left = this.voiceLeft();
+      if (left > 0) this.voiceTail = this.t + left + VOICE_TAIL; // remember where the recording (plus a breath) ends
+      const waiting = (left > 0 || this.t < (this.voiceTail || 0)) && this.t < lineEnd(b) + VOICE_CAP;
+      if (this.typed >= b.text.length && this.t > lineEnd(b) && !waiting) this.next();
     } else if (b.t === 'card' || b.t === 'shot') {
       if (this.t >= b.dur) this.next();
     } else if (b.t === 'choice') {
@@ -397,7 +413,7 @@ export class Cutscene {
       return v;
     }
     // everything storyFilm.js needs to draw the HD scene (an online guest gets exactly this)
-    v.film = { key: this.key, id: this.id, shot: this.shot, cut: this.shotN, ts: this.timeScale, tens: b.t === 'choice' ? 1 - Math.max(0, Math.min(1, this.timer / this.seconds)) : 0, ray: (this.story && this.story.flags.rayFate) || '', party: this.party, hit: [this.hits, ...this.lastHit] };
+    v.film = { key: this.key, id: this.id, shot: this.shot, cut: this.shotN, ts: this.timeScale, tens: b.t === 'choice' ? 1 - Math.max(0, Math.min(1, this.timer / this.seconds)) : 0, ray: (this.story && this.story.flags.rayFate) || '', party: this.party, talk: b.t === 'line' && (this.typed < b.text.length || this.voiceLeft() > 0) ? b.who : '', hit: [this.hits, ...this.lastHit] };
     // a scene that does not open on a card comes up out of black
     if (this.i === 0 && b.t !== 'card') v.fade = Math.max(0, 1 - this.t / 0.7);
     if (b.t === 'card') {

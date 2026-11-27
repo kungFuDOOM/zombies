@@ -6,7 +6,7 @@ import {
 } from './config.js';
 import { T, generateLevel, generateHub, bfs, walkable, enemyWeights, FOOD_COURT, HUB_DIRECTORY, HUB_SHOP } from './level.js';
 import { foodCourtModifiers, crisisModifiers, bossModifiers, hubRayPresent, CHOICES } from './story.js';
-import { sfx, say } from './audio.js';
+import { sfx, say, playLine } from './audio.js';
 import { initBoss, updateBoss as bossBrain, bossDamage, THRALL, BOSS_HP_MAGIC_CAP, BOSS_WARD } from './bosses.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -1332,6 +1332,7 @@ export class Game {
 
   bark(who, text, t = 3.6) {
     this.barks.push({ who, text, t });
+    playLine(text); // (the recording, if the line has one; online guests hear it too)
     if (this.barks.length > 3) this.barks.shift();
   }
 

@@ -7,7 +7,7 @@ import { VIEW_W, VIEW_H, CLASSES, CLASS_ORDER, MAX_PLAYERS, stagePoints, TILE } 
 import { Input, attackKeys } from './input.js';
 import { TouchControls } from './touch.js';
 import { Game } from './game.js';
-import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap } from './audio.js';
+import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap, playLine, voiceLeft, hushLine, preloadLines } from './audio.js';
 import { Host, Guest, showCode } from './net.js';
 import { SnapshotWriter, SnapshotReader, playSound, cleanUi, cleanEvents, cleanGame } from './netstate.js';
 import { Lobby } from './lobby.js';
@@ -635,6 +635,8 @@ function jumpToScene(name, ray) {
 function startCutscene(id, done, sandbox = null, { prepare = null, onHandoff = null } = {}) {
   cutDone = done;
   const story = sandbox || save.story;
+  stopVoice(); // (a story screen's narrator does not talk over the scene)
+  const preload = (beats) => preloadLines(beats.filter((b) => b.t === 'line').map((b) => b.text)); // this scene's lines only
   cut = new Cutscene(id, {
     story,
     skip: skipCutscenes && !sandbox,
@@ -642,6 +644,10 @@ function startCutscene(id, done, sandbox = null, { prepare = null, onHandoff = n
     handoff: id !== 'ending' && !(id === 'ticket' && game.pendingScene === 'crisis'),
     hooks: {
       prepare,
+      preload,
+      line: (text) => playLine(text),
+      voiceLeft,
+      hush: hushLine,
       handoffStart() { // the stand-ins slip away on the cut, not on the last frame (the same filter as endCutscene)
         game.npcs = game.npcs.filter((n) => n.id === 'ray' && !n.cornered);
         if (onHandoff) onHandoff();
@@ -656,6 +662,7 @@ function startCutscene(id, done, sandbox = null, { prepare = null, onHandoff = n
     },
   });
   if (cut.done) { finishCutscene(); return; }
+  preload(cut.beats);
   game.cutCam = cut.camera(game);
   setState('cutscene');
 }
@@ -675,7 +682,7 @@ function finishCutscene() {
   const done = cutDone;
   cut = null; cutDone = null;
   if (game) game.cutCam = null;
-  try { stopCine(); } catch { /* audio not ready */ } // a skipped scene takes its long tails with it
+  try { stopCine(); hushLine(); } catch { /* audio not ready */ } // a skipped scene takes its long tails with it
   endStoryFilm();
   if (done) done();
 }
