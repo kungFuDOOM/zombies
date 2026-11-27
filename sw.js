@@ -11,8 +11,13 @@
 //   announcer clips have content-hashed names and never change; models and images are
 //   re-checked quietly in the background so an updated model still arrives.
 
-const CODE_CACHE = 'motd-code-v22';
-const ASSET_CACHE = 'motd-assets-v8';
+// Story voice lines (assets/voice/<id>.mp3, with lines.json and index.json) need nothing extra: the JSON is code
+// (checked with the server first), and each MP3 is an asset, cached the first time its line plays and re-checked
+// quietly afterwards (their names are not content hashes). A missing clip's 404 is never cached. Nothing is precached.
+
+// Bumped for the ElevenLabs voice pack + cinematic opener.
+const CODE_CACHE = 'motd-code-v23';
+const ASSET_CACHE = 'motd-assets-v9';
 const CODE = /\.(js|mjs|html|json|webmanifest|css)$/;
 const ASSET = /\.(glb|png|mp3)$/;
 const IMMUTABLE = /\/assets\/voice\/[0-9a-f]{10}\.mp3$/;
