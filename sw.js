@@ -16,8 +16,8 @@
 // quietly afterwards (their names are not content hashes). A missing clip's 404 is never cached. Nothing is precached.
 
 // Bumped for the ElevenLabs voice pack + cinematic opener.
-const CODE_CACHE = 'motd-code-v23';
-const ASSET_CACHE = 'motd-assets-v9';
+const CODE_CACHE = 'motd-code-v24';
+const ASSET_CACHE = 'motd-assets-v10';
 const CODE = /\.(js|mjs|html|json|webmanifest|css)$/;
 const ASSET = /\.(glb|png|mp3)$/;
 const IMMUTABLE = /\/assets\/voice\/[0-9a-f]{10}\.mp3$/;
