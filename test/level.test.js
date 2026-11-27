@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateLevel, generateHub, generateTutorial, bfs, walkable, T, levelInfo, FOOD_COURT, WINGS, ROSTERS, enemyWeights, TUTORIAL_ROOMS, TUTORIAL_PITCH } from '../src/level.js';
+import { generateLevel, generateHub, bfs, walkable, T, levelInfo, FOOD_COURT, WINGS, ROSTERS, enemyWeights } from '../src/level.js';
 import { ENEMIES } from '../src/config.js';
 
 const reach = (L, tiles = L.tiles, open = (t) => walkable(t) || t === T.SEALED) => bfs(tiles, L.w, L.h, [[L.start.x, L.start.y]], open);
@@ -100,17 +100,4 @@ test('the Food Court roster is all four zombie kinds, and every spawn belongs to
   const L = generateLevel(1);
   for (const e of [...L.enemies, ...L.generators]) assert.ok(allowed.has(e.type), `${e.type} belongs in the Food Court`);
   assert.deepEqual(enemyWeights(2), enemyWeights(1));
-});
-
-test('the orientation is a row of gated rooms leading to a reachable exit', () => {
-  const L = generateTutorial();
-  for (const it of L.items) assert.equal(L.tiles[it.y * L.w + it.x], T.FLOOR);
-  const shut = bfs(L.tiles, L.w, L.h, [[L.start.x, L.start.y]], walkable);
-  for (const it of L.items) assert.equal(shut[it.y * L.w + it.x] >= 0, it.x < TUTORIAL_PITCH, `${it.type} at ${it.x}`);
-  assert.ok(shut[L.exit.y * L.w + L.exit.x] < 0);
-  const open = L.tiles.slice();
-  for (let k = 1; k < TUTORIAL_ROOMS; k++) assert.equal(open[6 * L.w + k * TUTORIAL_PITCH], T.DOOR);
-  for (let i = 0; i < open.length; i++) if (open[i] === T.DOOR) open[i] = T.FLOOR;
-  const d = bfs(open, L.w, L.h, [[L.start.x, L.start.y]], walkable);
-  assert.ok(d[L.exit.y * L.w + L.exit.x] >= 0);
 });

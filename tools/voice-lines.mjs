@@ -25,9 +25,6 @@ for (const b of BOSSES) {
 }
 add('You found a secret area');
 add('The Grim Shopper!');
-// Training Grounds lesson titles (src/tutorial.js)
-for (const t of ['move', 'attack', 'spawners', 'shutters', 'flashbang', 'turbo', 'food']) add(t, t[0].toUpperCase() + t.slice(1) + '!');
-add('Well done!');
 for (const l of [...STORY.intro, ...STORY.realms.flat(), ...STORY.ending]) add(l);
 
 process.stdout.write(JSON.stringify([...lines].map(([text, speak]) => ({ text, speak })), null, 1));

@@ -65,7 +65,7 @@ async function record(name, page, errors, extra = {}) {
   report[name] = { fps: f.fps, fpsWindows: f.windows, ...gi, consoleErrors: errors.length, errors: errors.slice(0, 3), ...extra };
   console.log(name, report[name].fps, 'fps', `[${gi.quality}]`, gi.drawCalls, 'calls', errors.length, 'errors');
 }
-// title -> select -> ready -> tutorial level (a real game with a player)
+// title -> select -> ready -> the hub (a real game with a player)
 async function intoPlay(page, mobile) {
   const key = (k) => page.keyboard.press(k);
   if (mobile) {

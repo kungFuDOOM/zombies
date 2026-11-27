@@ -2,8 +2,8 @@
 //
 //   buildPizza()     Ray's Slice of Heaven: counter, half-down shutter, pizza oven, ticket spike, the collapsing
 //                    hood, the Security Locker and the back door the dead come through
-//   buildKitchen()   Porko's Carvery: fryer line, walk-in freezer, PERMA-FRY drums, meat hooks, heat lamps,
-//                    the GREASE MAIN gauge
+//   buildKitchen()   Toller's Carvery: fryer line, walk-in freezer, Vector Control canisters, meat hooks,
+//                    heat lamps, the AIR INTAKE gauge
 //   SteamPuffs       soft rising fryer steam
 //   plus the printout, the Goth's boombox and the other small hand props
 //
@@ -108,14 +108,14 @@ export function drawPrintout(c, w, h, rows = 1) {
   for (let y = 0; y < h; y += 48) { c.fillStyle = 'rgba(90,150,100,0.13)'; c.fillRect(34, y, w - 68, 24); }
   c.fillStyle = '#6a685c'; for (let y = 14; y < h; y += 28) { c.beginPath(); c.arc(16, y, 6, 0, Math.PI * 2); c.arc(w - 16, y, 6, 0, Math.PI * 2); c.fill(); }
   const text = [
-    ['BRIGHTWATER SECURITY', 28, '#2a2a30'],
+    ['PARAGON CROSSING SECURITY', 28, '#2a2a30'],
     ['DOOR LOG  11/25/94', 28, '#2a2a30'],
     ['---------------------', 26, '#5a5a60'],
-    ['04:02  PA TEST CHIME', 28, '#5a5a60'],
-    ['04:51  DOCK CAM IDLE', 28, '#5a5a60'],
+    ['11:30 PM  FOG CREW: ROOF', 28, '#5a5a60'],
+    ['11:58 PM  PA PAGES (4)', 28, '#5a5a60'],
     ['---------------------', 26, '#5a5a60'],
-    ['FRONT DOORS OPENED', 38, '#17171c'],
-    ['4:59 AM', 66, '#17171c'],
+    ['OUTER DOORS LOCKED', 38, '#17171c'],
+    ['11:55 PM', 66, '#17171c'],
     ['KEYCARD:', 40, '#17171c'],
     ['MALL COP', 70, '#b0101c'],
     ['---------------------', 26, '#5a5a60'],
@@ -185,10 +185,10 @@ export function buildPizza({ high }) {
     c.strokeStyle = '#8a8068'; c.setLineDash([8, 8]); c.lineWidth = 3; c.beginPath(); c.moveTo(24, 76); c.lineTo(w - 24, 76); c.stroke();
     c.fillStyle = '#141c4a';
     const row = (s, y, px, col = '#141c4a') => { c.fillStyle = col; c.font = `bold ${px}px "Comic Sans MS", "Courier New", monospace`; const tw = c.measureText(s).width; if (tw > w - 36) c.font = `bold ${Math.floor(px * (w - 36) / tw)}px "Courier New", monospace`; c.fillText(s, w / 2, y); };
-    row('OFFICER -', 142, 68);
-    row('2 SAMPLES -', 220, 56);
-    row('4:02', 322, 112, '#a01018');
-    row('ON THE HOUSE', 392, 46, '#4a4438');
+    row('BUG CREW -', 142, 68);
+    row('2 SLICES -', 220, 56);
+    row('11:30', 322, 112, '#a01018');
+    row('ROOF ACCESS', 392, 46, '#4a4438');
   });
   const sheet = add(ticket, plane(18, 21), flat(tkt, { color: '#d8d2c4', side: THREE.DoubleSide }), 0, 0, 0);
   sheet.rotation.set(-0.06, 0, 0.035);
@@ -271,23 +271,23 @@ export function buildPizza({ high }) {
   return { group: g, h: H };
 }
 
-// ===================================================================== Porko's Carvery kitchen
+// ===================================================================== Toller's Carvery kitchen
 export const KITCHEN_X = 9000;
 export const FRYER_XS = [-175, -125, -75, -25, 25, 75, 125, 175];
 export const GAUGE_AT = [212, 78, -142];
 
 function drumTex() {
   return canvasTex(512, 256, (c, w, h) => {
-    c.fillStyle = '#c89a18'; c.fillRect(0, 0, w, h);
-    c.fillStyle = '#17130a'; c.fillRect(0, 18, w, 14); c.fillRect(0, h - 32, w, 14);
+    c.fillStyle = '#d8dcd8'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#2a5a4a'; c.fillRect(0, 18, w, 14); c.fillRect(0, h - 32, w, 14);
     for (const cx of [w * 0.25, w * 0.75]) {
-      // Mr. Drippy: a grinning oil droplet in a bowtie
-      c.fillStyle = '#ffdc40'; c.strokeStyle = '#3a2406'; c.lineWidth = 6;
-      c.beginPath(); c.moveTo(cx, 42); c.bezierCurveTo(cx + 18, 76, cx + 48, 96, cx + 46, 124); c.arc(cx, 124, 46, 0, Math.PI); c.bezierCurveTo(cx - 48, 96, cx - 18, 76, cx, 42); c.closePath(); c.fill(); c.stroke();
-      c.fillStyle = '#17100a'; c.beginPath(); c.arc(cx - 16, 112, 6, 0, Math.PI * 2); c.arc(cx + 16, 112, 6, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(cx, 128, 24, 0.12 * Math.PI, 0.88 * Math.PI); c.lineWidth = 7; c.strokeStyle = '#17100a'; c.stroke();
-      c.fillStyle = '#c0161c'; c.beginPath(); c.moveTo(cx, 168); c.lineTo(cx - 26, 156); c.lineTo(cx - 26, 182); c.closePath(); c.moveTo(cx, 168); c.lineTo(cx + 26, 156); c.lineTo(cx + 26, 182); c.closePath(); c.fill();
-      c.fillStyle = '#17130a'; c.textAlign = 'center'; c.font = 'bold 42px sans-serif'; c.fillText('PERMA-FRY', cx, 210);
+      // the agency's stencil: a mosquito in a struck-out ring
+      c.strokeStyle = '#1c2a24'; c.lineWidth = 4;
+      c.beginPath(); c.moveTo(cx, 72); c.lineTo(cx, 112); c.moveTo(cx, 86); c.lineTo(cx - 24, 68); c.moveTo(cx, 86); c.lineTo(cx + 24, 68); c.moveTo(cx, 96); c.lineTo(cx - 24, 112); c.moveTo(cx, 96); c.lineTo(cx + 24, 112); c.stroke();
+      c.strokeStyle = '#b0101c'; c.lineWidth = 7;
+      c.beginPath(); c.arc(cx, 92, 40, 0, Math.PI * 2); c.moveTo(cx - 28, 64); c.lineTo(cx + 28, 120); c.stroke();
+      c.fillStyle = '#17241c'; c.textAlign = 'center'; c.font = 'bold 21px sans-serif';
+      c.fillText('KERN VALLEY', cx, 170); c.fillText('VECTOR CONTROL', cx, 204);
     }
   });
 }
@@ -313,9 +313,9 @@ export function buildKitchen({ high }) {
   });
   // exhaust hood over the fryers
   add(g, box(420, 22, 62), steel, 0, 168, -128);
-  const porko = add(g, plane(190, 34), flat(wordSign("PORKO'S CARVERY", '#ff4a7a'), { transparent: true }), 0, 140, -96);
-  H.sign = porko.material;
-  add(g, plane(120, 22), flat(labelTex(['FREE SAMPLES 4AM'], { w: 384, h: 72, bg: '#e8dcb8', fg: '#a0141c', px: 42, border: '#a0141c' }), { color: '#c0b498' }), 128, 112, -158);
+  const carvery = add(g, plane(190, 34), flat(wordSign("TOLLER'S CARVERY", '#ff4a7a'), { transparent: true }), 0, 140, -96);
+  H.sign = carvery.material;
+  add(g, plane(120, 22), flat(labelTex(['MIDNIGHT MADNESS'], { w: 384, h: 72, bg: '#e8dcb8', fg: '#a0141c', px: 42, border: '#a0141c' }), { color: '#c0b498' }), 128, 112, -158);
   // ----- hanging meat hooks on a rail, some with sides of ham
   add(g, box(430, 4, 4), dark, 0, 178, -70);
   H.hooks = [];
@@ -334,8 +334,8 @@ export function buildKitchen({ high }) {
   add(g, box(3, 4, 22), dark, -307, 58, -2);
   const frost = glowPlane(110, 150, '#9ad8ff', 0.22); frost.position.set(-306, 62, -20); frost.rotation.y = Math.PI / 2; g.add(frost);
   add(g, plane(46, 12), flat(labelTex(['WALK-IN FREEZER'], { w: 256, h: 64, bg: '#18202c', fg: '#bfe4ff', px: 28 })), -307.5, 126, -20, Math.PI / 2);
-  // ----- the PERMA-FRY drums, stacked beside the line
-  const dt = drumTex(), lid = std('#6a5a20', { metalness: 0.7, roughness: 0.35 });
+  // ----- the empty Vector Control canisters, stacked beside the line
+  const dt = drumTex(), lid = std('#5a625e', { metalness: 0.7, roughness: 0.35 });
   const side = std('#ffffff', { map: dt, metalness: 0.35, roughness: 0.42 });
   for (const [x, y, z, ry] of [[-236, 0, -66, 0.1], [-190, 0, -84, -0.3], [-246, 0, -112, 0.5], [-215, 47, -90, 0.05]]) {
     const d = add(g, cyl(21, 21, 46, 22), [side, lid, lid], x, y + 23, z, -Math.PI / 2 + ry + 0.5);
@@ -360,7 +360,7 @@ export function buildKitchen({ high }) {
     const bulb = add(g, new THREE.SphereGeometry(4, 12, 8), lit('#ffb040', 2), x, 148, -18);
     H.lamps.push({ mat: bulb.material, seed: x });
   }
-  // ----- the GREASE MAIN: a fat pipe and a gauge whose needle keeps climbing
+  // ----- the main air intake: a fat pipe and a gauge whose needle keeps climbing
   add(g, cyl(9, 9, 190, 14), std('#5a4a2a', { metalness: 0.75, roughness: 0.4 }), GAUGE_AT[0] + 36, 95, -150);
   add(g, box(40, 6, 6), std('#5a4a2a', { metalness: 0.75 }), GAUGE_AT[0] + 18, GAUGE_AT[1] - 8, -152);
   H.gaugeCanvas = document.createElement('canvas'); H.gaugeCanvas.width = H.gaugeCanvas.height = 512;
@@ -379,8 +379,8 @@ export function buildKitchen({ high }) {
     c.strokeStyle = '#d02a18'; c.beginPath(); c.arc(256, 256, 190, Math.PI * 2.05, Math.PI * 2.25); c.stroke();
     c.strokeStyle = '#c8f8d0'; c.lineWidth = 6;
     for (let i = 0; i <= 12; i++) { const a = Math.PI * (0.75 + i * 0.125); c.beginPath(); c.moveTo(256 + Math.cos(a) * 156, 256 + Math.sin(a) * 156); c.lineTo(256 + Math.cos(a) * 214, 256 + Math.sin(a) * 214); c.stroke(); }
-    c.fillStyle = '#d8ffe0'; c.textAlign = 'center'; c.font = 'bold 50px sans-serif'; c.fillText('GREASE MAIN', 256, 366);
-    c.font = 'bold 30px sans-serif'; c.fillText('SUB-BASEMENT PSI', 256, 410);
+    c.fillStyle = '#d8ffe0'; c.textAlign = 'center'; c.font = 'bold 50px sans-serif'; c.fillText('AIR INTAKE', 256, 366);
+    c.font = 'bold 30px sans-serif'; c.fillText('WALK-IN FEED PSI', 256, 410);
     const a = Math.PI * (0.75 + 1.5 * Math.max(0, Math.min(1, v)));
     c.strokeStyle = '#ff7a30'; c.lineWidth = 14; c.lineCap = 'round'; c.beginPath(); c.moveTo(256, 256); c.lineTo(256 + Math.cos(a) * 176, 256 + Math.sin(a) * 176); c.stroke();
     c.fillStyle = '#d8d0b0'; c.beginPath(); c.arc(256, 256, 22, 0, Math.PI * 2); c.fill();

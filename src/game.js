@@ -4,7 +4,7 @@ import {
   TILE, WORLD_VIEW_W as VIEW_W, WORLD_VIEW_H as VIEW_H, HUD_H, CLASSES, CLASS_ORDER, ENEMIES, GENERATOR_HP, MAX_ENEMIES,
   POWERUPS, POWERUP_ORDER, LOBBED, BLAST, difficulty, stagePoints, REPLAY_POINTS, STAGE_BONUS, TURBO_COST, MAX_POTIONS, maxSpeed, startSpeed, SPEED_BOOTS_MULT, SPEED_BOOTS_PEAK_CAP, HEALTH_DRAIN, FOOD_HEAL, xpForLevel,
 } from './config.js';
-import { T, generateLevel, generateHub, generateTutorial, bfs, walkable, enemyWeights, FOOD_COURT, HUB_DIRECTORY, HUB_SHOP } from './level.js';
+import { T, generateLevel, generateHub, bfs, walkable, enemyWeights, FOOD_COURT, HUB_DIRECTORY, HUB_SHOP } from './level.js';
 import { foodCourtModifiers, crisisModifiers, bossModifiers, hubRayPresent, CHOICES } from './story.js';
 import { sfx, say } from './audio.js';
 import { initBoss, updateBoss as bossBrain, bossDamage, THRALL, BOSS_HP_MAGIC_CAP, BOSS_WARD } from './bosses.js';
@@ -28,7 +28,6 @@ export class Game {
     this.players = [];
     this.levelNum = 1;
     this.time = 0;
-    this.stats = { magic: 0, turbo: 0, food: 0 }; // things the tutorial waits for
     this.fx = null;       // when hosting online: effects to forward to guests (see net.js)
     this.levelSeq = 0;    // counts level loads, so guests notice even a restart of the same level
     this.onStat = null;   // (player, key, amount, detail): lifetime stats and records (see stats.js)
@@ -143,12 +142,6 @@ export class Game {
     }
   }
 
-  // The Training Grounds: src/tutorial.js drives the lessons.
-  startTutorial() {
-    this.levelNum = 0;
-    this.loadLevel(generateTutorial(), 'U');
-  }
-
   addGenerator(type, tx, ty) {
     const g = { type, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, r: 14, hp: GENERATOR_HP, timer: 1, hurt: 0 };
     this.gens.push(g);
@@ -159,7 +152,7 @@ export class Game {
   // Online guests rebuild the same level from its key (levels are generated
   // deterministically) and get everything in it from the host's snapshots.
   loadMirror(key) {
-    const L = key[0] === 'H' ? generateHub(key === 'HR') : key === 'U' ? generateTutorial() : generateLevel(Number(key.slice(1)));
+    const L = key[0] === 'H' ? generateHub(key === 'HR') : generateLevel(Number(key.slice(1)));
     if (key[0] === 'L') this.levelNum = Number(key.slice(1));
     this.setLevel(L, key);
   }
@@ -180,7 +173,7 @@ export class Game {
     this.npcs = []; this.barks = []; this.cutCam = null; this.pendingScene = null;
     this.scene = { crisis: false, lockShutter: false, ambushT: 0, rayT: 0, shutterShut: false };
     this.dmgBoost = 1; this.spawnRate = 1; this.bossMods = null; this.opening = null; this.blasts = []; this.bossDown = false;
-    this.scoreMul = L.n && !L.hub && !L.tutorial ? stagePoints(L.n) * (this.isCleared(L.n) ? REPLAY_POINTS : 1) : 1;
+    this.scoreMul = L.n && !L.hub ? stagePoints(L.n) * (this.isCleared(L.n) ? REPLAY_POINTS : 1) : 1;
     for (const p of this.allPlayers()) { p.stageStart = p.score; p.stageDeaths = 0; }
     this.refreshDifficulty();
     // the boss stage gets a short title so it doesn't sit over the Butcher for long
@@ -474,7 +467,7 @@ export class Game {
     for (const k of Object.keys(p.buffs)) { p.buffs[k] -= dt; if (p.buffs[k] <= 0) delete p.buffs[k]; }
 
     // Health drains over time (not in the secret room).
-    if (!this.level.hub && !this.level.tutorial) p.drain += HEALTH_DRAIN * dt;
+    if (!this.level.hub) p.drain += HEALTH_DRAIN * dt;
     if (p.drain >= 1) { const d = Math.floor(p.drain); p.drain -= d; p.hp -= d; }
     this.healthWarnings(p);
     if (p.hp <= 0) { this.killPlayer(p); return; }
@@ -605,7 +598,6 @@ export class Game {
     p.hurtFlash = 0.15;
     sfx.hurt();
     this.text(p.x + rand(-6, 6), p.y - 18, `-${dmg}`, '#ff6060', 0.7);
-    if (this.level.tutorial) p.hp = Math.max(p.hp, 60); // nobody dies while learning
     if (p.hp <= 0) this.killPlayer(p);
   }
 
@@ -720,7 +712,6 @@ export class Game {
     p.act = { type: 'turbo', t: this.time };
     p.turbo -= TURBO_COST;
     p.shotCd = 0.5;
-    this.stats.turbo++;
     this.stat(p, 'turbo');
     sfx.turbo();
     this.shake = 6;
@@ -772,7 +763,7 @@ export class Game {
     if (!fromShot) {
       if (p.potions <= 0) return;
       p.potions--;
-      this.stats.magic++;
+      
       this.stat(p, 'potions');
     }
     sfx.potion();
@@ -1201,7 +1192,7 @@ export class Game {
         this.text(it.x, it.y - 10, 'SPOILED!', '#80ff60', 1.5);
         return true;
       case 'food':
-        p.hp += FOOD_HEAL; sfx.food(); this.stats.food++; this.stat(p, 'food'); this.text(it.x, it.y - 10, `+${FOOD_HEAL}`, '#80ff80'); return true;
+        p.hp += FOOD_HEAL; sfx.food(); this.stat(p, 'food'); this.text(it.x, it.y - 10, `+${FOOD_HEAL}`, '#80ff80'); return true;
       case 'gold':
         { const gv = Math.round(50 * this.diff.gold); this.addScore(p, 100); p.gold += gv; this.stat(p, 'gold', gv); sfx.gold(); this.text(it.x, it.y - 10, `+$${gv}`, '#ffe070'); return true; }
       case 'gem':

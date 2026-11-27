@@ -1,529 +1,410 @@
-# MALL OF THE DEAD: Story Bible v2
+# MALL OF THE DEAD: SOFT OPENING (Story Bible: WHITE ACRE)
 
-> *"Attention shoppers. The mall is now open. Forever."*
+> **Status: official canon.** This is the story of Mall of the Dead. It replaces the earlier story bible.
 
----
+> *"Nobody in Washington can find Bakersfield. That's the point."*
+> *(Director Hollis Garrity, Office of Special Civil Studies)*
 
-## 1. The Pitch
-
-### Logline
-Black Friday, 1994. Four strangers get trapped in Brightwater Commons as a living cooking oil turns the doorbuster crowd into "loyal customers." The mall's friendly PA voice is cheering the dead on, and one of the four opened the front doors without knowing it.
-
-### The Hook
-At 4:59 AM, somebody in the Security Room swiped a keycard and opened every front door at once. The security monitor caught it, but the footage is glitched. The four survivors fight out of the mall one wing at a time. Meanwhile the PA voice, Pam from the Information Desk, keeps making announcements nobody ever recorded.
-
-### Stakes
-- **Personal:** get out alive, and get Ray out if you can.
-- **Bigger:** whatever is in the oil is spreading through every counter in the mall.
-- **Biggest (campaign):** Pam has announced a "Grand Re-Opening Simulcast" at **6:00 AM**, broadcast live on KMAL 94.1 from the rooftop. It will play her chime to every car radio in the county. Everyone who has ever eaten Goldenrod oil will hear it, and that is a lot of people.
-
-### Ticking Clock
-The clock moves forward at each wing transition, in-fiction only (no timer mechanic):
-Opener 5:07 / Wing 1 end 5:19 / Wing 2 5:28 / Wing 3 5:36 / Wing 4 5:44 / Wing 5 5:52 / Rooftop 5:59.
-Pam reads out the time often and cheerfully.
-
-### Tone Rules
-1. **Scare, then snap.** Every horror beat gets a joke within two lines. Every joke gets a horror beat within two more.
-2. **Nobody winks.** The characters think this is real. The comedy comes from people who stay in character while terrified.
-3. **The mall is the monster's mouth.** Light everything like warm, inviting retail (amber, pink neon) that has gone slightly off (fryer orange, sick green, flicker).
-4. **Pam is never angry.** She is the scariest thing in the game because she is always polite.
-5. **Specific beats generic.** Say "a pretzel stand," not "a store." Say "Section Nine," not "the rules."
-6. **Phone-readable.** Subtitle lines stay at 70 characters or fewer. One idea per line.
+**Mall name:** **Paragon Crossing**, Bakersfield, off Highway 99. "Paragon" means "the model example," and that is exactly why the government picked it: the test needed the most ordinary American mall it could find, full of the most ordinary crowd. The bland upscale name hides the front in plain sight.
 
 ---
 
-## 2. The Mystery
+## 1. The Story in One Page
 
-### The Question Players Carry
-**Who opened the doors at 4:59, and what is in the Grease Main?**
+Bakersfield, California, Thanksgiving night, 1994. Downtown died years ago. The jobs are in the oil fields, the refineries, and the farms, and the pumpjacks nod all night behind the parking lot of **Paragon Crossing**, a mall off Highway 99. The air already smells like crude and fertilizer. Nobody would notice one more smell. Nobody back East would notice one more town.
 
-### The Truth (Revealed at the End of Wing 1)
+That is why the government picked it.
 
-**PERMA-FRY is not an additive. It's alive.**
-Goldenrod Provisions (mascot: **Mr. Drippy**, a grinning oil droplet in a bowtie) sold the mall a drum of "self-renewing fryer culture," something like a sourdough starter made of oil. Inside Goldenrod it was called the **Forever Customer Program**. Anyone who eats food fried in it becomes hungry forever, comes back forever, and *answers the chime*.
+In 1977 a tiny Pentagon-funded office, the **Office of Special Civil Studies**, sprayed a "medfly" run over a cotton field at Lerdo Flats, east of town, to see what its gas did to farmworkers. Kids got sick. It was buried. After the 1992 Los Angeles riots, the same office came back with a new gas called **HUSH**. The idea: spray a riot, and the crowd lies down and goes quiet. The program is called **WHITE ACRE**, and its local front is a fake mosquito agency, **Kern Valley Vector Control**, with white trucks and a yellow crop-dusting helicopter.
 
-**The Grease Main is its body.** The 2,000-gallon sub-basement vat feeds every counter in the mall. Together it is one organism, the **Mother Batch**. The PA amplifier room sits right on top of the vat lid because it's the warmest room in the building. For eleven months the Mother Batch listened to the PA through the floor, and it learned to talk. It talks in Pam's voice because that's the voice it heard most.
+Black Friday is the closest thing to a riot you can put on a calendar. At 12:01 AM, during the Midnight Madness sale, HUSH pours out of Paragon's air system. Four thousand shoppers drop. Then they get back up, and they are not quiet.
 
-**The chime is a command.** It's the three-note "ding-dong-ding" shopper chime. Anyone with PERMA-FRY in their stomach stops, listens and obeys. The dead obey completely. The living obey for a few seconds and don't remember it afterward.
+Four people don't turn. A **Mall Cop** sealed in his security office. A **Mall Goth** at her photo kiosk, wearing a respirator for no reason she'll explain. A **Biker** waiting at the loading dock. And a **Skater** at the fountain, who coughs, falls, and simply stands back up.
 
-**4:59 AM: the Mall Cop opened the doors.**
-At 4:02 AM, Dale Brisket of Porko's Carvery gave the Mall Cop two free samples ("Officer discount, on the house"). He ate them on patrol. At 4:59 Pam played the chime. The Mall Cop walked to the Security Room, swiped his own card, opened every door, walked back out and lost eight minutes. He thinks he was checking the loading dock.
+So the game asks: **"Four thousand dropped. Why are we four still standing?"**
 
-**The reframe:** the outbreak wasn't an accident, and the Mall Cop isn't the villain. Pam used him like a key. He's still on her "mailing list," so she can use him again.
+The answer comes out one secret at a time. None of them is a bystander. Each one took the government's money or looked the other way. The Cop locked the doors tonight because a man with a federal card told him to. The Biker hauled sealed drums out of this dock in October and heard one of them knock. The Goth developed a dead man's film, saw the men in gas masks, and tried to sell it instead of telling anyone. And the Skater has had his blood drawn every year of his life by a "health study," because he is the only person HUSH can't touch.
 
-### Campaign-Level Open Threads (Reserved)
-- Who at Goldenrod signed off on the Forever Customer Program? (Wing 5)
-- How many other malls received a drum? (Wing 3 training film: "Phase One: 41 locations.")
-- Can the Mall Cop be cured, or only outlasted? (Finale)
+All night a calm voice on the radio, **Dr. Paul Ashby**, says he's from the CDC and he's going to get them out. He is lying. He built HUSH. He is feeding their position to the cleanup crew, and he needs the Skater's blood, because he has been slowly turning since October.
 
-### Breadcrumb Clues in Wing 1
-Place all of these. Each should work on its own, and together they should make the reveal feel earned.
+Then the four find the real cover-up. A fake news story about a refinery leak was taped a week ago. Highway 99 is closed. Cleanup crews are bagging bodies. At dawn, **Order FALLOW** will burn the mall to the ground under the tule fog. And when the leak story falls apart, the backup story is already printed: four local terrorists did this. There are photos. They are the four.
 
-| # | Where | Clue | Delivery |
+On the roof at first light, the man in charge, **Director Hollis Garrity**, lands to collect the immune kid. He shoots Ashby, takes a vial of the Skater's blood, and flies away. Ashby rises as something huge that breathes HUSH. The four need every secret they've been keeping to seal the smoke away from the city, start a crop duster none of them has ever flown, and lift off as Paragon burns.
+
+They get out alive, with the evidence. The newspaper the next morning calls them murderers. And in Washington, WHITE ACRE now has a vaccine.
+
+---
+
+## 2. How All 4 Matter
+
+The theme: **everybody took the deal.** Each arc goes from *paid to look away* to *refusing to look away*. Each survivor's secret hurt another survivor, and each one holds a key the others can't open.
+
+**Mall Cop (Ranged, pump shotgun).** *Secret:* ex-Army MP, Paragon's night security lead. In October, eleven people collapsed in Theater 6. Men in Vector Control jackets handed him a federal nondisclosure form and $2,000. He wrote the incident report they dictated (a bad gas heater), wiped the tapes, and kept one copy because procedure says you always keep a copy. When they asked, "Anything else?", he mentioned a dead man's camera he'd sent to the photo kiosk. That put the Goth on their list. Tonight he let the "fogging crew" onto the roof at 11:30 and locked the outer doors at 11:55. He locked 4,000 people in with it. *Role:* keys, shutter codes, cameras, the hidden October tape, and the government's own radio procedure. He can talk like them, which means he can lie to them. *Arc:* a believer in the badge who trusted the federal card in his wallet. *Crisis* (Wing 4): the others read his debrief and learn he named the Goth. *Payoff:* on the roof he turns the cleanup crew against their own boss over their own radio net.
+
+**Skater (Speed, spiked bat + dash).** *Secret:* his mother was six months pregnant, picking cotton at Lerdo Flats, when the yellow helicopter flew over in 1977. He was born with total immunity. Every year since, "Dr. Ashby" from the **Valley Child Health Study** has drawn his blood and paid his mom $200. He is Participant 14, the last of the study's kids. In October he snuck into the Theater 6 test and walked out fine. On Wednesday, Ashby paid him $100 to be at the fountain at midnight: "Bring your friends, champ." He brought three. They're out there now. *Role:* the immune key. He runs through HUSH clouds that kill anyone else, and his blood is the only cure that exists. *Arc:* jokes about everything. *Crisis* (Wing 2): he has to put down his own friends, then admits why they were here. *Payoff:* he refuses the Director's offer of protection and walks into the gas to free the helicopter.
+
+**Mall Goth (AOE: hairspray torch, spray-paint bombs, boombox).** *Secret:* she runs the one-hour Photo Hut. On November 7 she developed the lost camera the Cop sent over. It showed men in gas masks on the theater roof, a white Vector Control truck, and the Skater in the back row, wide awake, while everyone around him slumped. She recognized him. She never told him. She crawled the duct over her kiosk to the roof to see the fogging units herself. Then, on November 14, she called a Fresno TV tip line and asked $5,000 for the negatives. A "producer" called back and set a meeting at Paragon Guest Services, 12:30 AM on Black Friday. He was a federal agent. Her call is why the full test was moved up to tonight. *Role:* the negatives (hard evidence), the ducts and roof she mapped, and a photo tech's eye. She reads film, tape, and microfiche, and spots fakes. *Arc:* cool and contemptuous, the only one who "wanted to expose it." *Crisis* (Wing 5): the file shows she was selling it, and that her call set the date. *Payoff:* on the roof she seals the main stack so the fire doesn't carry HUSH over the city.
+
+**Biker (Tank, chainsaw).** *Secret:* in October a pager number he hadn't heard from in seventeen years offered him cash to haul four sealed drums of "spoiled pesticide" from Dock B to an abandoned oil lease, Lease 99, and pour them down a capped well. On the 99, one drum knocked. He turned the radio up and kept driving. When he loaded them at 2 AM a kid was grinding the dock rail and heard it too. The Biker told him, "You didn't see me, dock rat." That kid was the Skater. And the deeper secret, which even he doesn't know until Wing 5: that old pager number is the one he called in 1977, when he was twenty-two and earned cash as a **flagman**, standing in a cotton field waving a flag to guide a yellow spray helicopter. *Role:* he knows the dock, the freight elevators, the service corridors, the cleanup crew's routes, and Lease 99, where the October evidence is buried. He has ridden in ag helicopters and knows how to start one. *Arc:* never asks questions, on principle. *Crisis* (Wing 5): the October lab notes prove the drums held people who rose, and his own file shows he flagged the field that made the Skater immune. *Payoff:* he flies the crop duster, the same kind of bird he flagged, and gets them out.
+
+---
+
+## 3. How Their Backstories Interlock
+
+In Wing 5 the party breaks into the cleanup crew's command post and finds four federal cards clipped to one incident sheet. That's the moment they learn they were linked long before tonight.
+
+| File | Survivor | OSCS label | What the card says |
 |---|---|---|---|
-| 1 | Opener, Shot 5 | Security monitor glitch shows a figure in a uniform at the door panel, face lost in static | Visual |
-| 2 | Scene 1 setup | The PA chime plays mid-sentence. The Mall Cop freezes for a beat, then picks up the sentence as if nothing happened | Staging + line |
-| 3 | Food Court PA (ambient) | "Shoppers who sampled, please remain loyal." / "Officer, thank you for your help." | PA announcement |
-| 4 | Food Court barks | Mall Cop: "Huh. My watch says I lost eight minutes." | Random bark |
-| 5 | Food Court, fountain | When the chime plays, every walker in earshot turns its head at the same moment | Ambient behavior (if supported) or Goth bark |
-| 6 | Porko's Carvery storefront | Neon reads "PORKO'S - FREE SAMPLES 4AM." A Mr. Drippy poster beside it (texture) | Prop |
-| 7 | Clue beat (Scene 1.5) | Ray, or Ray's ticket spike if he's gone: "OFFICER - 2 SAMPLES - 4:02 - ON THE HOUSE" | Line / prop |
-| 8 | Kitchen | PERMA-FRY drums with the Mr. Drippy logo. Biker goes quiet near them | Prop + bark |
-| 9 | Boss intro | Butcher: "Officer. Back for seconds?" | Line |
-| 10 | Anywhere | The Grim Shopper seems to drift toward the Mall Cop | Lore / Goth bark: "It keeps looking at Badge." |
+| **P-14** | Skater | Participant 14 / Control | "Lerdo '77, in utero. Tolerance: total. Fountain 0000. **RECOVER ALIVE.**" |
+| **SC-3** | Mall Cop | Site Contact | "Signed Oct. report. Named photo lead. Backup story: 'the guard.'" |
+| **H-7** | Biker | Hauler | "Prior asset: flagman, Lerdo '77. Oct. drums. **Retire on completion.**" |
+| **L-1854** | Mall Goth | Leak | "Photo Hut. Tip-line intercept 11/14. Page to atrium 2358. **CLOSE.**" |
 
-### Ambient PA Copy (Pam, Food Court loop)
-Use any order. Play the chime before each line.
-- "Good morning, Brightwater Commons! The time is five-oh-nine."
-- "Shoppers who sampled, please remain loyal."
-- "Reminder: running in the Food Court is for customers only."
-- "Officer, thank you for your help this morning. Truly."
-- "Porko's Carvery would like you to know: nobody leaves hungry."
-- "Lost children may be collected at the fountain. In pieces is fine."
-- "Our Grand Re-Opening Simulcast begins at six. Tell everyone."
-- "Please do not feed the customers. They're being fed."
+**The loop (each secret wounds the next person):**
+- **Cop to Goth:** he sent her the camera, then named her to the feds.
+- **Goth to Skater:** her photos show he's immune and she hid it. Her tip call moved the test to tonight, which is why Ashby paid him to show up with his friends.
+- **Skater to Biker:** he saw the drums loaded and heard the knock. The Biker threatened him into silence.
+- **Biker to Cop:** the Cop signed the Biker's van out at 2 AM in October. The plate is in his gate log. He knew the drums left and never asked what was in them. (And the Biker flagged the 1977 field, which closes the loop back to the Skater.)
 
----
+**Timeline (Incident Sheet 94-1014):**
+1. **Aug 1977:** Lerdo Flats field trial. Capt. Hollis Garrity runs it. Contractor chemist Paul Ashby takes samples. The Biker flags. The Skater's mother is in the rows.
+2. **1977-1994:** Valley Child Health Study. Ashby draws the Skater's blood every year.
+3. **May 1992:** after the LA riots, OSCS gets a crowd-control mandate. HUSH is built from the 1977 compound. The Vector Control front reopens.
+4. **Oct 14, 1994:** dry run, Theater 6, midnight show. Eleven drop. Four die, and rise at 41 minutes. They're sealed in drums. Ashby is clawed through a torn glove sealing drum #3. The Cop writes the false report. The Biker hauls the drums. The Skater sees it.
+5. **Nov 7:** the Goth develops the dead man's roll.
+6. **Nov 14:** her tip-line call is intercepted. Garrity moves the full test from May 1995 to Black Friday, adds Order FALLOW, and orders the backup story.
+7. **Nov 18:** a fake "refinery leak" news segment is taped.
+8. **Nov 23:** Ashby pays the Skater $100. The Biker is paged for a midnight haul. The Cop gets his orders.
+9. **Nov 24, 11:58 PM:** four routine-sounding pages on the mall PA.
+10. **Nov 25, 12:01 AM:** HUSH.
 
-## 3. The Antagonist: Pam
-
-**Who she is:** "Pam at the Information Desk," the warm, slightly breathy recorded voice who has announced lost kids and store hours at Brightwater Commons since 1987. The real Pam retired to Tucson in 1991. What's on the PA now is the Mother Batch wearing her voice.
-
-**What she wants:** repeat customers. Forever. She isn't evil in her own mind. She's *customer-focused*.
-
-**Voice rules:**
-- Always polite, always upbeat, always the cadence of a mall announcement.
-- Retail vocabulary for horror things: "customers," "loyalty," "satisfaction," "seconds," "hold for pickup."
-- She knows the survivors' names and orders, and she's warm about it.
-- She never yells. When things go badly for her she gets *more* cheerful.
-- She opens with the chime ("ding-dong-ding") and signs off with "Thank you for shopping Brightwater."
-
-**Signature lines:**
-- "Attention shoppers. The mall is now open. Forever."
-- "No running, please. You'll only work up an appetite."
-- "We value your loyalty. We're going to keep it."
-
-**Visual presence (renderable):** PA speakers throbbing with the audio, neon flickering in time with her syllables, and the security monitors. She is never shown as a body.
+**Group effect:** nobody gets to be the innocent one. The government's own paperwork says that's why it picked them.
 
 ---
 
-## 4. The Survivors
+## 4. Wing by Wing
 
-Voice rule: you should be able to tell who's speaking from one line with the name covered.
+Each wing lists its set, fair clues, boss or set piece, whose secret comes out, why all four are needed, and key lines (70 characters or fewer).
 
-### Biker (Tank, chainsaw)
-- **Motivation:** one fair fight with something that stays down.
-- **Flaw:** solves everything forward, never sideways. Can't sit still with guilt.
-- **Secret:** last spring he made $200 cash running a "no questions" delivery: four sealed drums from a windowless van to the mall's loading dock. They had a smiling oil drop on the side.
-- **Arc:**
-  - *Wing 1:* sees the Mr. Drippy drums in the kitchen and goes silent for once. Covers it with a joke.
-  - *Mid (Wing 3):* the Goldenrod training film shows the delivery route. He confesses: "I brought it in. Four drums. I didn't ask."
-  - *Finale:* rides the motorcycle up the rooftop ramp to the broadcast antenna. He delivered it, so he'll take it out.
-- **Voice:** short, loud, engine words. Never uses real names: Badge (Mall Cop), Kid (Skater), Spooky (Mall Goth), Pizza (Ray).
-- **Signature lines:**
-  - "Stairs? I don't do stairs. Stairs do me."
-  - "Quiet's for libraries and the dead. I'm neither."
-  - "I only cut what's already dead. Mostly."
-- **Wing 1 beat:** the PERMA-FRY drums before the Butcher. "...Huh. Seen those before." Then he revs the chainsaw to drown out the question.
+### Wing 1: Food Court (12:01 AM) [Mystery question]
+**Set:** Midnight Madness banners. A doorbuster clock frozen at 0:00. Bodies on the checkerboard, then the bodies twitching. Through the glass, the parking lot, Highway 99, and pumpjacks nodding in the dark. A TV over the Orange Julius-style stand (original brand) is tuned to **Action News 17**.
 
-### Mall Cop (Ranged, pump shotgun)
-- **Motivation:** finish one shift without losing a single customer. That ship sailed. He's bailing it out with a bucket.
-- **Flaw:** trusts procedure over his own gut. Takes free food from every vendor ("it's community relations").
-- **Secret:** he opened the doors. He doesn't know yet, until the end of Wing 1.
-- **Arc:**
-  - *Wing 1:* lost time, chime freezes, the reveal. Ends shattered: "...Copy."
-  - *Mid (Wing 4):* the chime grabs him mid-fight and he aims at the party. He breaks free by reciting Section Nine out loud. The handbook becomes his anchor.
-  - *Finale:* volunteers to stand next to the antenna as bait, because Pam will "call" him there. Writes his own last incident report. Whether he survives depends on the team.
-- **Voice:** formal, procedural, radio-speak. Cites the handbook when scared. "Copy," "negative," "for the record."
-- **Signature lines:**
-  - "Per Section Nine, nobody gets eaten in my mall."
-  - "Copy. Shotgun's loaded, shutters are logged, I am very calm."
-  - "For the record, I objected. Into my radio. Loudly."
-- **Wing 1 beat:** freezes at the chime in Scene 1. "Lost eight minutes" bark. The ending reveal.
+**Intro ambience (the final-reveal plant):** at 11:58, under the crowd noise, a man's calm voice reads four routine pages on the PA:
+- "Security, please confirm the east doors."
+- "Driver for Kern Valley, please pull to Dock B."
+- "Paging Champ. Your party is at the fountain."
+- "Photo order 1854, please come to Guest Services."
+Players will hear this as wallpaper. It is Garrity's voice, and it is how all four were placed.
 
-### Skater (Speed, spiked bat + dash)
-- **Motivation:** prove the mall is still a place for good times, even if it kills them.
-- **Flaw:** doesn't take anything seriously until it's too late. Panics when he has to stand still.
-- **Secret:** last month he skated the service tunnels after close and filmed the Grease Main vat on his camcorder. On the tape, it *moved*. Nobody believed him. He still has the tape in his backpack.
-- **Arc:**
-  - *Wing 1:* knows the service route into the kitchen. "The tunnels, like, breathe, dude."
-  - *Mid (Wing 2):* plays the tape on an arcade monitor. The party believes him, and for once he's the expert.
-  - *Finale:* leads the route through the sub-basement, the place he's most afraid of. Then the tape becomes evidence: they get it out to the news.
-- **Voice:** fast, slangy, run-on, half-laughing. "Dude" is punctuation. Narrates fights like tricks.
-- **Signature lines:**
-  - "Dude. Dude. That escalator is eating a guy. I hate it."
-  - "Bat, dash, bonk, gone. That's the whole plan, dude."
-  - "Ten seconds? I've landed tricks in less. Mostly."
-- **Wing 1 beat:** at the clue beat he says what everyone is avoiding: "Wait. Badge ate one? Badge ate the meat?"
+**Mystery question:** *Four thousand dropped. Why are we four still standing?*
 
-### Mall Goth (AOE: hairspray torch, spray-paint bombs, boombox)
-- **Motivation:** be the last cool thing standing in this mall.
-- **Flaw:** keeps people at arm's length on purpose. Ray has slipped her a garlic knot every closing shift for a year, and she has never once said thanks.
-- **Secret:** working the perfume counter, she smelled "breath" in the air vents weeks ago. She filed three written complaints. Management threw them out. She's known something was wrong longer than anyone, and she stopped caring because nobody listened.
-- **Arc:**
-  - *Wing 1:* notices that her boombox makes the walkers *ignore the chime*. Loud music jams Pam.
-  - *Mid (Wing 5):* finds her complaint forms in the Santa's Workshop shredder, stamped "NOTED - G.P." Goldenrod knew.
-  - *Finale:* patches her boombox into the rooftop simulcast and drowns Pam out live with the loudest song she owns. Then she finally says thank you to Ray, if Ray is there.
-- **Voice:** dry, deadpan, theatrical. Calls zombies "the customers." Only raises her voice for Ray.
-- **Signature lines:**
-  - "Hairspray and a lighter. Cheaper than therapy. Faster too."
-  - "The customers smell like a fryer that died. Twice."
-  - "If we're going down, we're going down to my music."
-- **Wing 1 beat:** the clue beat. She cranks the boombox and watches walkers stop turning toward the PA. "Huh. They'd rather listen to me. Finally."
+**Clues planted:**
+- Each survivor's survival is itself a clue. The Cop's office has a brand-new sealed air unit with a **Kern Valley Vector Control** sticker. The Goth has a respirator. The Biker was at the dock. The Skater dropped and got up.
+- **Fake news:** at 12:04 the TV reports a hydrogen sulfide leak at a refinery and tells residents to stay indoors. The Cop: "Refinery's nine miles off. They knew in three minutes?"
+- **The butcher's ID:** the carvery's owner has a laminated federal card in his apron: OSCS FIELD OBSERVER 4. A gas mask hangs on his locker hook with the filter pulled out. Somebody wanted him unprotected.
+- The carvery's walk-in sits on the main air intake. Inside are empty canisters stenciled with the Vector Control logo, matching the work order the Cop signed at 11:30.
+- The Biker calls the Skater "dock rat" before anyone has said a name.
+- **The phone call:** the Cop calls the number on the federal card in his wallet. A dispatcher answers, "Vector Control base." "How many survivors, Officer?" "Four." "Hold position. Help is coming." Four minutes later the **Abatement Team** arrives: gray coveralls, respirators, suppressed rifles. They fire on everyone except the Skater.
+- **The radio ally:** a warm voice cuts into the Cop's handset: Dr. Paul Ashby, "CDC field team." He tells them which shutter to run through and is right.
 
-### Relationships and Banter
-- **Biker / Mall Cop:** the Biker pokes, the Cop writes him up. Real respect underneath. After the reveal the Biker is the first one to say, "Not your fault, Badge."
-- **Skater / Mall Cop:** the Cop has banned the Skater three times. Running gag: "That's four." By the finale the Cop tears up the ban list.
-- **Mall Goth / Skater:** she's the older sister he never asked for. He's the only person who makes her almost smile.
-- **Mall Goth / Biker:** two loners trading one-liners. They agree on almost nothing except music volume.
-- **Everyone / Ray:** Ray knows everybody's order. How the party handles Ray says who they are.
-- **Barks for co-op flavor:**
-  - Biker on revive: "Up, Kid. Pavement's not your bed."
-  - Cop on revive: "On your feet. That's an order. Please."
-  - Skater on revive: "Dude, no dying, we have plans!"
-  - Goth on revive: "Get up. I refuse to be the last one."
+**Boss: the Deep-Fry Butcher (Vern Toller, Field Observer 4).** For two years Vern ran Toller's Carvery as a cover and logged the crowd for OSCS at $300 a month. Tonight they pulled his filter. Vern was a witness too. He staggered into his own fryer as he turned. The oil cooked the change into a cracked, armored hide under his pig-chef promo head. The fight runs around the fryers and the walk-in, which keeps leaking the last HUSH from the canisters.
+
+**Whose secret comes out: the Mall Cop's (first half).** The canister stencils match his work order. "I let these men on the roof. I locked the doors." He doesn't mention October yet.
+
+**All four needed:**
+- **Cop:** drops the kitchen shutters to cut the Butcher off from the horde.
+- **Biker:** chainsaws the canister rack out of the intake so the walk-in stops feeding Vern gas he heals in.
+- **Goth:** torches the fryer slick to crack the armored hide.
+- **Skater:** the only one who can stand in the leaking walk-in, so he baits Vern through the gas and into the open.
+
+**Key lines:**
+- Skater: "Everybody dropped, man. Why didn't we?"
+- Cop: "Refinery's nine miles off. They knew in three minutes?"
+- Dispatcher: "Hold position. Help is coming."
+- Goth: "That's what help looks like? Rifles?"
+- Cop: "I let these men on the roof. I locked the doors."
+- Ashby (radio): "Those men aren't here to help you. I am."
+- Biker: "Fryer made him crunchy. Chainsaw makes him quiet."
 
 ---
 
-## 5. Ray and the Grim Shopper
+### Wing 2: Arcade / Bowling (1:20 AM) [Spotlight: Skater, Biker]
+**Set:** "Strike Zone Lanes" and the "Galaxy Arcade." Black light, attract-mode music, bodies at the cabinets. Through the bowling alley's loading door: a CHP roadblock on Highway 99 and figures in protective gear stringing tape around the lot. This is the **quarantine** going up.
 
-### Ray (NPC)
-Ray runs Ray's Slice of Heaven in the Food Court. He has flour to his elbows, a spatula he won't put down, and he believes every problem can be solved with more garlic.
-- **Plot role:** he's the witness. Ray saw the Mall Cop take the free samples at 4:02 because Dale bragged about it ("Even the cop's a Porko man now!"). He doesn't know it matters.
-- **Saved:** Ray says it out loud at the ending reveal. Afterward he works the radio in the Security Room and becomes the party's voice between wings in later chapters.
-- **Injured:** Ray manages one gasped half-sentence at the ending ("Badge... the samples...") before passing out. Recurs later, weak.
-- **Lost:** the clue comes from Ray's order spike at the pizza counter, in his handwriting. Pam starts using Ray's name in announcements in later wings, which is cruel and on purpose.
+**Clues planted:**
+- **Nets, not bullets:** an Abatement team arrives mid-fight with net launchers for the Skater and live rounds for everyone else. The Cop calls it out.
+- The Skater's three friends are here, turned, at the cabinet they always play.
+- The Skater's wallet holds a **Valley Child Health Study** card, "Participant 14." The phone number on it is the same as the Cop's federal card.
+- Ashby on the radio: "Hang in there, champ." The Skater goes quiet. Nobody else calls him that.
+- The Biker knows the service corridor behind the lanes by heart. "I've hauled out of this dock."
+- A dead Abatement trooper's clipboard: "Bag and tag. Trucks to Lease 99 at 0500."
 
-### The Grim Shopper (Roaming Rare Threat)
-A tall, gaunt figure in a long coat with an empty wire shopping basket and a receipt that never stops printing. It appears when you linger and drifts off once its basket is full (drained).
-- **What it is:** death, doing its job. PERMA-FRY stops the dead from staying dead, so every soul in the mall is stuck in line. The Grim Shopper is the cashier sent to close out the account. It isn't on Pam's side. It's the only thing in the mall that isn't for sale.
-- **Why it hunts loiterers:** in a mall, lingering is loitering. It takes what it can reach and leaves.
-- **Mystery tie:** its receipt lists everyone who ate PERMA-FRY, with timestamps. The Mall Cop's name is on it: "4:02 - OFFICER - HOLD FOR PICKUP." That's why it drifts toward him. It isn't trying to kill him. It's waiting for him to finish.
-- **Campaign payoff:** in the finale, the Grim Shopper's receipt is how the party finds out how many people are on Pam's list, and if the Mother Batch dies, the line finally moves.
-- **Optional Goth bark when it appears:** "Don't make eye contact. It's not shopping. It's collecting."
+**Set piece / boss: the Pin Boy.** A lane mechanic who crawled into the pinsetter pit to hide and turned there. Now he's fused into the machinery, sweeping the lanes with the rake and firing balls up the return.
 
----
+**Whose secret comes out: the Skater's.** After the fight he has to put down his own friends. Then he tells them all of it: Lerdo Flats, the yearly needle, $200 for his mom, and $100 on Wednesday to be at the fountain with friends.
 
-## 6. The Boss: The Deep-Fry Butcher
+**Also: the Skater and Biker's history.** The Skater says it out loud: "You're the drum guy. October. Dock B." The Biker doesn't deny it, and says nothing else. The party knows there's more.
 
-**Name:** Dale Brisket, 22-year manager of **Porko's Carvery**. He wears the cracked fiberglass head of Chef Porko, the stall's pig-chef mascot.
+**All four needed:**
+- **Biker:** leads through the service corridor around the Abatement net team, and chainsaws the pinsetter chain to stop the rake.
+- **Cop:** kills the black lights from the alley's control desk, which blinds the Abatement night optics.
+- **Goth:** spray-paint bombs the lane gutters to light the Pin Boy's path in the dark.
+- **Skater:** dashes the ball return to reach the pit and finish it, and he's the only one the nets are aimed at, so he draws the Abatement team off the others.
 
-**Sympathetic side:** Dale was passed over for everything: the corner stall, the doorbuster, Employee of the Month (twenty-two years running). Cluck Hut got the 5:00 AM Mega Crunch Bucket line. So Dale put on the Porko head, fired up Fryer Eight with the new oil corporate swore by ("Taste the future, Dale"), and handed out free samples at 4:00 AM to steal the line. For one hour, people loved Porko's. He tasted the first piece himself, to check the seasoning.
-
-**Monstrous side:** now he can't stop serving. Nobody leaves hungry, and nobody leaves. He fries anything that walks into the kitchen, and Pam calls him "our first Employee of the Month."
-
-**Menace:** cleaver, fry-basket swings that spray hot oil, and glowing cook's eyes through the cracks in the pig head. The bulk of a man who has carried sides of beef for two decades.
-
-**Dark comedy:** he takes orders while he fights. He critiques your "tenderness." He apologizes for the wait.
-
-**Mystery tie:** he gave the Mall Cop the samples. His intro line points straight at it. His death line points at Pam.
-
-**Signature lines:**
-- **Intro:** "Welcome to Porko's! Officer. Back for seconds?"
-- **Phase 1 (cleaver):** "Take a number! I'll carve you one!"
-- **Phase 2 (fry baskets, oil spray):** "Twenty-two years! Not ONE plaque!" / "Fresh batch! Hot! HOT!"
-- **Phase 3 (enraged, head cracking):** "She said they'd LOVE me! She said FOREVER!"
-- **Hurt barks:** "Rude." / "That's coming out of your tip." / "Medium rare. Getting there."
-- **Death:** "...Tell Pam... I'm off the clock." (The fryers die. Pam chimes and calmly announces: "Porko's Carvery is now closed.")
+**Key lines:**
+- Cop: "They had a clean shot at the kid. They used a net."
+- Skater: "A hundred bucks. 'Bring your friends, champ.' So I did."
+- Goth: "Why's your health card have his phone number on it?"
+- Skater: "You're the drum guy. October. Dock B."
+- Biker: "Not now, dock rat. Walk."
+- Ashby (radio): "They need him alive. So do I. So do you."
 
 ---
 
-## 7. Training Grounds
+### Wing 3: Movie Theater (2:40 AM) [Spotlight: Mall Goth; the mid twist]
+**Set:** "Paragon 8" multiplex. A cheap 1994 monster movie (original, made for the game) still runs in Theater 6 to a dead audience. Projection booths link by a catwalk. This is where October happened.
 
-**In-world framing:** the **Brightwater Commons Loss Prevention Simulator**, a 1991 training room in the Security Office basement with plywood storefronts, mannequin "shoplifters" and a VHS-narrated course every new security hire had to pass. The Mall Cop passed it eleven times. The narrator is the *real* Pam, the 1991 recording from before the oil. That makes her warm voice uneasy to hear later.
+**Clues planted:**
+- Ashby on the radio: "Your meeting at Guest Services isn't happening." The Goth never told anyone about a meeting.
+- Twice now (Wings 1 and 2), the Abatement Team has shown up minutes after the party gave Ashby their position.
+- Ashby "can't" open the theater fire doors: "That one's not on my panel." He has never opened a door. He has only told them which doors were already open.
+- The Goth's prints match Theater 6 exactly: the same exit sign, the same seat numbers.
 
-**Narrator copy (VHS-Pam, tape hiss under every line):**
-1. "Welcome, new Loss Prevention associate! I'm Pam. Let's get you certified."
-2. "Move with purpose. A mall in motion is a mall that's safe."
-3. "When a customer becomes... disorderly, respond firmly. And repeatedly."
-4. "Remember: never stand still too long. That's loitering, and it attracts attention."
-5. "Teamwork! Revive your fellow associate. Nobody clocks out alone."
-6. "Congratulations! You're certified. Brightwater Commons is lucky to have you."
+**Whose secret comes out: the Goth's (first half).** She produces the prints: men in masks on this roof, the Vector Control truck, and the Skater in row M, awake. She admits she recognized him and never said a word. The party assumes she was trying to go to the press. She doesn't correct them.
 
-*(Line 4 sets up the Grim Shopper. Line 5 sets up co-op revives.)*
+**The mid twist: Ashby is not CDC.** The Cop runs it by the book: "Verify your source." They feed Ashby a fake position (Theater 6) and watch from the duct the Goth knows. An Abatement team rappels into Theater 6 in the flicker of the movie. Their radio crackles, "Ashby confirms, Theater 6." Then Ashby slips on the open channel, trying to calm the Skater: "Roll up your sleeve, champ. Almost done." It's the line from every yearly blood draw of the Skater's life.
 
----
+**Set piece: Abatement ambush in Theater 6,** led by the **Crew Chief.** The fight runs across the screen, the seats, and the booth.
 
-## 8. Choice Scenes (Dialogue)
+**All four needed:**
+- **Cop:** designs the trap and runs the radio procedure so Ashby believes it.
+- **Goth:** leads everyone through the duct to a perch over Theater 6.
+- **Biker:** is the bait, revving his chainsaw alone in the theater on purpose.
+- **Skater:** dashes the catwalk to the booth, patches the Abatement radio into the theater speakers so everyone hears Ashby's name, and recognizes the voice.
 
-### Scene 1: The Plan (choice id `outbreak`)
-**Prompt:** "How do we break into the Food Court?"
-
-**Setup lines:**
-1. **mallCop:** "Every shutter just dropped. Our only route out is the Food Court."
-2. **biker:** "Food Court's packed with hungry dead. Good. So's my chainsaw."
-3. *(PA chime. The Mall Cop freezes for one beat, eyes empty.)*
-   **mallCop:** "...Per procedure. Sorry. Where was I?"
-4. **mallGoth:** "Or we hijack the PA. The customers go where the noise is."
-5. **skater:** "Dudes. Escalator's eating a guy. Pick in like ten seconds."
-
-**Options (semantics unchanged):**
-
-| pick | label | meaning |
-|---|---|---|
-| cop | Lock down the security gate first. | Lockdown: fewer, slower enemies; shutter sealed. |
-| goth | Crank the PA. Lure them away. | Lure: fewest enemies in the Food Court. |
-| biker | Charge straight in! | Charge: harder; extra horde wave. |
-| silence | ... | Silence: mild penalty, small extra wave. |
-
-**Replies:**
-- **cop**
-  - **mallCop:** "Gate first. Nothing gets behind us. That's Section Four."
-  - **biker:** "Slow. Boring. Fine, Badge. I'm first through the door."
-- **goth**
-  - **mallGoth:** "One bass drop and they'll follow it anywhere. Like boys at a show."
-  - **mallCop:** "Copy. Keep it under a noise complaint, please."
-- **biker**
-  - **biker:** "THAT'S the plan! Somebody hold the door. Never mind, I'll make one."
-  - **mallCop:** "For the record, I hate this plan."
-- **silence**
-  - **skater:** "Okay, nobody? Cool. Cool cool cool. Running in anyway."
-  - **pa (Pam):** "Indecision is natural. Hunger is natural too."
-
-### Scene 1.5: The Ticket (new optional clue beat, no choice)
-Triggers mid-Food Court at Ray's Slice of Heaven, before the kitchen door. Ray is alive behind the counter shutter and can be heard but not reached. In the lost-Ray state it plays before Scene 2, so use the "spike" variant only for replays or as a fallback.
-1. **ray (through the shutter):** "Hey! Pizza guy, still alive! Dale's gone nuts back there!"
-2. **ray:** "Gave out samples at four. Even you, Officer. Two of 'em!"
-3. **skater:** "Wait. Badge ate one? Badge ate the meat?"
-4. **mallCop:** "That's... community relations. I feel fine."
-5. *(PA chime. Every walker turns. The Mall Goth's boombox is running and the nearest ones turn back to it.)*
-   **mallGoth:** "Huh. They'd rather listen to me. Finally."
-
-**Fallback (no Ray voice):** the camera finds the ticket spike: "OFFICER - 2 SAMPLES - 4:02 - ON THE HOUSE." Lines 3 to 5 play unchanged.
-
-### Scene 2: Ray vs the Locker (choice id `rayLocker`)
-**Prompt:** "Ray or the locker?"
-
-**Setup lines:**
-1. **ray:** "Guys! Counter's caving! I'm pinned, I'm pinned!"
-2. **mallCop:** "Security Locker's fire-sealing in ten. Last heavy gear in the mall."
-3. **biker:** "Pizza or payload. Can't carry both."
-4. **mallGoth:** "...He gave me garlic knots. Every night. For a year."
-
-**Options (semantics unchanged):**
-
-| pick | label | meaning |
-|---|---|---|
-| save | Pull Ray out! | Ray saved; locker burns. |
-| loot | Grab the locker gear. | Locker loot; Ray lost. |
-| hold | Hold the shutter for both. | Strained: Ray injured, partial loot (sprinter ambush). |
-| silence | ... | Ray lost, only scrap from the locker. |
-
-**Replies:**
-- **save**
-  - **biker:** "Hang on, Pizza. Lifting with my back. Like a genius."
-  - **ray:** "I'm out! I'm out! Somebody kiss the Biker!"
-- **loot**
-  - **mallCop:** "Copy. Gear secured. ...Ray, I'm sorry."
-  - **mallGoth:** "Don't. Don't talk to me for a while."
-- **hold**
-  - **skater:** "Holding it! Holding it! Dude, my arms are spaghetti!"
-  - **ray:** "Got... most of me out. Most is good, right?"
-- **silence**
-  - **ray:** "Guys? GUYS?"
-  - **pa (Pam):** "Ray's Slice of Heaven is now closed."
-
-### Scene 3: Boss Intro Variants (by Ray outcome)
-Shared opener: **butcher:** "Welcome to Porko's! Officer. Back for seconds?"
-
-| variant | Ray state | lines |
-|---|---|---|
-| hopeful | saved | **mallCop:** "Ray's safe. Now we close this kitchen." / **biker:** "Order up, Porky." |
-| guilt | lost via loot | **mallGoth:** "We left Ray for a box of shells." / **mallCop:** "Then let's make them count." |
-| strained | injured (hold) | **skater:** "Ray's barely breathing, dude. Fast fight." / **biker:** "Fast is my only speed." |
-| alone | lost via silence | **mallGoth:** "Nobody's coming. It's just us." / **mallCop:** "...Then it's just us. Weapons up." |
+**Key lines:**
+- Goth: "I never told anyone about a meeting."
+- Cop: "Procedure. Verify your source."
+- Abatement (radio): "Ashby confirms. Theater 6."
+- Ashby (radio): "Roll up your sleeve, champ. Almost done."
+- Skater: "That's the needle guy. That's my health study."
+- Goth: "I shot this room in October. Happy now?"
+- Biker: "Hey, Doc. Theater 6 says hi."
 
 ---
 
-## 9. Cutscene Scripts (Real-Time Shot Lists)
+### Wing 4: Fitness Center (3:45 AM) [Spotlight: Mall Cop]
+**Set:** "Paragon Body" health club. Mirrored walls, tanning beds, a juice bar. In back, a row of "recovery pods" from a paid "Sleep & Recovery Study" ($40 a session, low-dose HUSH). Behind the pods, the Abatement field office: folding tables, radios, file boxes.
 
-**Format:** each shot row lists Camera (start to end) | Light | On screen | Line | SFX / Music | Seconds.
-**Global:** every scene skippable (tap / Space). Letterbox bars in. Subtitles at the bottom center, speaker name in that survivor's color. Only listed characters and props appear.
+**Clues planted:**
+- The pod study's sign-up sheet lists members by number and dose.
+- The Cop's staff locker holds the October VHS. It shows Theater 6 slumping, the Skater walking out, and the Biker's van at Dock B at 2:04 AM.
+- The field office holds the **October debrief**, and the Abatement's radio code card.
 
-### 9a. Opener: "Doorbuster" (~78s, 11 shots)
+**Boss: Mr. Paragon.** The club's bodybuilder mascot signed up for the pod study for the money. Months of low dose and one full dose tonight made him enormous and still vain. He hits his posing routine between charges.
 
-| # | Camera | Light | On screen | Line | SFX / Music | s |
-|---|---|---|---|---|---|---|
-| 1 | Black, then slow crane down a PA speaker to the dark atrium | Cold blue moonlight through the skylight, rain shadows | Empty atrium, dead escalator, fountain | **PA (Pam):** "Good morning, Brightwater Commons!" | Rain on glass; PA chime "ding-dong-ding"; low drone in | 7 |
-| 2 | Slow dolly down a corridor, low angle, toward the glass doors | Neon pink/teal storefronts flickering; storm flashes | Walker silhouettes pressing against the doors, many deep | **PA:** "The time is four-fifty-nine. The doors are now open." | Thunder; glass creak; heartbeat sub-bass | 8 |
-| 3 | Close-up of the door lock LED, rack focus to the horde | Red LED flips to green; lightning rim | Lock clacks open | (none) | Heavy *clunk*; music drops out | 4 |
-| 4 | Whip-pan to a wide shot as the doors burst inward | Hard white lightning, then amber | Walkers and sprinters flood in; a brute shoulders the frame | (none) | Glass explosion; horde roar; percussion slam | 5 |
-| 5 | Cut to a security monitor close-up, slow push-in | Monitor green glow, scanline flicker | Glitched feed: a uniformed figure at the door panel, face lost in static | **PA:** "Thank you, Officer." | Tape-warble glitch; single piano note | 6 |
-| 6 | Crane up the broken escalator; a spitter crawls over the top step | Fryer-orange glow leaking from the Food Court | Spitter retches; walkers below | **PA:** "Shoppers who sampled, please remain loyal." | Wet gargle; escalator grind | 7 |
-| 7 | Hero shot: low dolly around the Biker revving his chainsaw | Hot orange key, red rim | Biker, chainsaw raised. Card: **BIKER - TANK** | **biker:** "Quiet's for libraries and the dead." | Chainsaw rev; guitar stab | 6 |
-| 8 | Hero shot: over-the-shoulder to the front of the Mall Cop racking the shotgun | Flashlight key, blue rim | Mall Cop, shotgun pumped. Card: **MALL COP - RANGED** | **mallCop:** "Copy. I am very calm." | Shotgun rack; snare hit | 6 |
-| 9 | Hero shot: tracking low alongside the Skater mid-dash | Teal neon streaks, motion blur | Skater, spiked bat over shoulder. Card: **SKATER - SPEED** | **skater:** "Dude. Dude. We are so banned." | Wheel roll; whoosh; cymbal | 6 |
-| 10 | Hero shot: slow push-in as the Mall Goth lights the hairspray torch | Flame key from below, purple rim | Mall Goth, torch flaring, boombox at her feet. Card: **MALL GOTH - AOE** | **mallGoth:** "Great. The apocalypse. At a mall." | Lighter flick; flame whoomp; bass drop | 7 |
-| 11 | Pull back from the four in a defensive circle, crane up to the atrium skylight, title slam | All four lights merge; neon blooms; a lightning flash on the title | Four survivors, horde closing. Title: **MALL OF THE DEAD** | **PA:** "The mall is now open. Forever." | Chime, sudden silence, title slam boom, theme in | 16 |
+**Whose secret comes out: the Mall Cop's (full).** He retrieves the tape himself, so he can't hide the rest. The debrief reads: "Guard volunteered: lost camera sent to Photo Hut. Employee ID'd." The Goth reads it out loud. He named her. Then the tape shows the Biker's van, and the Biker learns the Cop signed it out and never asked. The Biker goes after him hardest. Then the Goth stops it, because she knows her own second half is coming.
 
-**Total: ~78s**
+**All four needed:**
+- **Cop:** his key opens the staff lockers, and only he can read the Abatement code card the way a soldier would. He pockets it for the roof.
+- **Goth:** reroutes the gym's ducts to vent the pods' HUSH away from the party.
+- **Skater:** runs through the pod gas to hit the emergency purge valve.
+- **Biker:** tanks Mr. Paragon's charges so the others can work.
 
-### 9b. Scene 1: "The Plan" (~32s before the choice, 6 shots)
-
-| # | Camera | Light | On screen | Line | SFX / Music | s |
-|---|---|---|---|---|---|---|
-| 1 | Cut to wide, inside the security office, slow push | Monitor glow; red alarm strobe | Four survivors around the monitors | **mallCop:** "Every shutter just dropped. Our only route out is the Food Court." | Shutters slamming in the distance; alarm | 6 |
-| 2 | Medium close-up of the Biker, slight low angle | Orange rim from the doorway | Biker cracks his knuckles | **biker:** "Food Court's packed with hungry dead. Good. So's my chainsaw." | Chainsaw idle | 5 |
-| 3 | Slow push-in to a close-up on the Mall Cop | Key dims; overhead PA speaker glows | Mall Cop mid-gesture, then freezes, eyes empty | (chime) **mallCop:** "...Per procedure. Sorry. Where was I?" | PA chime; all sound ducks; ringing tone | 6 |
-| 4 | Over-the-shoulder from the Skater to the Mall Goth | Purple key, flicker | Goth taps her boombox | **mallGoth:** "Or we hijack the PA. The customers go where the noise is." | Boombox click; static | 5 |
-| 5 | Whip-pan to a security monitor: the escalator | Green monitor glow | Monitor feed: walkers dragged into the escalator | **skater:** "Dudes. Escalator's eating a guy. Pick in like ten seconds." | Escalator grind; scream cut short | 5 |
-| 6 | Pull back to a four-shot; choice UI rises | Steady; clock ticking on HUD | All four look at the player | (choice prompt) | Ticking-clock pulse loop | 5 |
-
-**Reply staging:** hold a two-shot of the speaking pair (2 lines, ~5s), then cut to gameplay.
-**Total: ~32s + choice + ~5s reply**
-
-### 9c. Scene 1.5: "The Ticket" (~24s, 5 shots)
-
-| # | Camera | Light | On screen | Line | SFX / Music | s |
-|---|---|---|---|---|---|---|
-| 1 | Dolly toward Ray's Slice of Heaven, shutter half down | Warm pizza-oven glow under the shutter | Survivors approach; Ray's fingers under the shutter (or the counter if not renderable) | **ray:** "Pizza guy, still alive! Dale's gone nuts back there!" | Shutter rattle; distant fryer hiss | 5 |
-| 2 | Close-up of the counter ticket spike, rack focus | Oven light; flicker | Ticket: "OFFICER - 2 SAMPLES - 4:02" | **ray:** "Gave out samples at four. Even you, Officer. Two of 'em!" | Paper flutter; low string swell | 5 |
-| 3 | Medium two-shot, Skater turns to the Mall Cop | Neutral amber | Skater points with his bat | **skater:** "Wait. Badge ate one? Badge ate the meat?" | Music cuts | 4 |
-| 4 | Close-up of the Mall Cop, tight | Sickly fryer-orange key | Mall Cop wipes his mouth without noticing | **mallCop:** "That's... community relations. I feel fine." | Faint stomach gurgle | 4 |
-| 5 | Wide shot by the fountain; PA chime; walkers turn as one, then turn to the Goth's boombox | Neon pulses in time with the chime | Walkers swivel heads at the same moment; the Goth's boombox booms | **mallGoth:** "Huh. They'd rather listen to me. Finally." | Chime, then boombox bass drop, back to gameplay | 6 |
-
-**Total: ~24s**
-
-### 9d. Scene 2: "Ray vs the Locker" (~30s before the choice, 6 shots)
-
-| # | Camera | Light | On screen | Line | SFX / Music | s |
-|---|---|---|---|---|---|---|
-| 1 | Handheld whip into the back counter | Red emergency light, sparks | Collapsed counter; Ray pinned (or an arm visible) | **ray:** "Guys! Counter's caving! I'm pinned, I'm pinned!" | Metal groan; Ray's yelp | 5 |
-| 2 | Whip-pan to the Security Locker; slow push | Yellow warning strobe on the locker | Locker door lights flashing; seal countdown | **mallCop:** "Security Locker's fire-sealing in ten. Last heavy gear in the mall." | Klaxon beeps | 6 |
-| 3 | Medium shot of the Biker between both, looking left then right | Split light: red on one side, yellow on the other | Biker grips the chainsaw | **biker:** "Pizza or payload. Can't carry both." | Heartbeat bass | 5 |
-| 4 | Close-up of the Mall Goth, slow push | Cold purple key; no flicker, very still | Goth stares at Ray | **mallGoth:** "...He gave me garlic knots. Every night. For a year." | Everything ducks; music-box note | 6 |
-| 5 | Crane up to a top-down of the whole room as walkers spill in | Red pulses | Walkers through the back door | (none) | Horde groan rising | 3 |
-| 6 | Four-shot; choice UI rises | Strobes slow | All four face the player | (choice prompt) | Ticking loop; locker beeps in sync | 5 |
-
-**Reply staging:**
-- *save:* Biker lifts the counter in a low hero angle.
-- *loot:* close-up on the locker opening, Ray off-screen, sound only.
-- *hold:* Skater braced against the shutter, sweat, shaky cam.
-- *silence:* hold on the empty counter, Pam chime.
-
-**Total: ~30s + choice + ~6s reply**
-
-### 9e. Scene 3: Butcher Intro (base ~30s, 6 shots + variant swap)
-
-| # | Camera | Light | On screen | Line | SFX / Music | s |
-|---|---|---|---|---|---|---|
-| 1 | Slow dolly down the prep line from the walk-in freezer door | Thick fryer steam; orange light shafts through the haze | PERMA-FRY drums with the Mr. Drippy logo; Biker passes them | **biker:** "...Huh. Seen those before." | Fryers bubbling; dripping; drone | 6 |
-| 2 | Over-the-shoulder from the party to the Butcher's back | Fryer glow key, hard green rim | Butcher at the line, chopping rhythmically | (none) | Cleaver *thunk... thunk... thunk* in tempo | 4 |
-| 3 | Slow turn, crane down to an extreme close-up of the cracked pig head | Glowing cook's eyes light the cracks from inside | Butcher turns; steam rolls off the fiberglass | **butcher:** "Welcome to Porko's!" | Squeal-roar layered with a bell "order up" ding | 5 |
-| 4 | Close-up of the Mall Cop, then a fast push past him to the Butcher | Orange key; the Cop sweating | Butcher points the cleaver at the Mall Cop | **butcher:** "Officer. Back for seconds?" | String hit; PA speaker hums | 5 |
-| 5 | **Variant two-shot** (see below) | Per variant | Speaking survivors | Variant lines | Per variant | 6 |
-| 6 | Low wide shot: Butcher raises the cleaver and a fry basket; whip to the HP bar | Fryers flare up white; flicker | Butcher roars; party scatters to positions | **butcher:** "Take a number! I'll carve you one!" | Roar; boss theme slam | 4 |
-
-**Variant swaps (Shot 5):**
-
-| variant | Camera / light | Lines | Music |
-|---|---|---|---|
-| hopeful | Steady two-shot, warmer amber key | **mallCop:** "Ray's safe. Now we close this kitchen." / **biker:** "Order up, Porky." | Heroic brass swell |
-| guilt | Slow push on the Goth, cold blue key | **mallGoth:** "We left Ray for a box of shells." / **mallCop:** "Then let's make them count." | Dissonant cello |
-| strained | Handheld, red emergency flicker | **skater:** "Ray's barely breathing, dude. Fast fight." / **biker:** "Fast is my only speed." | Racing percussion |
-| alone | Wide, isolated in steam, desaturated | **mallGoth:** "Nobody's coming. It's just us." / **mallCop:** "...Then it's just us. Weapons up." | Single sustained synth note |
-
-**Total: ~30s**
-
-**Phase transitions (in-fight, ~2s camera punch, no full cutscene):**
-- *To Phase 2:* he grabs both fry baskets; oil spray, orange flare. "Twenty-two years! Not ONE plaque!"
-- *To Phase 3:* the pig head cracks wider and the eyes go white-hot. "She said they'd LOVE me! She said FOREVER!"
-
-### 9f. Wing 1 Ending: "4:59" (~58s, 8 shots)
-
-| # | Camera | Light | On screen | Line | SFX / Music | s |
-|---|---|---|---|---|---|---|
-| 1 | Slow-mo crane down over the Butcher kneeling, pig head split | Fryer lights dying one by one; steam | Butcher sags, cleaver drops | **butcher:** "...Tell Pam... I'm off the clock." | Cleaver clang; fryers powering down | 7 |
-| 2 | Push-in to the wall gauge "GREASE MAIN" | Kitchen goes dark except the gauge's green glow | Needle climbing anyway | **PA (Pam):** "Porko's Carvery is now closed. Thank you, Dale." | Chime; bubbling from deep below | 6 |
-| 3 | Cut to the security office, wide, slow dolly to the monitors | Monitor green; rain on a window | Survivors enter, battered. Printer chattering | **skater:** "Dude. The door log's printing." | Dot-matrix printer screech | 5 |
-| 4 | Close-up of the printout, slow track along the paper | Green monitor key on the paper | Text: "FRONT DOORS OPENED 4:59 AM - KEYCARD: MALL COP" | (none) | Printer stops; silence | 5 |
-| 5 | Monitor close-up: the glitched footage clears, push-in | Green, then a sudden fryer-orange glow in the footage | The figure at the panel is the Mall Cop, eyes glowing cook-yellow, swiping | **mallCop:** "That's... that's not... I was at the loading dock." | Tape rewind warble; low drone | 7 |
-| 6 | Reverse: slow 360 orbit around the four (Ray in frame if saved) | Cold blue key; all faces lit from the monitor | Biker steps toward the Cop; Goth lowers the torch | **Ray line by outcome** (below), then **biker:** "Not your fault, Badge." | Rain; soft piano | 10 |
-| 7 | Over-the-shoulder from the Mall Cop to the monitor bank; in the reflection, the Grim Shopper stands behind them | Monitor flicker; a cold white rim on the Shopper | Grim Shopper holds up its receipt, then is gone in the next flicker | **PA:** "Officer, your shift isn't over. We still need you." | Receipt printer rattle (reversed); chime | 7 |
-| 8 | Extreme close-up of the Mall Cop's hand twitching toward his keycard. Smash cut to black, then card | Single orange flare on his eyes | Mall Cop, frozen, eyes starting to glow | **mallCop:** "...Copy." Card: **NEXT: THE ARCADE - 5:19 AM** | Chime, then hard cut to silence, then an arcade attract-mode jingle on black | 11 |
-
-**Ray outcome line (Shot 6):**
-- *saved:* **ray:** "Dale gave you the samples, man. The oil's in you."
-- *injured:* **ray (weak):** "Badge... the samples..." (passes out)
-- *lost:* **mallGoth:** "Ray tried to tell us. At the counter." (holds up the ticket)
-
-**Total: ~58s**
+**Key lines:**
+- Debrief: "Guard volunteered: lost camera sent to Photo Hut."
+- Goth: "You gave them my name. For what, a pension?"
+- Cop: "Two thousand dollars. I thought I was serving my country."
+- Biker: "You signed my van out at two AM. Never asked why."
+- Goth: "Let him go. Nobody here gets to throw stones."
+- Cop: "For the record, I'm still on shift. Let's move."
 
 ---
 
-## 10. Wings 2 to 6: Teases
+### Wing 5: Toy Store / Holiday Atrium (4:50 AM) [Spotlight: Biker, Mall Goth; the late twist and the betrayal]
+**Set:** "Toy Galaxy" and the four-story Holiday Atrium. Santa's Village, a 60-foot tree, a snow machine plumbed into the vents. Behind the Village, mall management's office has been turned into the **Abatement command post**, and the snow machine keeps it flooded with HUSH so no one walks in by accident.
 
-Every boss was somebody's job title, every boss is fed by the Grease Main, and every wing gives up one more piece of the mystery. Wings 2-6 stay locked as gameplay; only tease them.
+**Clues planted:**
+- The snow machine has a second feed line labeled Vector Control. The "snow" over Santa's line has been a low-dose test point since Thanksgiving week.
+- A TV cart with a VHS labeled "ACTION NEWS 17 / REFINERY / REC 11-18-94."
 
-| Wing | Location | Boss | Motive tied to the mystery (one line) |
-|---|---|---|---|
-| 2 | Arcade, Bowling & Batting Cages | **Gutterball, the Lane King** | Drank the lane oil to keep his high score forever. The scoreboard lists Pam's "loyal" customers. |
-| 3 | Movie Theater | **The Usher** | Loops Goldenrod's training film "Forever Customers: Phase One, 41 Locations," and you will stay for the end. |
-| 4 | Fitness Center | **Max Rep** | The Fry-Protein shake made his clients unable to quit, and the chime makes the Mall Cop his next client. |
-| 5 | Toy Store & Holiday Atrium | **Santa Claws** | The mall Santa is the man with no business card, Goldenrod's salesman, protecting his signed contract. |
-| 6 | Hardware & Garden Center, then Rooftop Helipad | **The Mother Batch** | The vat grew up through the compost to reach the KMAL antenna for the 6:00 AM simulcast. |
+**Boss: the Village Santa.** He worked under the snow machine every shift. He drags a sack of shrink-wrapped dead and still rings his bell. Every bell ring calls the atrium horde.
 
----
+**The late twist (two parts):**
+1. **It didn't go wrong.** Ashby's October lab notes: "Subjects 3, 7, 9, 11 rose at 41 min. Sealed. Hauler unaware." And Garrity's margin note: "Rising is the result. Run it at scale." The government knew before tonight. Black Friday was meant to measure it.
+2. **The backup story.** A press kit for when the leak story falls apart: "THE PARAGON FOUR." A disgruntled guard, a biker with a record, a delinquent, and a girl who "tried to sell faked photos." Their faces, their names, a statement for the FBI to read. The four aren't just witnesses to be burned. They're the patsies.
 
-## 11. Campaign Prose
+**Whose secrets come out: the Biker's and the Goth's (second half).**
+- **Biker:** the lab notes prove what knocked. Then his card: "Prior asset: flagman, Lerdo '77." He flagged the field that sprayed the Skater's mother. He tells the Skater himself, before anyone else can.
+- **Goth:** her card: "Tip-line intercept 11/14." Garrity's schedule memo: "Leak imminent. Move full trial to 11/25." She wasn't exposing it. She was selling it, and her call set the date. She defended the Cop in Wing 4 because she knew this was coming.
 
-### Intro Lines (title / new game)
-- "Black Friday, 1994. Brightwater Commons opens at six."
-- "At 4:59 AM, somebody opened it early."
-- "Four strangers. Six wings. One very polite voice on the PA."
+**Betrayal (end-of-wing cutscene):** Ashby comes in person for the first time: gray at the lips, coughing, a bandage on his wrist from October. He seals the atrium. Abatement troopers pin the Skater. Ashby draws a pint on the spot and pockets the vial. "I've been dying since October. You're the only cure, champ." He leaves the Skater cuffed in a freight lift for Garrity's team.
 
-### Wing 1 Blurb
-**WING 1: THE FOOD COURT.** Fryer smoke, sticky tile, and a fountain full of drool. Porko's Carvery handed out free samples at four. Everybody who ate one is still in line, including someone you trust.
+**All four needed:**
+- **Skater:** the only one who can walk into the gassed command post. He brings the files out.
+- **Goth:** reads the microfiche and spots the fake: the news tape's slate shows it was recorded a week early.
+- **Cop:** opens the command-post safe with the code card from Wing 4.
+- **Biker:** knows the freight lifts, so he can tell where the Abatement Team took the Skater.
 
-### Wing 1 Ending Lines
-- "The fryers are cold. The Grease Main is not."
-- "The door log doesn't lie. The keycard was his."
-- "Pam has a list. One of you is on it."
-
-### NEXT_WING_HOOK
-"Ding-dong-ding. The Arcade is open, and the high scores are permanent."
-(Code currently keeps `Next: Arcade, Bowling & Batting Cages`.)
-
-### Recap (Wing 2 "Previously")
-"Previously: the doorbuster went bad. Dale Brisket served the samples, became the Deep-Fry Butcher, and went down in his own oil. The door log named the Mall Cop. He doesn't remember any of it, but Pam does. It's 5:19 AM, and the simulcast is at six."
-
-### Survivor-Select Blurbs
-- **Biker:** "Chainsaw. No helmet. Has made peace with stairs. Not with secrets."
-- **Mall Cop:** "Pump shotgun, eleven years, zero arrests. One very bad morning."
-- **Skater:** "Spiked bat, dash, banned three times. Knows every rail. Fears one basement."
-- **Mall Goth:** "Hairspray torch, paint bombs, boombox. The customers hate her music."
+**Key lines:**
+- Notes: "Subjects rose at 41 minutes. Sealed. Hauler unaware."
+- Biker: "One drum knocked. I turned the radio up."
+- Biker: "I flagged that field, Kid. I was twenty-two."
+- Goth: "I didn't call the news. I called for money."
+- Cop: "They're not covering it up. They're signing our names."
+- Goth: "Paragon Four. They even used my yearbook photo."
+- Ashby: "I've been dying since October. You're the cure, champ."
 
 ---
 
-## 12. Implementation Notes (technical, kept from v1)
+### Wing 6: Hardware / Garden, to the Roof (5:50 AM) [Spotlight: Biker, Skater]
+**Set:** "Paragon Home & Garden." Pegboard tools, a greenhouse with misters running, fertilizer pallets. Abatement crews are wiring incendiary charges to the support columns. Outside, the tule fog is rolling in off the fields.
 
-This rewrite changed no code. Choice ids and option semantics are unchanged: `outbreak` (cop / goth / biker / silence), `rayLocker` (save / loot / hold / silence), boss intro variants `hopeful` / `guilt` / `strained` / `alone`. Scene 1.5 ("The Ticket") is optional and new; until built, its clue reaches players through ambient PA lines and the ending's Ray-outcome line. Mr. Drippy appears only as a texture (poster / drum label). Lore changes vs. v1 to reconcile when porting: the vat/PERMA-FRY is now a living culture; the antagonist is the PA voice "Pam"; the Butcher is Dale Brisket of *Porko's Carvery* (v1: carvery manager, Cluck Hut doorbuster); the opener clock is 4:59 AM (v1 stamp: `BLACK FRIDAY · 11:55 PM`); Ray's pizza stall is "Ray's Slice of Heaven".
+**Opening beat (keeps the Skater playable):** the Biker's freight-lift route beats the Abatement Team to the lift. He chainsaws the cuff chain. The Skater is back in play inside the first minute.
 
-### Where lines go when ported (carried over from v1)
+**Clues planted:**
+- **The Order FALLOW diagram:** the building vents its air out the main stack just before the charges fire, to feed the burn.
+- **Garrity's note on the diagram:** "Inversion forecast favorable. Collect." The Goth reads it: unburned HUSH would ride the smoke into the fog, and the fog would hold it over the city for days. The burn is a second test.
+- HUSH burns off clean at high heat. That's why FALLOW works, and it's a tool for the roof.
+- The trucks leaving Dock B are heading for Lease 99. The Biker knows what's waiting there.
 
-| Line(s) | Goes to |
-|---|---|
-| Scene 1 prompt | `src/story.js` `CHOICES.outbreak.prompt` (unchanged) |
-| Scene 1 option labels | `src/story.js` `CHOICES.outbreak.options[].label`, `silence.label` |
-| Scene 1 setup lines | `src/cutscenes.js` `openingScene()` `line(...)` beats |
-| Scene 1 replies | `src/cutscenes.js` `openingResponse()` cases cop / goth / biker / default |
-| Scene 1 toasts | `src/story.js` `toasts` (keep; asserted by tests) |
-| Food Court barks | `src/story.js` plan modifiers `line: { who, text }` for lockdown / lure / charge / silence |
-| Scene 2 prompt and labels | `src/story.js` `CHOICES.rayLocker.prompt`, `options[].label` |
-| Scene 2 setup lines | `src/cutscenes.js` `crisisScene()` `line(...)` beats |
-| Scene 2 replies | `src/cutscenes.js` `crisisResponse()` cases save / loot / hold / default |
-| Scene 2 toasts | `src/story.js` `toasts` (keep; asserted by tests) |
-| Butcher roar | `src/cutscenes.js` `bossIntroScene()` `line('butcher', ...)` |
-| Boss variants | `src/cutscenes.js` `bossIntroScene()` tone branches hopeful / guilt / strained / else (alone) |
-| Bosses 2-6 intro lines | Reference only until those wings ship |
-| PA lines / captions | `src/intro.js` `PA_LINES[...].text` |
-| Stamp | `src/intro.js` `v.stamp.text` |
-| Hero card taglines | `src/intro.js` hero card list |
-| Title slam | `src/intro.js` title (unchanged) |
-| STORY.intro | `src/campaign.js` `STORY.intro[...]` |
-| Food Court realm blurb | `src/campaign.js` `STORY.realms[0]` |
-| Ending | `src/campaign.js` `STORY.ending[...]` |
-| NEXT_WING_HOOK | `src/campaign.js` `NEXT_WING_HOOK` |
-| Select blurbs | `src/config.js` hero `blurb` |
+**Boss: the Crew Chief in a flame rig.** Back from Wing 3, now leading the burn team with an incendiary sprayer through the greenhouse. The misters (dosed water) make the fire jump unpredictably.
 
-Shot lists use only renderable assets: the four survivors, Ray, walkers, sprinters, brutes, spitters, the Butcher, the Grim Shopper, escalators, the fountain, storefronts, neon, the food court, the security office and PA speakers. Subtitle lines are kept to about 70 characters or fewer; every scene is skippable.
+**Arcs turn:**
+- **Biker:** plots the only unsealed route up, freight elevator 4 from the dock, and says the roof has a Vector Control bird he can start.
+- **Skater:** refuses to be protected anymore. "I'm not cargo. I'm on point."
+
+**All four needed:**
+- **Biker:** hotwires freight elevator 4.
+- **Skater:** runs the dosed mist to hit the greenhouse shutoff.
+- **Goth:** torches the fertilizer stack to cut off the Crew Chief's flank.
+- **Cop:** cuts power to this floor's charges, which buys a ten-minute window instead of zero.
+
+**Key lines:**
+- Skater: "I'm not cargo. I'm on point."
+- Goth: "The fog holds it. If that burns open, the city breathes it."
+- Biker: "There's a crop duster on the roof. I can start one."
+- Cop: "Can you fly one?" / Biker: "We'll find out."
+- Crew Chief: "Abatement. We clean up after everybody."
+- PA (Garrity's voice): "Order FALLOW. Ten minutes. Thank you, Bakersfield."
+
+---
+
+## 5. The Rooftop Finale (6:40 AM, First Light)
+
+The FALLOW clock reads 10:00 on every screen. Fog has swallowed Highway 99. Pumpjacks stick out of it like oars. Two aircraft sit on the roof: Garrity's black helicopter, rotors spinning, and the yellow Vector Control crop duster that sprayed the mall at midnight, chained to the deck. An Abatement squad holds the pad.
+
+**Beat 1: Ashby at the pad.** He has the vial and is begging for a seat. Garrity steps off the black helicopter, calm and gray-haired, in a windbreaker. "You're inventory, Paul. You've been inventory since October."
+
+**Beat 2: The final reveal.** Garrity turns to the four and speaks, and it is the voice from the 11:58 pages. He recites them in the same easy PA rhythm. "Security, please confirm the east doors." "Driver for Kern Valley, please pull to Dock B." "Paging Champ." None of them were lucky. Three were placed: the guard to lock the doors, the hauler to load the bodies, the kid as the control. All three were kept alive for the cameras. The backup story needed bodies in the right places. The fourth page was meant to call the Goth into the atrium to die. She heard it, smelled a trap, and put on the respirator.
+- Garrity: "I paged you myself. Every one of you came."
+- Garrity: "Except you. Photo order 1854. You were my one mistake."
+
+**Beat 3: Garrity takes the vial and leaves.** Ashby draws on him. Garrity shoots first, takes the vial from his coat, and offers the Skater a seat: protection, money for his mother, a life. The Skater says no. Garrity boards, and the black helicopter lifts into the fog. He leaves the Abatement squad on the roof. FALLOW is for them too.
+- Garrity: "Come with me, son. You'd never want for anything."
+- Skater: "You've been buying my blood since before I was born."
+
+**Beat 4: Ashby rises. Boss: THE HUSH.** Six weeks of slow exposure, and he turns in seconds. He swells into a gaunt giant whose ribs work like a bellows, venting HUSH into the main stack and across the pad. The Abatement troopers he kills get up for him. Three phases, about three minutes each, on the FALLOW clock.
+
+**Each survivor's necessary moment:**
+
+- **Mall Cop: the radio and the gun.** The Abatement squad is still between the four and the crop duster. The Cop keys their net using the code card from Wing 4, in their own procedure: their Director just left, and FALLOW is for them too. The squad breaks for the stairwell, which clears the pad. In Phase 2, THE HUSH climbs the air-handler stack, out of melee reach, and only the Cop's slugs can burst the swollen gas sacs along its ribs. He keeps the October tape inside his vest the whole time.
+  - Cop: "All Abatement units, your Director just left. Check the sky."
+  - Cop: "FALLOW's for you too. Stairwell's open. Go."
+- **Mall Goth: the stack and the fire.** If THE HUSH keeps venting into the open stack when the charges blow, the smoke carries it into the fog over the city. She crawls the roof duct she mapped in November and wrenches the main damper shut, so the fire will burn sealed and hot. Then her boombox on the far vent pulls the risen troopers into a bunch, and her torch lights the HUSH cloud, which burns off in a sheet. The negatives never leave her jacket.
+  - Goth: "Not this town. Not on my roll of film."
+  - Goth: "Last song of the night. Make it loud."
+- **Skater: the gas and the end of the study.** In Phase 3, THE HUSH floods the pad with gas thick enough to kill anyone else in seconds. The Skater is the only one who can move. He dashes through it, breaks the crop duster's tie-down chain with his bat, and lands the hit that drops Ashby to his knees.
+  - Skater: "Fourteen years. You never once asked me."
+  - Skater: "Study's over, Doc."
+- **Biker: the bird.** He rips the panel, starts the crop duster the way he watched ag pilots do it in 1977, and holds a shaky hover at the roof edge while the others climb in. He has never flown one alone. When THE HUSH lunges for the skid, he turns the rotor wash into its own gas and drives it back over the sealed stack.
+  - Biker: "I flagged for these birds at twenty-two."
+  - Biker: "I hauled the dead out of here once. Not again."
+
+**Beat 5: The finisher (all four, one prompt each).** The Cop's slug opens the last sac. The Goth's torch lights the gas around it. The Skater's bat knocks it off the skid. The Biker banks away as FALLOW hits zero. THE HUSH falls into the stack as Paragon Crossing goes up.
+
+**Beat 6: Lift-off at 0:00.** The mall burns from the inside. The damper holds. The fire is hot and sealed, and the smoke that rises into the fog is just smoke. The sun comes up yellow through the tule fog over a city that is still asleep.
+
+---
+
+## 6. The Ending and the Stinger
+
+**Ending (crop duster, 6:52 AM).** They fly low over the oil fields, under the fog line, with no plan. Nobody talks for a while. The Biker sets down at Lease 99 because no one else ever comes here. A capped well, wet tire tracks, and a cleanup truck pulling away into the fog.
+- Goth: "One roll, thirty-six frames. Nobody develops this but me."
+- Cop: "And one tape. We need somebody they don't own."
+- Biker: "Short list, Badge."
+- Skater: "He's got a pint of me. He'll want the rest."
+- Goth: "Then he asks us. All four."
+
+**End card (newspaper, Saturday, Nov 26, 1994):** "PARAGON FIRE TOLL NEARS 4,000." Below the fold: "FBI SEEKS 'PARAGON FOUR' IN REFINERY-LINE SABOTAGE." Four photos. The leak story didn't hold, so the backup story ran. They're alive, and they're wanted.
+
+**Stinger (post-credits, Washington, Monday, Nov 28, 1994).** A windowless Senate hearing room, closed session. Garrity reads from a binder: "Bakersfield was domestic terrorism." The committee's budget staffer says WHITE ACRE is on the kill list. Garrity sets a small cooled case on the table and opens it. One vial, dark red, labeled **P-14**.
+- Garrity: "WHITE ACRE has a vaccine now."
+- Garrity: "A weapon with a vaccine is a weapon you can use."
+
+The staffer slides the binder back, approved. Garrity's next tab reads **SITE 2**: a photo of another dead downtown, and another mall off another highway. A sticky note on the tab: "P-14: recover." Cut to black.
+
+---
+
+## 7. Villain Motives, the Cover-Up, and Implementation Notes
+
+### Director Hollis Garrity (Office of Special Civil Studies): the mastermind
+- **What he wants:** to save WHITE ACRE, and himself. The post-Cold War budget cuts have put his office on the FY1995 kill list. He has a closed review on Monday, November 28. He needs full-crowd data before then, or the program dies and its files get opened.
+- **What he believes:** he watched LA burn in 1992 from a Guard command post and decided a gas that makes a crowd lie down would save more lives than it cost. When October's dead rose, he stopped calling it crowd control. A city that turns on itself is a weapon that needs no army. The Skater's blood makes it one you can use on someone else without hitting your own side.
+- **Why Bakersfield:** he ran Lerdo Flats here in 1977, so the front and the paper trail already existed. The air already stinks. A refinery hands him a cover story. The fog hides a fire. And Washington can't find it on a map.
+- **Why he cleans it all up:** if Paragon is ever traced to a federal program, he goes to prison. So he works in layers: the refinery leak story, then the quarantine, then the cleanup, then the fire, then the patsies. His whole career is burying things, and this is the same job at a bigger size.
+- **Fair-play clues:** his voice on the 11:58 pages (Wing 1 intro), the federal card in the Cop's wallet (Wing 1), the "Champ" page (Wings 1-2), the schedule memo and margin notes (Wings 5-6), and the FALLOW PA in his voice (Wing 6).
+
+### Dr. Paul Ashby: the fake radio ally
+- **What he wants:** to live. Sealing drum #3 in October, he was clawed through a torn glove. He has been turning slowly ever since: gray lips, a cough, a wrist he keeps bandaged. Garrity's protocol classes exposed staff as "inventory," meaning they burn with the site. The Skater, his Participant 14, is the only cure that exists.
+- **Why he poses as CDC:** to keep the four alive and moving toward wherever the Abatement Team can collect the Skater cleanly. His deal with Garrity is to deliver the kid and get a seat on the helicopter. He reports their position at every stop.
+- **Why he grabs the blood himself (Wing 5):** he stops trusting Garrity's promise. He's right not to.
+- **Who he is:** he has drawn the Skater's blood every year for fourteen years and calls it care. He built HUSH and calls it humane. He has never once asked anyone's permission.
+- **Fair-play clues:** "champ" (Wing 2), knowing about the Goth's meeting (Wing 3), never opening a door himself (Wing 3), Abatement arriving after every position report (Wings 1-3), the October bandage in the notes (Wing 5).
+
+### The cover-up, layer by layer (what the player sees)
+1. **The fake news:** a "refinery leak" segment, taped November 18, airs at 12:04 AM (Wing 1). It's proven fake in Wing 5.
+2. **The quarantine:** CHP closes Highway 99. Figures in protective gear ring the lot (Wing 2).
+3. **The cleanup crews:** the Abatement Team bags bodies, and trucks run to Lease 99 (Wings 2-6).
+4. **The burn:** Order FALLOW at dawn, timed with the tule fog (Wing 6 and roof).
+5. **The witnesses:** Vern's pulled filter, "retire on completion," "CLOSE," and Ashby as inventory (Wings 1-5).
+6. **The backup story:** "The Paragon Four" press kit (Wing 5), which actually runs (end card).
+
+### Production notes
+- **Playable now:** Wing 1 only. Wings 2-6 stay locked in the game. This bible covers all six so the story holds together.
+- **Wing 1 boss:** the existing Deep-Fry Butcher model, unchanged. In this story the man is Vern Toller, Field Observer 4.
+- **The 11:58 pages:** the most important fair clue in the game. One calm man's voice, the same one for the FALLOW PA and the roof. Keep it audible but unremarkable. Players see it labelled only "PA" until the roof.
+- **The TV:** one "Action News 17" leak report in the Food Court. Reuse the tape prop in Wing 5 with the "REC 11-18-94" slate.
+- **Abatement Team spares the Skater:** in Wings 1-5, nets on the Skater and live fire on everyone else. If the AI can't support this, cover it with a Cop bark and a cutscene in Wing 2.
+- **Gas immunity:** the Skater takes no damage from HUSH clouds (Wings 1, 4, 5, 6 and the roof). One flag, big story payoff.
+- **Keep all four playable:** the Wing 5 capture is a cutscene, and the Skater is free inside the first minute of Wing 6.
+- **Opener film:** `assets/film/opener-v2.*` (script: `docs/OPENER_SCREENPLAY.md`) was made for the earlier story and still plays. A White Acre cut (Midnight Madness at 11:58, the four pages, the vents at 12:01, the four "why are we standing" moments) waits for the owner's approval.
+- **Voice continuity:** the Biker's nicknames (Badge, Kid, Spooky, Pizza, dock rat) and the Cop's "for the record" are part of their voices.
+- **Line length:** every subtitle and spoken line is 70 characters or fewer.
+- **Originality:** WHITE ACRE, HUSH, OSCS, Kern Valley Vector Control, the Abatement Team, Order FALLOW, Lerdo Flats, Lease 99, Action News 17, and every character are invented. Real history (Cold War secret testing on civilians, open-air spraying over American cities, the 1992 riots, 1990s budget cuts) is flavor only. No real program, agency program name, or game property is used as an in-world name.
+
+---
+
+## 8. What the Game Plays Today (Wing 1)
+
+The script of record for in-game lines is `src/cutscenes.js`, `src/story.js`, `src/campaign.js` and `src/intro.js`. Wing 1 tells the part of this bible it can stage with its current sets and enemies. The Abatement Team and the pinned PA pages as live gameplay are not built.
+
+### Ray
+Ray runs Ray's Slice of Heaven in the Food Court. He is the civilian in Wing 1's timed choice, **Ray vs the Locker**. He was shut in his walk-in dough cooler at 12:01, which is why he is still himself. He saw the "bug crew" eat at his counter at 11:30, and heard them say the Officer let them up. Saved, hurt or lost, that outcome carries through the Butcher fight, the Security Room and the recap.
+
+### Saved choices
+The choice ids and options are fixed, so existing saves keep working: `outbreak` (cop / goth / biker / silence) and `rayLocker` (save / loot / hold / silence).
+
+### Where Wing 1's clues play
+- **New game text and wing card:** Midnight Madness, 12:01, and the mystery question.
+- **The Plan:** the Skater asks why they are still standing; the TV leak report; the Cop's "nine miles off."
+- **The Ticket:** Ray's order spike (BUG CREW, 11:30, ROOF ACCESS).
+- **The Butcher:** empty Vector Control canisters that match the Cop's work order; "Officer. They pulled my filter."
+- **The Work Order (ending):** the PA's "east doors" page; Vern's OSCS card; the door log; the Cop's first confession; the dispatcher's "How many survivors, Officer?"; Ashby's first radio line.
+- **In-engine opener** (only when the movie can't play): the four 11:58 pages.
+
+### Wing 2 recap ("Previously"), for when Wing 2 ships
+"Previously: the Midnight Madness crowd dropped, then got up. The Deep-Fry Butcher was Vern Toller, a federal observer with no filter. The Mall Cop signed the work order for the crew on the roof. A voice on the radio says he's here to help."
+
+### Hero select
+The select cards keep short gameplay blurbs (`src/config.js`). They give away no story.

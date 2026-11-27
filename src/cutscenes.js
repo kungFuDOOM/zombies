@@ -2,7 +2,7 @@
 // a shrinking timer bar, timeout = silence, "X will remember that" toasts) in Mall of the
 // Dead's own look: HD cinematic 3D scenes (storyFilm.js draws them from view().film), with a clean
 // dark translucent HUD for the lines and the choice bar (see hud.js drawCutscene).
-// No ink outlines, halftone, comic panels or portrait cards. Scripts: STORY.md sections 8 and 9.
+// No ink outlines, halftone, comic panels or portrait cards. Story: STORY.md (White Acre).
 //
 // Pure logic: no DOM, no WebGL. main.js feeds it input and renders its view().
 
@@ -10,7 +10,8 @@ import { CHOICES, CHOICE_SECONDS, SURVIVOR_NAMES, DEFAULT_PICKS, isSilence, boss
 import { TILE } from './config.js';
 import { SCOPE_BAR_PX, handoffStart, handoffCamK, handoffBar } from './camMath.js';
 
-const NAMES = { ...SURVIVOR_NAMES, ray: 'Ray', butcher: 'The Deep-Fry Butcher', pa: 'Pam (PA)' };
+const NAMES = { ...SURVIVOR_NAMES, ray: 'Ray', butcher: 'The Deep-Fry Butcher', pa: 'PA', tv: 'Action News 17', ashby: 'Ashby (radio)', dispatch: 'Dispatcher' };
+const VOICES = ['pa', 'tv', 'ashby', 'dispatch']; // speakers with no body: a speaker, a TV, the Cop's handset
 export const speakerName = (who) => NAMES[who] || '';
 
 export const TYPE_SPEED = 48;  // characters per second
@@ -20,7 +21,7 @@ const TOAST_SECONDS = 2.6;
 // ---------- the scripts ----------
 // A scene is a list of beats:
 //   { t: 'card', title, sub, dur, s, cam }     a chapter card over the 3D scene
-//   { t: 'line', who, text, s, cam, hold? }    a spoken line (who: survivor id, 'ray', 'butcher' or 'pa' = Pam)
+//   { t: 'line', who, text, s, cam, hold? }    a spoken line (who: survivor id, 'ray', 'butcher' or one of VOICES)
 //   { t: 'shot', s, dur, cam }                 a silent shot: picture and sound only
 //   { t: 'choice', id, s, cam, then(res) }     the timed choice; then() returns the response beats
 //
@@ -35,7 +36,7 @@ const TOAST_SECONDS = 2.6;
 // camera cranes from behind the party into the exact gameplay camera while the bars slide away and the HUD fades in.
 // `hold` keeps an unattended line up at least that long (a press still moves on).
 
-const line = (who, text, s, cam, extra = {}) => ({ t: 'line', who, text, s, cam: cam || { shot: 'who', who: who === 'pa' ? '' : who }, ...extra });
+const line = (who, text, s, cam, extra = {}) => ({ t: 'line', who, text, s, cam: cam || { shot: 'who', who: VOICES.includes(who) ? '' : who }, ...extra });
 const silent = (s, dur, cam, extra = {}) => ({ t: 'shot', s, dur, cam: cam || { shot: 'wide' }, ...extra });
 const cue = (at, sting, o = {}) => ({ at, sting, ...o });
 // A scare: real silence (cinema bus and music) scheduled BEFORE the hit, then the hit on one frame.
@@ -43,18 +44,20 @@ export const scare = (at, sting, { silence = 0.45, ...o } = {}) => [cue(at - sil
 // the ticking clock under a choice (it stops the moment the beat is gone)
 const ticking = (extra = []) => [...Array.from({ length: CHOICE_SECONDS }, (_, i) => cue(i + 0.02, 'clockTick')), ...extra].sort((a, b) => a.at - b.at);
 
-// Scene 1, "The Plan" (STORY.md 9b)
+// Scene 1, "The Plan"
 export function openingScene() {
   const alarm = { fx: 'alarm' };
   const who = (id, move = 'push') => ({ shot: 'who', who: id, move });
   return [
     { t: 'card', title: 'WING 1: FOOD COURT', sub: 'BLACK FRIDAY OUTBREAK', dur: 4.2, s: 'plan.wide', cam: { shot: 'wide', move: 'crane', dur: 5 }, ...alarm,
       cues: [cue(0.05, 'stingAlarm', { shake: 5 }), cue(0.9, 'stingHit', { shake: 9, flash: 0.35 }), cue(1.6, 'shutterSlams', { shake: 6 })] },
+    line('skater', "Everybody dropped, man. Why didn't we?", 'plan.wide', who('skater'), { ...alarm, hold: 4 }),
     line('mallCop', 'Every shutter just dropped. Our only route out is the Food Court.', 'plan.wide', who('mallCop'), { ...alarm, hold: 5, cues: [cue(0.9, 'shutterSlams')] }),
     line('biker', "Food Court's packed with hungry dead. Good. So's my chainsaw.", 'plan.biker', who('biker', 'orbit'), { ...alarm, hold: 5, cues: [cue(0.4, 'chainsawRev', { shake: 4 })] }),
-    // the chime catches him mid-sentence: a silent beat while he stands there, then he picks it up as if nothing happened
+    // the fake news: a leak story on the air three minutes after the gas
     silent('plan.freeze', 2.6, who('mallCop'), { cues: [cue(0.05, 'duckAll', { args: [0.36] }), cue(0.45, 'tubeTink'), cue(0.5, 'pamChime'), cue(1.0, 'ringing'), cue(1.6, 'heartbeat', { args: [1, 0.9, 0.3] })] }),
-    line('mallCop', '...Per procedure. Sorry. Where was I?', 'plan.freeze', who('mallCop'), { hold: 3.4, cues: [cue(0.5, '', { flash: 0.12 })] }),
+    line('tv', 'Refinery leak reported. Residents, stay indoors.', 'plan.freeze', who(''), { hold: 3.6 }),
+    line('mallCop', "Refinery's nine miles off. They knew in three minutes?", 'plan.freeze', who('mallCop'), { hold: 4.2, cues: [cue(0.5, '', { flash: 0.12 })] }),
     line('mallGoth', 'Or we hijack the PA. The customers go where the noise is.', 'plan.goth', who('mallGoth'), { ...alarm, hold: 5, cues: [cue(1.05, 'boomboxClick')] }),
     line('skater', "Dudes. Escalator's eating a guy. Pick in like ten seconds.", 'plan.monitor', { ...who('skater'), roll: 0.05 }, { ...alarm, hold: 5, cues: [cue(1.4, 'whoosh'), cue(1.9, 'monitorGlitch'), cue(2.4, 'escalatorGroan', { shake: 3 }), cue(2.6, 'screamCut'), cue(3.4, 'moan')] }),
     { t: 'choice', id: 'outbreak', s: 'plan.four', cam: { shot: 'wide', move: 'tension' }, ...alarm, then: openingResponse, cues: ticking([cue(0.1, 'heartbeatRamp', { args: [9, 1.0, 0.55] })]) },
@@ -67,11 +70,11 @@ function openingResponse(res) {
     case 'cop': return [line('mallCop', "Gate first. Nothing gets behind us. That's Section Four.", two('mallCop', 'biker'), null, { cues: [cue(0.1, 'doorSlam', { shake: 8 })] }), line('biker', "Slow. Boring. Fine, Badge. I'm first through the door.", two('mallCop', 'biker'))];
     case 'goth': return [line('mallGoth', "One bass drop and they'll follow it anywhere. Like boys at a show.", two('mallGoth', 'mallCop'), null, { cues: [cue(0.1, 'bassDrop', { shake: 6 })] }), line('mallCop', 'Copy. Keep it under a noise complaint, please.', two('mallGoth', 'mallCop'))];
     case 'biker': return [line('biker', "THAT'S the plan! Somebody hold the door. Never mind, I'll make one.", two('biker', 'mallCop'), null, { cues: [cue(0.05, 'chainsawRev', { shake: 7, slow: [0.35, 0.7] })] }), line('mallCop', 'For the record, I hate this plan.', two('biker', 'mallCop'))];
-    default: return [line('skater', 'Okay, nobody? Cool. Cool cool cool. Running in anyway.', two('skater', 'mallGoth'), null, { cues: [cue(0.1, 'stingDread')] }), line('pa', 'Indecision is natural. Hunger is natural too.', 'plan.pa', { shot: 'wide', move: 'tension' }, { hold: 4.2, cues: [cue(-0.3, 'pamChime')] })];
+    default: return [line('skater', 'Okay, nobody? Cool. Cool cool cool. Running in anyway.', two('skater', 'mallGoth'), null, { cues: [cue(0.1, 'stingDread')] }), line('pa', 'Shoppers, please remain where you are. Thank you.', 'plan.pa', { shot: 'wide', move: 'tension' }, { hold: 4.2, cues: [cue(-0.3, 'pamChime')] })];
   }
 }
 
-// Scene 1.5, "The Ticket" (STORY.md 9c): the clue, no choice. If Ray is already gone (a replay), his ticket spike says it.
+// Scene 1.5, "The Ticket": the clue, no choice. If Ray is already gone (a replay), his ticket spike says it.
 export function ticketScene(story) {
   const fate = story && story.flags.rayFate;
   const ray = { shot: 'ray', move: 'push' };
@@ -79,19 +82,19 @@ export function ticketScene(story) {
     ? [silent('tk.spike', 6, ray, { cues: [cue(0.1, 'fryerSizzle'), cue(1.2, 'stingDread')] })]
     : [
       // the fake-out: a silent creep, then Ray pops up
-      line('ray', "Hey! Pizza guy, still alive! Dale's gone nuts back there!", 'tk.approach', ray, { hold: 5, cues: [...scare(0.6, 'shutterRattle', { silence: 0.55, shake: 9, punch: 0.05 }), cue(0.6, 'stingHit'), cue(0.8, 'fryerSizzle')] }),
-      line('ray', "Gave out samples at four. Even you, Officer. Two of 'em!", 'tk.spike', ray, { hold: 5, cues: [cue(0.1, 'whoosh'), cue(1.9, 'stingDread')] }),
+      line('ray', "Hey! Pizza guy, still alive! Vern's gone nuts back there!", 'tk.approach', ray, { hold: 5, cues: [...scare(0.6, 'shutterRattle', { silence: 0.55, shake: 9, punch: 0.05 }), cue(0.6, 'stingHit'), cue(0.8, 'fryerSizzle')] }),
+      line('ray', "Bug guys ate here at 11:30. Said you let 'em up, Officer.", 'tk.spike', ray, { hold: 5, cues: [cue(0.1, 'whoosh'), cue(1.9, 'stingDread')] }),
     ];
   return [
     ...opening,
-    line('skater', 'Wait. Badge ate one? Badge ate the meat?', 'tk.two', { shot: 'who', who: 'skater' }, { hold: 4, cues: [cue(0.02, 'duckAll', { args: [1.2] })] }),
-    line('mallCop', "That's... community relations. I feel fine.", 'tk.cop', { shot: 'who', who: 'mallCop', move: 'push' }, { hold: 4.2, cues: [cue(1.9, 'gurgle')] }),
+    line('skater', 'Wait. Badge let the bug guys in?', 'tk.two', { shot: 'who', who: 'skater' }, { hold: 4, cues: [cue(0.02, 'duckAll', { args: [1.2] })] }),
+    line('mallCop', "That's... a routine fogging order. I checked a badge.", 'tk.cop', { shot: 'who', who: 'mallCop', move: 'push' }, { hold: 4.2, cues: [cue(1.9, 'gurgle')] }),
     silent('tk.fountain', 3.1, { shot: 'plaza' }, { cues: [cue(0, 'duckAll', { args: [0.1] }), cue(0.15, 'pamChime'), cue(0.2, 'neckCrack'), cue(0.62, 'neckCrack'), cue(1.04, 'neckCrack'), cue(2.1, 'bassDrop', { shake: 7, flash: 0.2 })] }),
     line('mallGoth', "Huh. They'd rather listen to me. Finally.", 'tk.fountain', { shot: 'who', who: 'mallGoth' }, { hold: 3.6, cues: [cue(0.4, 'moan')] }),
   ];
 }
 
-// Scene 2, "Ray vs the Locker" (STORY.md 9d)
+// Scene 2, "Ray vs the Locker"
 export function crisisScene() {
   const fire = { fx: 'fire' };
   return [
@@ -121,14 +124,14 @@ function crisisResponse(res) {
     ];
     default: return [
       line('ray', 'Guys? GUYS?', 'cr.empty', ray, { hold: 3, cues: [cue(0.8, 'metalGroan', { shake: 14, slow: [0.3, 0.9] }), cue(0.95, 'screamCut', { blood: 0.6, punch: 0.08 }), cue(0.95, 'bodyHit'), cue(1.6, 'stingDread')] }),
-      line('pa', "Ray's Slice of Heaven is now closed.", 'cr.empty', { shot: 'plaza', move: 'push' }, { hold: 4.6, cues: [cue(0.05, 'pamChime')] }),
+      line('pa', 'Attention. The Food Court is now closed. Thank you.', 'cr.empty', { shot: 'plaza', move: 'push' }, { hold: 4.6, cues: [cue(0.05, 'pamChime')] }),
     ];
   }
 }
 
-// Scene 3, the Butcher (STORY.md 9e). The variant two-shot follows what happened to Ray.
+// Scene 3, the Butcher (Vern Toller, Field Observer 4). The variant two-shot follows what happened to Ray.
 const BOSS_VARIANTS = {
-  hopeful: { sting: 'brassSwell', lines: [['mallCop', "Ray's safe. Now we close this kitchen."], ['biker', 'Order up, Porky.']] },
+  hopeful: { sting: 'brassSwell', lines: [['mallCop', "Ray's safe. Now we close this kitchen."], ['biker', 'Order up, Vern.']] },
   guilt: { sting: 'celloDread', lines: [['mallGoth', 'We left Ray for a box of shells.'], ['mallCop', "Then let's make them count."]] },
   strained: { sting: 'racing', lines: [['skater', "Ray's barely breathing, dude. Fast fight."], ['biker', 'Fast is my only speed.']] },
   bleak: { sting: 'synthNote', lines: [['mallGoth', "Nobody's coming. It's just us."], ['mallCop', "...Then it's just us. Weapons up."]] },
@@ -143,44 +146,48 @@ export function bossIntroScene(story) {
   const two = `bk.var=${tone},${a},${b}`;
   return [
     // the cold open: a low crane up out of the fryer steam, and the title slams in over him
-    { t: 'card', title: 'THE DEEP-FRY BUTCHER', sub: "DALE BRISKET · PORKO'S CARVERY", dur: 6.2, s: 'bk.reveal', cam: { shot: 'boss', move: 'reveal', dur: 6.2 }, boss: true, ...kitchen,
+    { t: 'card', title: 'THE DEEP-FRY BUTCHER', sub: "VERN TOLLER · TOLLER'S CARVERY", dur: 6.2, s: 'bk.reveal', cam: { shot: 'boss', move: 'reveal', dur: 6.2 }, boss: true, ...kitchen,
       cues: [cue(0.05, 'fryerSizzle', { shake: 2 }), cue(0.5, 'riser'), ...scare(2.7, 'stingReveal', { silence: 0.45, shake: 15, flash: 0.55, punch: 0.08, slow: [0.3, 0.8] }), cue(3.2, 'hookClank')] },
     line('biker', '...Huh. Seen those before.', 'bk.drums', { shot: 'who', who: 'biker', move: 'orbit' }, { ...kitchen, hold: 6, cues: [cue(0.05, 'fryerSizzle'), cue(0.05, 'drone', { args: [6, 0.07] }), cue(3.3, 'tubeTink'), cue(3.9, 'chainsawRev', { shake: 5 })] }),
+    line('mallCop', 'Vector Control cans. Same as the work order I signed.', 'bk.drums', { shot: 'who', who: 'mallCop' }, { ...kitchen, hold: 4.4 }),
     silent('bk.ots', 3.9, { shot: 'boss' }, { ...kitchen, cues: [cue(0.05, 'fryerSizzle'), cue(0.97, 'cleaverThunk'), cue(2.12, 'cleaverThunk'), cue(3.27, 'cleaverThunk')] }),
     // the chopping stops: dead silence, then the hook
     silent('bk.turn', 2.3, him, { ...kitchen, cues: [cue(0, 'duckAll', { args: [0.9] }), cue(1.05, 'hookClank'), cue(1.1, 'riser', { args: [1.3, 0.08] })] }),
-    line('butcher', "Welcome to Porko's!", 'bk.turn', him, { ...kitchen, hold: 2.8, cues: [cue(0.05, 'orderUp', { shake: 14, flash: 0.35, punch: 0.1, slow: [0.35, 0.7] })] }),
-    line('butcher', 'Officer. Back for seconds?', 'bk.cop', him, { ...kitchen, hold: 4.8, cues: [cue(1.9, 'stingHit', { shake: 9 }), cue(2.1, 'ringing')] }),
+    line('butcher', "Welcome to Toller's!", 'bk.turn', him, { ...kitchen, hold: 2.8, cues: [cue(0.05, 'orderUp', { shake: 14, flash: 0.35, punch: 0.1, slow: [0.35, 0.7] })] }),
+    line('butcher', 'Officer. They pulled my filter.', 'bk.cop', him, { ...kitchen, hold: 4.8, cues: [cue(1.9, 'stingHit', { shake: 9 }), cue(2.1, 'ringing')] }),
     line(a, first, two, { shot: 'who', who: a }, { ...kitchen, hold: 3.2, cues: [cue(0.05, v.sting)] }),
     line(b, second, two, { shot: 'who', who: b }, { ...kitchen, hold: 3 }),
     line('butcher', "Take a number! I'll carve you one!", 'bk.roar', him, { ...kitchen, hold: 4, cues: [cue(0.08, 'butcherRoar', { shake: 18, flash: 0.6, punch: 0.1, grease: 0.7, slow: [0.22, 0.9] }), cue(0.08, 'braam', { args: [0.4] }), cue(0.6, 'hookClank'), cue(1.5, 'titleSlam', { shake: 8 })] }),
   ];
 }
 
-// The Wing 1 ending, "4:59" (STORY.md 9f): after the Butcher falls, before the recap.
+// The Wing 1 ending, "The Work Order": after the Butcher falls, before the recap.
 export function endingScene(story) {
   const fate = story && story.flags.rayFate;
   const him = { shot: 'boss' }, cop = { shot: 'who', who: 'mallCop' };
-  const witness = fate === 'saved' ? ['ray', "Dale gave you the samples, man. The oil's in you."]
-    : fate === 'injured' ? ['ray', 'Badge... the samples...']
+  const witness = fate === 'saved' ? ['ray', 'Fog crew went up at 11:30. You walked them, man.']
+    : fate === 'injured' ? ['ray', 'Badge... the bug guys...']
       : ['mallGoth', 'Ray tried to tell us. At the counter.'];
   return [
-    line('butcher', "...Tell Pam... I'm off the clock.", 'en.kneel', him, { hold: 7, cues: [cue(1.3, 'cleaverClang', { shake: 10, grease: 0.45, slow: [0.35, 0.8] }), cue(1.7, 'fryerDown')] }),
+    line('butcher', "Three hundred a month... just to count heads.", 'en.kneel', him, { hold: 7, cues: [cue(1.3, 'cleaverClang', { shake: 10, grease: 0.45, slow: [0.35, 0.8] }), cue(1.7, 'fryerDown')] }),
     silent('en.gauge', 2.2, him, { cues: [cue(0.05, 'drone', { args: [6, 0.06] }), cue(0.2, 'gurgle'), cue(0.9, 'metalGroan')] }),
-    line('pa', "Porko's Carvery is now closed. Thank you, Dale.", 'en.gauge', him, { hold: 4.2, cues: [cue(0.05, 'pamChime'), cue(2.4, 'gurgle')] }),
+    line('pa', 'Security, please confirm the east doors.', 'en.gauge', him, { hold: 4.2, cues: [cue(0.05, 'pamChime'), cue(2.4, 'gurgle')] }),
+    line('mallGoth', 'Card in his apron. OSCS. Field Observer 4.', 'en.gauge', him, { hold: 4.2 }),
     line('skater', "Dude. The door log's printing.", 'en.office', { shot: 'who', who: 'skater' }, { hold: 4.6, cues: [cue(0.05, 'printer'), cue(3, 'printer')] }),
     silent('en.print', 5.6, cop, { cues: [cue(0.05, 'printer'), cue(1.7, 'revealSting', { slow: [0.5, 0.6] }), cue(2.15, 'duckAll', { args: [0.5] }), cue(2.7, '', { shake: 9, flash: 0.22 })] }),
     silent('en.feed', 3.4, cop, { cues: [cue(0.05, 'tapeRewind'), cue(1.5, 'monitorGlitch'), cue(3, 'stingDread', { shake: 5 })] }),
-    line('mallCop', "That's... that's not... I was at the loading dock.", 'en.feed', cop, { hold: 4 }),
+    line('mallCop', "I let these men on the roof. I locked the doors.", 'en.feed', cop, { hold: 4 }),
     line(witness[0], witness[1], 'en.orbit', { shot: 'who', who: witness[0] }, { hold: 5, cues: [cue(0.1, 'rain'), cue(0.6, 'softPiano')] }),
     line('biker', 'Not your fault, Badge.', 'en.orbit', { shot: 'who', who: 'biker' }, { hold: 5 }),
-    // the quiet scare: no sting. A tube drops out, and it is simply there. Only Pam's chime lands.
+    // the quiet scare: no sting. A tube drops out, and it is simply there. Then the Cop calls the number on the card.
     silent('en.reflect', 1.8, { shot: 'wide' }, { cues: [cue(0.1, 'receiptRattle'), cue(0.9, 'duckAll', { args: [0.58] }), cue(1.55, 'tubeTink')] }),
-    line('pa', "Officer, your shift isn't over. We still need you.", 'en.reflect', { shot: 'wide' }, { hold: 5.4, cues: [cue(0.05, 'pamChime'), cue(4.2, 'tubeTink'), cue(4.6, 'zap', { flash: 0.25 })] }),
+    line('dispatch', 'Vector Control base. How many survivors, Officer?', 'en.reflect', { shot: 'wide' }, { hold: 5.4, cues: [cue(0.05, 'pamChime'), cue(4.2, 'tubeTink'), cue(4.6, 'zap', { flash: 0.25 })] }),
     silent('en.hand', 3.2, cop, { cues: [cue(0.4, 'heartbeatRamp', { args: [5, 1.0, 0.7] }), cue(1.4, 'pamChime')] }),
-    line('mallCop', '...Copy.', 'en.hand', cop, { hold: 4.4, cues: [cue(1.0, 'riser', { shake: 3 })] }),
+    line('mallCop', '...Four.', 'en.hand', cop, { hold: 3, cues: [cue(1.0, 'riser', { shake: 3 })] }),
+    line('dispatch', 'Hold position. Help is coming.', 'en.hand', cop, { hold: 3.6 }),
+    line('ashby', "Those men aren't here to help you. I am.", 'en.hand', cop, { hold: 4.6 }),
     // smash cut to black: silence, then the next wing's cabinet wakes up
-    { t: 'card', title: 'NEXT: THE ARCADE', sub: '5:19 AM', dur: 5, s: 'en.black', cam: { shot: 'wide' }, cues: [cue(0.02, 'duck'), cue(0.8, 'arcadeJingle')] },
+    { t: 'card', title: 'NEXT: THE ARCADE', sub: '1:20 AM', dur: 5, s: 'en.black', cam: { shot: 'wide' }, cues: [cue(0.02, 'duck'), cue(0.8, 'arcadeJingle')] },
     // the end credits (the kungFuDOOM brand only)
     { t: 'card', title: '', sub: '', credits: true, dur: 9, s: 'en.black', cam: { shot: 'wide' }, cues: [cue(0.1, 'creditsCue', { args: [9] })] },
   ];

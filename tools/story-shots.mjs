@@ -17,11 +17,11 @@ mkdirSync(OUT, { recursive: true });
 
 // [name, beat, seconds into the shot, { pick: choose this option first (beat then counts from the reply), ray }]
 const SCENES = {
-  scene1: [['card', 0, 1.6], ['wide', 1, 4], ['biker', 2, 3.2], ['freeze', 3, 2.4], ['copline', 4, 4.5], ['goth', 5, 2.6], ['monitor', 6, 4], ['choice', 7, 3], ['reply', 0, 3, { pick: 0 }], ['pam', 1, 3.5, { pick: 3 }], ['handoffA', 0, 0.2, { pick: 0, handoff: true }], ['handoffB', 0, 1.3, { pick: 0, handoff: true }], ['handoffC', 0, 2.05, { pick: 0, handoff: true }]],
+  scene1: [['card', 0, 1.6], ['wide', 2, 4], ['biker', 3, 3.2], ['freeze', 4, 2.4], ['tv', 5, 2], ['copline', 6, 4], ['goth', 7, 2.6], ['monitor', 8, 4], ['choice', 9, 3], ['reply', 0, 3, { pick: 0 }], ['pa', 1, 3.5, { pick: 3 }], ['handoffA', 0, 0.2, { pick: 0, handoff: true }], ['handoffB', 0, 1.3, { pick: 0, handoff: true }], ['handoffC', 0, 2.05, { pick: 0, handoff: true }]],
   ticket: [['approach', 0, 4], ['spike', 1, 4], ['two', 2, 2.6], ['cop', 3, 1.6], ['chime', 4, 1.4], ['fountain', 5, 4.4], ['handoffA', 0, 0.15, { handoff: true }]],
   scene2: [['cave', 0, 3], ['locker', 1, 3.5], ['biker', 2, 1.2], ['goth', 3, 4], ['crane', 4, 3], ['choice', 5, 4], ['save', 0, 3.2, { pick: 0 }], ['loot', 0, 2.6, { pick: 1 }], ['hold', 0, 2, { pick: 2 }], ['rayout', 1, 2.5, { pick: 2 }], ['empty', 1, 3, { pick: 3 }], ['handoffA', 0, 0.2, { pick: 0, handoff: true }], ['handoffB', 0, 1.2, { pick: 0, handoff: true }]],
-  boss: [['title', 0, 4.6], ['drums', 1, 5], ['ots', 2, 1.7], ['turn', 4, 3.4], ['copcu', 5, 1], ['point', 5, 4.4], ['hopeful', 6, 2, { ray: 'saved' }], ['guilt', 6, 2.5, { ray: 'overrun' }], ['strained', 6, 2, { ray: 'injured' }], ['alone', 6, 3, { ray: 'lost' }], ['roar', 8, 1.8], ['handoffA', 0, 0.2, { handoff: true }], ['handoffB', 0, 1.4, { handoff: true }]],
-  ending: [['kneel', 0, 6], ['gauge', 2, 5], ['office', 3, 3.4], ['printout', 4, 4.8], ['feed', 6, 7], ['orbit', 7, 3], ['orbit2', 8, 8], ['reflect', 10, 3.2], ['hand', 11, 1.8], ['eyes', 12, 7.5], ['next', 13, 3], ['credits', 14, 6.5]],
+  boss: [['title', 0, 4.6], ['drums', 1, 5], ['cans', 2, 3], ['ots', 3, 1.7], ['turn', 5, 3.4], ['copcu', 6, 1], ['point', 6, 4.4], ['hopeful', 7, 2, { ray: 'saved' }], ['guilt', 7, 2.5, { ray: 'overrun' }], ['strained', 7, 2, { ray: 'injured' }], ['alone', 7, 3, { ray: 'lost' }], ['roar', 9, 1.8], ['handoffA', 0, 0.2, { handoff: true }], ['handoffB', 0, 1.4, { handoff: true }]],
+  ending: [['kneel', 0, 6], ['gauge', 2, 5], ['card', 3, 3], ['office', 4, 3.4], ['printout', 5, 4.8], ['feed', 7, 3], ['orbit', 8, 3], ['orbit2', 9, 8], ['reflect', 11, 3.2], ['hand', 12, 1.8], ['four', 13, 2.5], ['ashby', 15, 3], ['next', 16, 3], ['credits', 17, 6.5]],
 };
 
 const port = 8700 + Math.floor(Math.random() * 200);

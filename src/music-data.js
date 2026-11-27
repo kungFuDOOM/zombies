@@ -61,8 +61,6 @@ export const TRACKS = {
     { pad: PAD('strings', 0.04, 800), bass: BASS('sine', 'r...............', 0.09), arp: ARP('vibes', 'skip', 4, 2, 0.016), lead: LEAD('vibes', '5---.---3---2---1---.---.---.---', 1, 0.05), drums: 'none' }, { wow: 26 }),
   hub: T('hub', 'Security Room Slow Jam', 'G', 'mixo', 104, [1, 4, 1, 5, 1, 6, 4, 5],
     { pad: PAD('epiano', 0.03, 1200), bass: BASS('tri', 'r..r..5.r..r..5.', 0.1), arp: ARP('vibes', 'updown', 2, 1, 0.03), lead: LEAD('sax', '5.3.5.8.-.7.5.3.2.3.5.-.-.....2.3.5.7.8.-.9.8.7.5.-.....', 1, 0.05), drums: 'lounge' }, { wow: 14, swing: 0.1, sev: true }),
-  training: T('training', 'Mall Orientation', 'C', 'major', 112, [1, 5, 6, 4, 1, 5, 4, 5],
-    { pad: PAD('epiano', 0.03, 1400), bass: BASS('tri', 'r.o.r.o.r.o.5.o.', 0.09, 700), arp: ARP('vibes', 'up', 2, 1, 0.03), lead: LEAD('epiano', '1.3.5.3.1.3.5.-.4.6.8.6.4.6.8.-.5.7.9.7.5.4.3.2.1.-.....', 1, 0.05), drums: 'muzak' }, { wow: 12, sev: true }),
   shop: T('shop', 'Cash Counter Lounge', 'F', 'lydian', 92, [1, 2, 1, 5, 1, 6, 2, 5],
     { pad: PAD('epiano', 0.03, 1100), bass: BASS('sine', 'r.....5.r.....5.', 0.1), arp: ARP('vibes', 'broken', 3, 1, 0.035), lead: LEAD('sax', '3.-.5.-.8.-.7.5.-.4.-.6.-.8.7.-.5.-.3.-.-.-.....', 1, 0.05), drums: 'bossa' }, { wow: 16, swing: 0.08, sev: true }),
 
@@ -108,7 +106,7 @@ export function motifOf(t) {
   return raw.slice(0, size).padEnd(size, '.');
 }
 
-// Which track plays for what is on screen. `s` = { state, hub, tutorial, isBoss, levelNum, cutscene }.
+// Which track plays for what is on screen. `s` = { state, hub, isBoss, levelNum, cutscene }.
 export function trackFor(s) {
   if (s.state === 'loading' || s.state === 'title' || s.state === 'confirm' || s.state === 'stats' || s.state === 'select') return 'title';
   if (s.state === 'story') return 'story';
@@ -117,7 +115,6 @@ export function trackFor(s) {
   if (s.state === 'cutscene') return ({ crisis: 'cut_crisis', boss: 'cut_boss', ending: 'cut_ending' })[s.cutscene] || 'cut_opening';
   if (!s.inLevel) return 'title';
   if (s.hub) return 'hub';
-  if (s.tutorial) return 'training';
   if (s.state === 'levelclear') return s.isBoss ? 'bossclear' : 'clear';
   if (s.state === 'gameover') return 'defeat';
   return levelTrack(s.levelNum, s.isBoss);

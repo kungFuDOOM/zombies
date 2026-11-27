@@ -1,4 +1,4 @@
-// The in-campaign story scenes in HD (STORY.md 9b-9f), built on the cinema toolkit.
+// The in-campaign story scenes in HD (story: STORY.md), built on the cinema toolkit.
 //
 // cutscenes.js stays the boss: it owns the beats, the timers and the choices, and every beat names a 3D shot
 // ('plan.biker', 'cr.crane', ...). This file only DRAWS that: it is driven entirely by Cutscene.view().film, so an
@@ -138,12 +138,10 @@ export class StoryFilm {
 
     // hand props that travel with the cast
     this.boombox = buildBoombox(); scene.add(this.boombox.group);
-    // the Mall Cop's eyes catching cook-yellow (placed at his head every frame while on)
-    this.copEyes = [0, 1].map(() => { const s = glowSprite('#ffc020', 3.2, 0.9); s.material.depthTest = false; s.renderOrder = 9; scene.add(s); return s; });
-    // his keycard
+    // the federal card in the Mall Cop's wallet
     this.keycard = new THREE.Group();
     const cardM = new THREE.Mesh(new THREE.BoxGeometry(4.4, 6.4, 0.35), new THREE.MeshBasicMaterial({ color: '#d8d0b8' }));
-    const band = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.5, 0.4), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff7a18').multiplyScalar(1.3), toneMapped: false })); band.position.y = 1.6;
+    const band = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.5, 0.4), new THREE.MeshBasicMaterial({ color: new THREE.Color('#2a4a9a').multiplyScalar(1.3), toneMapped: false })); band.position.y = 1.6;
     this.keycard.add(cardM, band); scene.add(this.keycard);
 
     this.pl = new CinePlayer(this.r3d, scene, [{ id: 'blank', dur: 10, cam: dolly([0, 60, 200], [0, 60, 200], [0, 40, 0]), fov: [40, 40] }]);
@@ -268,7 +266,6 @@ export class StoryFilm {
     if (this.rayA) this.rayA.loop('Idle', 1);
     for (const z of this.zombies) z.loop('Walking_D_Skeletons', 0.6);
     this.boombox.group.visible = false; this.bass = 0;
-    this.copEyes.forEach((s) => { s.visible = false; }); this.eyes = 0;
     this.keycard.visible = false;
     if (this.receipt) this.receipt.visible = false;
     if (this.butcher) {
@@ -459,24 +456,9 @@ export class StoryFilm {
       this.alarmLamp.material.color.set('#ff2010').multiplyScalar(Math.sin(t * 7) > 0 ? 2 : 0.3);
     }
     if (this.boombox.group.visible) { this.bass = Math.max(0, this.bass - sdt * 1.6); this.boombox.cones.forEach((m) => m.scale.setScalar(1 + this.bass * 0.35)); }
-    this.updateEyes(t);
     this.lights.update(sdt, t);
     this.dust.update(sdt, t);
     this.sparks.update(sdt);
-  }
-
-  updateEyes(t) {
-    const cop = this.heroes.mallCop;
-    const on = this.eyes > 0 && cop.visible;
-    if (!on) { this.copEyes.forEach((s) => { s.visible = false; }); return; }
-    const w = cop.boneWorld('Head'), yaw = cop.root.rotation.y + cop.g.headYaw * D2R;
-    const fx = Math.sin(yaw), fz = Math.cos(yaw);
-    this.copEyes.forEach((s, i) => {
-      const side = i ? 1.15 : -1.15;
-      s.visible = true;
-      s.position.set(w.x + fx * 3.7 + fz * side, w.y + 2.5, w.z + fz * 3.7 - fx * side);
-      s.scale.setScalar(2.4 * this.eyes * (1 + Math.sin(t * 13) * 0.12));
-    });
   }
 
   /** A story cue's camera hit: shake, flash, blood or grease on the lens, a lens punch. A big one makes people flinch. */
@@ -517,7 +499,6 @@ function pizza(F) { F.show('pizza'); F.look = 'PIZZA_EMBER'; F.dust.moveTo(PX, 0
 function kitchen(F) { F.show('kitchen'); F.look = 'FRYER_HELL'; F.dust.moveTo(KX, 0, -20); F.fog(190, 880, '#241006'); }
 // the anamorphic flare points
 const monitorFlares = [{ at: [OX, 66, -60], color: '#58f0b0', k: 0.3, len: 0.7 }];
-const eyeFlares = (F) => [0, 1].map((i) => ({ at: () => (F.eyes > 0.3 ? F.copEyes[i].position : null), color: '#ffb020', k: () => F.eyes * 0.6, len: 0.35 }));
 
 // the red alarm strobe in the Security Room
 const alarmStrobe = { fx: ['#ff2030', [OX + 80, 100, 50], 260, (t) => Math.max(0.05, Math.sin(t * 7))] };
@@ -542,7 +523,7 @@ const SHOTS = {
     F.heroes.mallCop.visible = false;
     return { dur: 5, cam: F.closeUp(a, [80, 48, 46, 41], [62, 34, 46, 43], { hand: 0.3 }), fov: [34, 31], dof: { focus: [93, 70], aperture: 1.1 }, grade: 'HERO_GRIT', tick: (dt, lt) => { if (lt > 0.5) a.look(16, 3, 3); if (lt > 2) a.raise('L', 0.4); } };
   },
-  // 3: push to a close-up on the Mall Cop; the chime; he freezes with his eyes empty
+  // 3: push to a close-up on the Mall Cop; the chime and the leak report stop him cold
   'plan.freeze'(F) {
     office(F); crew(F);
     const tube = () => scriptedFail(F.lt, [[0.45, 0.5]]);
@@ -550,10 +531,8 @@ const SHOTS = {
     const a = F.heroes.mallCop; a.look(14, 0, 5); F.paTalk = 2.6;
     F.heroes.biker.visible = false; F.heroes.mallGoth.visible = false;
     return { dur: 7, grade: { ...GRADES.SICK_FLUOR, sick: 1.3 }, cam: F.closeUp(a, [90, 34, 54, 42], [48, 19, 52, 45], { hand: 0.12, ease: 'out' }), fov: [34, 27], dof: { focus: [92, 45], aperture: 1.6 }, tick: (dt, lt) => {
-      if (lt > 0.55 && lt < 3.1) { a.frozen = true; F.eyes = Math.min(0.5, (lt - 0.55)); F.copEyes.forEach((s) => s.material.color.set('#cfe8ff')); F.lights.set({ key: ['#9affd8', [OX - 56, 72, 70], 46, tube] }); }
-      if (lt >= 3.1 && a.frozen) { a.frozen = false; F.eyes = 0; a.tremble(0.15); a.look(18, 0, 5); F.lights.set({ key: ['#9affd8', [OX - 56, 72, 70], 130] }); }
-      if (lt >= 3.1) F.eyes = 0;
-      for (const s of F.copEyes) if (lt >= 3.1) s.material.color.set('#ffffff');
+      if (lt > 0.55 && lt < 3.1) { a.frozen = true; F.lights.set({ key: ['#9affd8', [OX - 56, 72, 70], 46, tube] }); }
+      if (lt >= 3.1 && a.frozen) { a.frozen = false; a.tremble(0.15); a.look(18, 0, 5); F.lights.set({ key: ['#9affd8', [OX - 56, 72, 70], 130] }); }
     } };
   },
   // 4: over the Skater's shoulder to the Mall Goth; she taps her boombox
@@ -592,7 +571,7 @@ const SHOTS = {
     F.officeLights({ key: ['#c8ffe8', [OX - 70, 90, 100], 170], fill: ['#ff9a40', [OX + 100, 60, 70], 120] });
     return { dur: 8, cam: push(o3(-14, 56, 150), o3(-4, 53, 126), o3(0, 36, 24), o3(0, 38, 24), { hand: 0.35 }), fov: [34, 31], dof: { focus: [128, 104], aperture: 1.0 }, tick: (dt, lt) => { A.look(-14, 2, 3); B.look(18, 0, 3); if (lt > 0.4 && a !== 'mallCop') A.raise('L', 0.35); } };
   },
-  // the silence replies end on the PA speaker: Pam
+  // the silence replies end on the PA speaker
   'plan.pa'(F) {
     office(F); crew(F); F.paTalk = 20;
     F.officeLights({ rim: ['#ffd23a', [OX - 92, 96, -34], 300] });
@@ -785,7 +764,7 @@ const SHOTS = {
         if (Math.random() < dt * 26) F.sparks.spark(KX + (Math.random() - 0.5) * 150, 8, 30 + Math.random() * 40, (Math.random() - 0.5) * 26, 70 + Math.random() * 90, (Math.random() - 0.5) * 20, '#ff9a30', 1.1);
       } };
   },
-  // 1: dolly down the prep line from the freezer; the Biker passes the PERMA-FRY drums and goes quiet
+  // 1: dolly down the prep line from the freezer; the Biker passes the Vector Control canisters and goes quiet
   'bk.drums'(F) {
     kitchen(F); F.fog(200, 820);
     F.kitchenLights(1, { key: ['#ffb060', [KX - 150, 96, 40], 260, () => scriptedFail(F.lt, [[3.3, 0.5]])], rim: ['#9ad8ff', [KX - 290, 80, 10], 240], fill: ['#ff8a28', [KX - 190, 36, 60], 110] });
@@ -884,7 +863,7 @@ const SHOTS = {
     } };
   },
 
-  // ----- the Wing 1 ending, "4:59"
+  // ----- the Wing 1 ending, "The Work Order"
   // 1: slow crane down over the Butcher on his knees, head split, the fryers dying one by one
   'en.kneel'(F) {
     kitchen(F); const B = F.stageButcher(0, -10, 0.12); F.sets.kitchen.h.block.visible = false;
@@ -907,7 +886,7 @@ const SHOTS = {
       F.lights.set({ key: ['#ff7a18', [KX - 90, 40, 80], 100 + 230 * power], fx: ['#ff5a10', [KX, 56, -112], 330 * power], fill: ['#ff9a40', [KX + 20, 150, 60], 40 + 110 * power] });
     } };
   },
-  // 2: the dark, except the GREASE MAIN gauge, and its needle still climbing
+  // 2: the dark, except the air intake gauge, and its needle still climbing
   'en.gauge'(F) {
     kitchen(F); F.sets.kitchen.h.power = 0.01;
     F.light({ sky: '#102a18', ground: '#020402', hemi: 0.16, moon: 0, moonColor: '#102010' }, { key: ['#30ff80', [KX + GAUGE_AT[0] - 16, GAUGE_AT[1] + 10, GAUGE_AT[2] + 46], 130], rim: ['#1a8a4a', [KX + GAUGE_AT[0] + 70, GAUGE_AT[1] + 40, GAUGE_AT[2] + 30], 90] });
@@ -980,7 +959,7 @@ const SHOTS = {
       if (lt >= 6.35) cop.look(14, 0, 8);
     } };
   },
-  // 8: extreme close-up: his hand finds the keycard, and one orange flare lights his eyes
+  // 8: extreme close-up: his hand finds the federal card, and he makes the call
   'en.hand'(F) {
     office(F);
     F.light({ sky: '#101828', ground: '#030406', hemi: 0.22, moon: 0, moonColor: '#101020' }, { key: ['#5a8ac8', [OX - 50, 70, 80], 80], rim: ['#4af0a0', [OX + 40, 74, -20], 130], fill: ['#b8d0ff', [OX + 34, 36, 90], 55], fx: ['#ff8a18', [OX + 8, 30, 70], 0] });
@@ -990,7 +969,7 @@ const SHOTS = {
     a.update(0.6);
     const head = a.boneWorld('Head'), hand = a.boneWorld('WristL');
     const on = (v, dist, side, up) => [v.x + dist * Math.sin(0.06) + side, v.y + up, v.z + dist];
-    return { dur: 12, flares: eyeFlares(F), cam: { hand: 0.08, seq: [
+    return { dur: 12, cam: { hand: 0.08, seq: [
       { to: 0.24, ...push(on(hand, 66, -30, 12), on(hand, 50, -21, 8), [hand.x + 1, hand.y + 4, hand.z], [hand.x, hand.y + 1, hand.z]), fov: [31, 27] },
       { to: 1, ...push(on(head, 56, 4, 1), on(head, 31, 1.5, 1), [head.x, head.y - 0.5, head.z], [head.x, head.y + 1.6, head.z], { ease: 'out' }), fov: [28, 23] },
     ] }, dof: { focus: [52, 30], aperture: 1.2 }, bloom: 0.8, tick: (dt, lt) => {
@@ -1000,8 +979,6 @@ const SHOTS = {
       F.keycard.visible = lt < 2.9;
       F.keycard.position.set(w.x + 0.6 + (1 - k) * 4, w.y - 2.6, w.z + 1.8); F.keycard.scale.setScalar(0.72); F.keycard.rotation.set(0.1, 0.25, -0.2 + (1 - k) * 0.5);
       const glow = smooth((lt - 3.3) / 2.2);
-      F.eyes = glow;
-      F.copEyes.forEach((s) => s.material.color.set('#ffb818'));
       F.lights.set({ fx: ['#ff8a18', [OX + 6, 44, 66], glow * 150] });
     } };
   },

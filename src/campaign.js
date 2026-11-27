@@ -115,17 +115,17 @@ export function buy(p, item) {
 
 export const STORY = {
   intro: [
-    'Black Friday, 1994. Brightwater Commons opens at six.',
-    'At 4:59 AM, somebody opened it early.',
-    'Four strangers. Six wings. One very polite voice on the PA.',
+    'Black Friday, 1994. Midnight Madness at Paragon Crossing.',
+    'At 12:01 AM, something came out of the air vents.',
+    'Four thousand dropped. Why are we four still standing?',
   ],
   realms: [
-    ['WING 1: THE FOOD COURT. Fryer smoke, sticky tile, and a fountain full of drool.', "Porko's Carvery handed out free samples at four. Everybody who ate one is still in line, including someone you trust."],
+    ['WING 1: THE FOOD COURT. Sticky tile, fryer smoke, and a TV left on.', 'The shoppers who dropped here are getting back up.'],
   ],
   ending: [
-    'Dale, the Deep-Fry Butcher, is off the clock. The fryers are cold. The Grease Main is not.',
-    "The door log doesn't lie. The keycard was his.",
-    'Pam has a list. One of you is on it.',
+    'Vern Toller, the Deep-Fry Butcher, is down. His walk-in still leaks.',
+    'The work order for the roof has a Mall Cop signature on it.',
+    'Help is on the way. It is carrying rifles.',
   ],
 };
 

@@ -7,15 +7,15 @@
 export const BOSS_ROSTER = [
   { wing: 1, id: 'butcher', model: 'butcher', name: 'The Deep-Fry Butcher', built: true, hp: 3200, speed: 66, dmg: 16, scale: 2.6, color: '#d8a040', horn: '#e8e0c8',
     moves: [['sweep', 'slam', 'grease'], ['sweep', 'slam', 'grease', 'summon', 'charge'], ['sweep2', 'slam2', 'grease', 'summon', 'charge2']] },
-  { wing: 2, id: 'bowler', model: 'bowler', name: 'Gutterball, the Lane King', built: false, hp: 4000, speed: 72, dmg: 18, scale: 2.4, color: '#2a9a96', horn: '#40ff90',
+  { wing: 2, id: 'bowler', model: 'bowler', name: 'The Pin Boy', built: false, hp: 4000, speed: 72, dmg: 18, scale: 2.4, color: '#2a9a96', horn: '#40ff90',
     moves: [['strikeRoll', 'pinScatter', 'fastball'], ['strikeRoll', 'pinScatter', 'fastball', 'ballReturn', 'summon'], ['strikeRoll2', 'pinScatter2', 'fastball', 'ballReturn', 'tilt']] },
-  { wing: 3, id: 'projectionist', model: 'projectionist', name: 'The Projectionist', built: false, hp: 4600, speed: 60, dmg: 18, scale: 3.0, color: '#a03040', horn: '#e8d8a0',
+  { wing: 3, id: 'projectionist', model: 'projectionist', name: 'The Abatement Ambush', built: false, hp: 4600, speed: 60, dmg: 18, scale: 3.0, color: '#a03040', horn: '#e8d8a0',
     moves: [['spotlight', 'reelToss', 'filmLash'], ['spotlight', 'reelToss', 'filmLash', 'intermission', 'summon'], ['spotlight2', 'reelToss2', 'filmLash', 'intermission', 'finalReel']] },
-  { wing: 4, id: 'maxrep', model: 'maxrep', name: 'Max Rep', built: false, hp: 5400, speed: 80, dmg: 22, scale: 2.8, color: '#8a7a9a', horn: '#ff8a30',
+  { wing: 4, id: 'maxrep', model: 'maxrep', name: 'Mr. Paragon', built: false, hp: 5400, speed: 80, dmg: 22, scale: 2.8, color: '#8a7a9a', horn: '#ff8a30',
     moves: [['deadlift', 'plateToss', 'treadmillCharge'], ['deadlift', 'plateToss', 'treadmillCharge', 'flex', 'proteinSpew'], ['deadlift2', 'plateToss2', 'treadmillCharge2', 'flex', 'proteinSpew']] },
-  { wing: 5, id: 'santa', model: 'santa', name: 'Santa Claws', built: false, hp: 6200, speed: 62, dmg: 20, scale: 2.8, color: '#b02030', horn: '#f0ece0',
+  { wing: 5, id: 'santa', model: 'santa', name: 'The Village Santa', built: false, hp: 6200, speed: 62, dmg: 20, scale: 2.8, color: '#b02030', horn: '#f0ece0',
     moves: [['caneSweep', 'sackSlam', 'naughtyList'], ['caneSweep', 'sackSlam', 'naughtyList', 'toySwarm', 'caneHook'], ['caneSweep2', 'sackSlam2', 'naughtyList', 'toySwarm', 'sackMaw']] },
-  { wing: 6, id: 'mulchmaw', model: 'mulchmaw', name: 'Mulchmaw', built: false, hp: 7200, speed: 56, dmg: 24, scale: 3.0, color: '#ffa020', horn: '#60e060',
+  { wing: 6, id: 'mulchmaw', model: 'mulchmaw', name: 'The Crew Chief', built: false, hp: 7200, speed: 56, dmg: 24, scale: 3.0, color: '#ffa020', horn: '#60e060',
     moves: [['chipperSpray', 'hedgeSweep', 'seedBomb'], ['chipperSpray', 'hedgeSweep', 'seedBomb', 'rootBurst', 'summon'], ['chipperSpray2', 'hedgeSweep2', 'seedBomb', 'rootBurst2', 'rotorWash']] },
 ];
 

@@ -1,5 +1,7 @@
 # OPENER SCREENPLAY: "Doorbuster" (live-action cut)
 
+> **Earlier story.** This is the script of the shipped movie, `assets/film/opener-v2.*`, which was made before White Acre. It is not canon: [STORY.md](../STORY.md) is. References below to STORY.md sections mean the earlier bible (see git history). A White Acre cut waits for the owner's approval.
+
 **Title:** MALL OF THE DEAD, opener film "Doorbuster"
 **Logline:** At 4 AM on Black Friday 1994, four strangers are each alone with a small, wrong detail at Brightwater Commons. Then a pig-masked butcher's free samples and a polite PA chime open the doors an hour early, and the four are pushed together in the food court as the line comes in.
 **Runtime target:** 86 s (hard limits 60 to 90 s). 19 shots: 1 title card, 9 reused clips, 9 new generations.

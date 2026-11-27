@@ -1,5 +1,7 @@
 # FILM_PLAN: Mall of the Dead cutscenes as a zombie horror film
 
+> The story has since changed to White Acre ([STORY.md](../STORY.md)). Dialogue, props and STORY.md section references below describe the earlier story.
+
 Status: written against commit 992a486; checklist items 1-11 are implemented. As built, where it differs from the text below:
 - Item 12: the capture tool is updated (and `tools/cine-check.mjs` added), but `sw.js` is NOT bumped yet (owner's call).
 - The level behind Scene 1's handoff is built on the hard cut into the handoff, not during the reply lines (D4), so its one stall never lands mid-line.

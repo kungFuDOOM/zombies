@@ -191,7 +191,7 @@ function butcher() {
     for (let k = 0; k < 3; k++) prop(B, 'chest', G.sph(2.5, 8), m('#a83a3a'), [x + 3, cy + 18 + h - k * 4.5, -16.5], [0, 0, 0], [1, 1.5, 1]);
     prop(B, 'chest', G.box(6, 8, 0.6), m('#f4f0e0'), [x - 4, cy + 14 + h, -17], [0, 0.4, 0.1]);
   }
-  // THE PIG-MASCOT CHEF: a cracked fibreglass pig head (the food court's "Chef Porko" mascot) with the cook's angry eyes glowing
+  // THE PIG-MASCOT CHEF: a cracked fibreglass pig head (the carvery's promo head) with the cook's angry eyes glowing
   // out of it, tusks, a snout, floppy ears and a tall, filthy chef's hat
   const hy = B.S.pos('head').y, hz = B.S.pos('head').z;
   const pig = m('#f2a2ac', { roughness: 0.5 }), pigD = m('#d8788a', { roughness: 0.5 }), hat = m('#f6f2e6', { roughness: 0.6 }), hatD = m('#cfc6ae', { roughness: 0.8 }), pigL = m('#f6b4be', { roughness: 0.5 }), hotM = m('#ffffff', { emissive: '#fff4c0', emissiveIntensity: 2.4 }), dark = m('#241c18');

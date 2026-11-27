@@ -1,4 +1,4 @@
-// The opening film, "Doorbuster" (STORY.md 9a): ~78 s, in engine, before the title screen. Skippable by any input.
+// The opening film, "Doorbuster" (the fallback for the movie): ~78 s, in engine, before the title screen. Skippable by any input.
 // It is preceded by the studio card (film time -4.5 .. 0, over black).
 //
 //   1  crane down a PA speaker to the dark atrium          7  Biker: low orbit, chainsaw rev
@@ -13,7 +13,7 @@
 // shot list, the lights per shot, the actors' actions and the audio cues. The later story scenes use the same toolkit.
 //
 // main.js drives it: start({ gate }), update(dt), render(), view() for the hud overlay, press()/skip().
-// Sound is cineAudio.js (Web Audio only); Pam's PA voice is the browser speech voice pushed low and slow, with a subtitle.
+// Sound is cineAudio.js (Web Audio only); the PA voice is the browser speech voice pushed low and slow, with a subtitle.
 
 import * as THREE from 'three';
 import { cine, paSpeak } from './audio.js';
@@ -29,7 +29,7 @@ export const PREROLL = 4.5; // the studio card
 // the escalator's tube drops out (film seconds); the dead at its foot only move while it is dark
 const ESC_DROPS = [[31.2, 0.3], [32.6, 0.35], [33.9, 0.4]];
 
-const PAM = { name: 'Pam (PA)', color: '#ffd89a' };
+const PA = { name: 'PA', color: '#ffd89a' };
 const HEROES = [
   { cls: 'biker', name: 'BIKER', role: 'TANK', color: '#ff7a50' },
   { cls: 'mallCop', name: 'MALL COP', role: 'RANGED', color: '#6aa0ff' },
@@ -214,7 +214,7 @@ export class Intro {
   // subtitles, name cards and every sound cue, laid on the timeline (seconds from the start)
   script() {
     const p = this.pl, at = (t, fn) => p.at(t, fn);
-    const pa = (a, b, text) => { p.say(a, b, PAM.name, PAM.color, text, 'pa'); at(a, () => { paSpeak(text); this.paTalk = b - a; cine.paStatic(0.3, 0.05); }); };
+    const pa = (a, b, text) => { p.say(a, b, PA.name, PA.color, text, 'pa'); at(a, () => { paSpeak(text); this.paTalk = b - a; cine.paStatic(0.3, 0.05); }); };
     const hero = (cls, a, b, text) => { const h = HEROES.find((x) => x.cls === cls); p.say(a, b, LABEL[cls], h.color, text, 'line'); };
     // --- 0 the studio card
     at(-4.4, () => { cine.drone(10, 0.08); cine.studioCue(); });
@@ -225,12 +225,12 @@ export class Intro {
     at(6.2, () => cine.screamFar(0.05));
     at(0.0, () => { cine.introBed(INTRO_END, 0.1); cine.rain(INTRO_END - 3, 0.07); cine.neonBuzz(8, 0.04); });
     at(0.9, () => { cine.paOpen(); cine.paChime(0.15); });
-    pa(2.9, 6.4, 'Good morning, Brightwater Commons!');
+    pa(2.9, 6.4, 'Security, please confirm the east doors.');
     this.strike(4.6, 0.7);
     // --- 2 corridor
     at(7.0, () => cine.thunder());
     at(7.4, () => cine.heartbeatRamp(9, 0.85, 0.5, 0.18));
-    pa(8.0, 13.6, 'The time is four-fifty-nine. The doors are now open.');
+    pa(8.0, 13.6, 'Driver for Kern Valley, please pull to Dock B.');
     at(10.4, () => cine.escalatorGroan());
     at(11.2, () => { cine.doorSlam(0.35); this.slamPulse = 0.6; }); at(12.9, () => { cine.doorSlam(0.5); this.slamPulse = 0.8; }); 
     // silence, then the slam
@@ -255,11 +255,11 @@ export class Intro {
     this.strike(20.42, 1.3);
     // --- 5 the monitor
     at(24.0, () => { cine.monitorOn(); cine.tapeWarble(2.4); });
-    pa(25.0, 27.6, 'Thank you, Officer.');
+    pa(25.0, 27.6, 'Paging Champ. Your party is at the fountain.');
     at(27.4, () => cine.piano(329.6, 0.2));
     // --- 6 the escalator and the spitter
     at(30.1, () => cine.escalatorGroan());
-    pa(31.0, 35.6, 'Shoppers who sampled, please remain loyal.');
+    pa(31.0, 35.6, 'Photo order 1854, please come to Guest Services.');
     for (const [t0] of ESC_DROPS) at(t0, () => cine.tubeTink());
     at(33.4, () => cine.moan());
     at(35.55, () => cine.duck(0.3));
@@ -295,7 +295,7 @@ export class Intro {
     // --- 11 the circle, the skylight, the title
     at(62.2, () => cine.riser(5.5, 0.13));
     this.strike(66.2, 0.9);
-    pa(65.2, 68.9, 'The mall is now open. Forever.');
+    pa(65.2, 68.9, 'Midnight Madness is now open.');
     at(68.95, () => cine.paChime());
     at(69.25, () => cine.duck(1.2)); // true silence before the title
     at(70.5, () => { cine.titleSlam(); cine.braam(0.5); p.flashV = 1.2; p.shake(70.5, 14, 3); });

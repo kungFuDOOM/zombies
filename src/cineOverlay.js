@@ -152,7 +152,7 @@ const CREDITS = [
   ['MALL OF THE DEAD', 'title'], ['WING 1: FOOD COURT', 'sub'], ['', 'gap'],
   ['A kungFuDOOM PRODUCTION', 'head'], ['Written, directed, scored and built in code by kungFuDOOM', 'body'],
   ['Every sound synthesized. Every frame rendered live.', 'body'], ['No survivors were harmed. Several were eaten.', 'body'], ['', 'gap'],
-  ['TO BE CONTINUED AT 5:19 AM', 'head'],
+  ['TO BE CONTINUED AT 1:20 AM', 'head'],
 ];
 
 /** The end credits card: lines fade in one after another on black. */

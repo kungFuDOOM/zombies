@@ -88,8 +88,7 @@ export function drawGameOverlay(ctx, g, r3d, opts) {
   drawBossBar(ctx, g);
   if (g.level.hub) drawHubLabels(ctx, g, r3d, opts.hubPrompt !== false);
   drawBarks(ctx, g);
-  if (opts.tutorial) drawTutorial(ctx, g, opts.tutorial);
-  else if (!g.level.hub) drawBanner(ctx, g); // (in the Security Room it would sit on the 3D SECURITY ROOM sign)
+  if (!g.level.hub) drawBanner(ctx, g); // (in the Security Room it would sit on the 3D SECURITY ROOM sign)
   for (let s = 0; s < MAX_PLAYERS; s++) drawPanel(ctx, g, s);
   if (opts.controls && device !== 'touch' && !document.body.classList.contains('touching')) drawControlsBar(ctx, g.players[2] || g.players[3] ? 440 : 680);
   if (opts.minimap || g.anyBuff('xray')) drawMinimap(ctx, g, g.anyBuff('xray'));
@@ -257,26 +256,6 @@ function drawBossBar(ctx, g) {
   tags.forEach(([text, color], i) => { ctx.textAlign = 'center'; outlined(ctx, text, VIEW_W / 2 + (i - (tags.length - 1) / 2) * 130, y + 34, color, '#000', 3); });
 }
 
-// The current lesson in the Training Grounds, in a box at the top of the screen.
-function drawTutorial(ctx, g, tut) {
-  const w = 456, x = (VIEW_W - w) / 2, y = 10; // clear of the P1 / P2 panels at either side
-  ctx.font = `15px ${SANS}`;
-  const rows = wrap(ctx, tut.text, w - 56);
-  const h = 56 + rows.length * 19;
-  frame(ctx, x, y, w, h, tut.done ? '#60e060' : '#f2c14e');
-  ctx.textAlign = 'center';
-  ctx.font = `bold 12px ${SANS}`;
-  outlined(ctx, `ORIENTATION ${tut.n} / ${tut.of}`, VIEW_W / 2, y + 17, '#c8b88a', '#000', 2);
-  ctx.font = `bold 17px ${SERIF}`;
-  outlined(ctx, tut.done ? `${tut.title}  ✓` : tut.title, VIEW_W / 2, y + 35, tut.done ? '#80ff80' : '#ffe080', '#000', 3);
-  ctx.font = `15px ${SANS}`;
-  rows.forEach((r, i) => outlined(ctx, r, VIEW_W / 2, y + 56 + i * 19, '#f4ead0', '#000', 3));
-  if (g.banner && g.banner.t > 0) {
-    // the level-name banner still shows, lower down, when training starts
-    drawBanner(ctx, g, y + h);
-  }
-}
-
 // A strip of key caps along the bottom so the controls are always in sight.
 function drawControlsBar(ctx, maxW) {
   const items = device === 'touch'
@@ -397,8 +376,7 @@ const TITLE_BTNS = [
   { id: 'solo', label: 'SOLO PLAY', y: 290, c0: '#ff4fb8', c1: '#8a1a6a', hint: '' },
   { id: 'coop', label: 'CO-OP LOBBY', y: 340, c0: '#3fd6f0', c1: '#1a5fb0', hint: '(or press O)' },
   { id: 'controls', label: 'CONTROLS', y: 390, c0: '#ffd040', c1: '#a06a10', hint: '(or press C)' },
-  { id: 'training', label: 'TRAINING / ORIENTATION', y: 440, c0: '#7be07b', c1: '#1c6a2c', hint: '(or press T)' },
-  { id: 'intro', label: 'WATCH INTRO', y: 490, c0: '#c070ff', c1: '#4a1a8a', hint: '(or press I)' },
+  { id: 'intro', label: 'WATCH INTRO', y: 440, c0: '#c070ff', c1: '#4a1a8a', hint: '(or press I)' },
 ];
 const TB_W = 340, TB_H = 42, TB_X = (VIEW_W - TB_W) / 2;
 export function titleButtonAt(x, y) {
@@ -623,7 +601,7 @@ export function touchButtonAt(btns, x, y) {
   return b ? b.id : null;
 }
 
-export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
+export function drawSelect(ctx, time, slots, heroes = {}) {
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -699,10 +677,6 @@ export function drawSelect(ctx, time, slots, countdown, heroes = {}) {
       ctx.font = `bold 22px ${SANS}`;
       outlined(ctx, 'READY!', x + SEL_W / 2, y + SEL_H - 14, '#80ff80', '#000', 4);
     }
-  }
-  if (countdown != null) {
-    ctx.font = `bold 22px ${SANS}`;
-    outlined(ctx, `Heading for the Security Room in ${Math.ceil(countdown)}...`, VIEW_W / 2, 612, '#fff', '#000', 4);
   }
 }
 
@@ -1221,7 +1195,7 @@ function drawGlobalBoard(ctx, time, g, isMine) {
 
 // ---------- in-game chatter ----------
 
-const BARK_COLORS = { biker: '#ff7a50', mallCop: '#6aa0ff', skater: '#50e890', mallGoth: '#d070ff', ray: '#ffb060', butcher: '#ff8a30', pa: '#ffd89a' };
+const BARK_COLORS = { biker: '#ff7a50', mallCop: '#6aa0ff', skater: '#50e890', mallGoth: '#d070ff', ray: '#ffb060', butcher: '#ff8a30', pa: '#ffd89a', tv: '#c8d8e8', ashby: '#8fffc0', dispatch: '#c8b890' };
 const BARK_NAMES = { biker: 'BIKER', mallCop: 'MALL COP', skater: 'SKATER', mallGoth: 'MALL GOTH', ray: 'RAY' };
 
 // Short lines of squad chatter along the bottom of the screen.

@@ -39,16 +39,16 @@ If a new scene or UI element needs a comic device to work, change the scene.
 
 ## 3. Six-wing roadmap
 
-Each wing is a stage plus a boss, with its own theme, set of monsters and choices. Only Wing 1 is playable today. The others are listed, locked, on the Mall Directory in the Security Room.
+Each wing is a stage plus a boss, with its own theme, set of monsters and choices. The story is [STORY.md](STORY.md) (White Acre). Only Wing 1 is playable today. The Wing 2-6 model notes in 5.5 predate White Acre: the roster names changed, the models did not, and THE HUSH has no model yet. The others are listed, locked, on the Mall Directory in the Security Room.
 
 | Wing | Area | Boss |
 |---|---|---|
 | 1 | Food Court | The Deep-Fry Butcher (built) |
-| 2 | Arcade, Bowling & Batting Cages | Gutterball, the Lane King (planned) |
-| 3 | Movie Theater | The Projectionist (planned) |
-| 4 | Fitness Center / Gym | Max Rep (planned) |
-| 5 | Toy Store & Holiday Atrium | Santa Claws (planned) |
-| 6 | Hardware & Garden Center, then the Rooftop Helipad | Mulchmaw (planned) |
+| 2 | Arcade, Bowling & Batting Cages | The Pin Boy (planned) |
+| 3 | Movie Theater | The Abatement Ambush (planned) |
+| 4 | Fitness Center / Gym | Mr. Paragon (planned) |
+| 5 | Toy Store & Holiday Atrium | The Village Santa (planned) |
+| 6 | Hardware & Garden Center, then the Rooftop Helipad | The Crew Chief (planned) |
 
 Later wings read the same `storyState`: Ray, trust values and flags set in Wing 1 should show up as callbacks.
 
@@ -88,7 +88,7 @@ Replaying Wing 1 clears that wing's choices first (`resetWing1`), so a fresh run
 
 ### Cinematics
 
-- **Opening intro.** A load always goes straight to the title. The opener is a pre-rendered live-action movie (`assets/film/opener-v2.*`, played by `src/movie.js`, captions from its VTT) that plays when a story run starts: title (SOLO PLAY, or an online room) → the story text on a new save → hero select → **movie** → hard cut into `startGame()` (the orientation if it's due, otherwise the Security Room). It starts as soon as everyone is ready, with no countdown, from inside the key or tap that readied the last hero, because phones only allow sound from a gesture (a gamepad or an online guest's press can't give one: if the browser then refuses sound, it plays muted with a "tap for sound" button). So co-op players join before the last player readies up, or drop in during play. TRAINING / ORIENTATION has no movie and keeps the 2 s countdown. "WATCH INTRO" (or the I key) is a rewatch that comes back to the title. Any key, tap or gamepad button on this device skips it. Online guests don't see it: they stay on hero select until the host's game starts, and can't skip it. If the movie can't play, breaks, or shows no frame within 8 s, the in-engine opener (`src/intro.js`) plays instead and leads to the same place. No game music plays over either one. The service worker never caches the movie. For tools: `window.__motd.playIntro()` is a rewatch (`{ engine: true }` for the in-engine one), `?intro=1` does the same on load with no key-press gate (browsers then start it muted unless they allow autoplay), and `window.__motd.introThen` says where the opener leads (`'game'` or `'title'`).
+- **Opening intro.** A load always goes straight to the title. The opener is a pre-rendered live-action movie (`assets/film/opener-v2.*`, played by `src/movie.js`, captions from its VTT) that plays when a story run starts: title (SOLO PLAY, or an online room) → the story text on a new save → hero select → **movie** → hard cut into `startGame()` (the Security Room). The movie predates the White Acre story and will be remade only with the owner's approval. It starts as soon as everyone is ready, with no countdown, from inside the key or tap that readied the last hero, because phones only allow sound from a gesture (a gamepad or an online guest's press can't give one: if the browser then refuses sound, it plays muted with a "tap for sound" button). So co-op players join before the last player readies up, or drop in during play. "WATCH INTRO" (or the I key) is a rewatch that comes back to the title. Any key, tap or gamepad button on this device skips it. Online guests don't see it: they stay on hero select until the host's game starts, and can't skip it. If the movie can't play, breaks, or shows no frame within 8 s, the in-engine opener (`src/intro.js`) plays instead and leads to the same place. No game music plays over either one. The service worker never caches the movie. For tools: `window.__motd.playIntro()` is a rewatch (`{ engine: true }` for the in-engine one), `?intro=1` does the same on load with no key-press gate (browsers then start it muted unless they allow autoplay), and `window.__motd.introThen` says where the opener leads (`'game'` or `'title'`).
 - **Camera and cues.** Cutscene beats can carry `cam: {shot, move, roll, dur}`, where `move` is `push`, `dolly`, `orbit`, `crane`, `tension`, `reveal` or `roar`. They can also carry `cues: [{at, sting, shake, flash, slow: [scale, seconds]}]`. Slow motion only affects the set. It never slows typing, timers or choice timing.
 - **Letterbox.** Desktop bars are 90px on cards and 42px on lines. Touch devices cap them at 64px and 38px.
 - **Capture.** `window.__motd.cutscene('opening' | 'crisis' | 'boss')` plays a scene for screenshots or video capture.
@@ -176,11 +176,11 @@ All bosses use the Butcher's frame: `MOVESETS[id] = [p1, p2, p3]`, the `GAP` res
 | Wing | id | Name | hp | speed | dmg | scale (x survivor) | moves (P1 / +P2 / P3 upgrades) |
 |---|---|---|---|---|---|---|---|
 | 1 | `butcher` | The Deep-Fry Butcher | 3200 | 66 | 16 | 2.6 | sweep, slam, grease / +summon, charge / sweep2, slam2, charge2 |
-| 2 | `bowler` | Gutterball, the Lane King | 4000 | 72 | 18 | 2.4 | strikeRoll, pinScatter, fastball / +ballReturn, summon / strikeRoll2, pinScatter2, tilt |
-| 3 | `projectionist` | The Projectionist | 4600 | 60 | 18 | 3.0 | spotlight, reelToss, filmLash / +intermission, summon / spotlight2, reelToss2, finalReel |
-| 4 | `maxrep` | Max Rep | 5400 | 80 | 22 | 2.8 | deadlift, plateToss, treadmillCharge / +flex, proteinSpew / deadlift2, plateToss2, treadmillCharge2 |
-| 5 | `santa` | Santa Claws | 6200 | 62 | 20 | 2.8 | caneSweep, sackSlam, naughtyList / +toySwarm, caneHook / caneSweep2, sackSlam2, sackMaw |
-| 6 | `mulchmaw` | Mulchmaw | 7200 | 56 | 24 | 3.0 | chipperSpray, hedgeSweep, seedBomb / +rootBurst, summon / chipperSpray2, rootBurst2, rotorWash |
+| 2 | `bowler` | The Pin Boy | 4000 | 72 | 18 | 2.4 | strikeRoll, pinScatter, fastball / +ballReturn, summon / strikeRoll2, pinScatter2, tilt |
+| 3 | `projectionist` | The Abatement Ambush | 4600 | 60 | 18 | 3.0 | spotlight, reelToss, filmLash / +intermission, summon / spotlight2, reelToss2, finalReel |
+| 4 | `maxrep` | Mr. Paragon | 5400 | 80 | 22 | 2.8 | deadlift, plateToss, treadmillCharge / +flex, proteinSpew / deadlift2, plateToss2, treadmillCharge2 |
+| 5 | `santa` | The Village Santa | 6200 | 62 | 20 | 2.8 | caneSweep, sackSlam, naughtyList / +toySwarm, caneHook / caneSweep2, sackSlam2, sackMaw |
+| 6 | `mulchmaw` | The Crew Chief | 7200 | 56 | 24 | 3.0 | chipperSpray, hedgeSweep, seedBomb / +rootBurst, summon / chipperSpray2, rootBurst2, rotorWash |
 
 **Wing 2: Gutterball, the Lane King.** A dead bowling-league champ whose right fist has fused into a cracked glowing bowling ball. Bowling shirt with a bloodied name script, a rack of pins sprouting from his back, a batting-cage pitching machine bolted to his left shoulder. *Silhouette:* hunched, a giant sphere fist low on one side, a pin "crown" on the back. *Palette:* teal and black bowling shirt, neon-green ball `#40ff90`, lane-wood tan, white pins with red stripes. *Moves:* **strikeRoll** (a lane-wide glowing line marks the floor 0.8 s, then he hurls his ball-fist down it; stub `charge`), **pinScatter** (pins rattle on his back, then a ring of pin shots; stub `slam` ring), **fastball** (the pitching machine whirs and flashes, then a 3-ball aimed volley; stub `grease`, direct-fire), **ballReturn** (the ball arcs back to him on a curved path), **tilt** (P3: arcade-cabinet ground slam, stunned after; stub `slam2`). *Model:* lofted body on a boss bone tree; ball = sphere on `rig.cleaver` (the fist bone); pins = merged lathe instances on the back.
 

@@ -301,7 +301,7 @@ export function makeCine(get) {
       [[659.3, 1.2], [587.3, 2.8], [523.3, 4.4], [493.9, 6.0]].forEach(([f, d]) => note(f, 2.2, { type: 'sine', vol: 0.06, delay: d, attack: 0.01, filter: ['lowpass', 2200, 800, 0.8] }));
     },
     // ----- the story scenes (storyFilm.js) -----
-    // Pam's three-note shopper chime, "ding-dong-ding": two struck bars and a brighter third, too sweet and slightly flat.
+    // The PA's three-note shopper chime, "ding-dong-ding": two struck bars and a brighter third, too sweet and slightly flat.
     pamChime(delay = 0) {
       [[880, 0, 0.19], [698.46, 0.42, 0.17], [1046.5, 0.84, 0.2]].forEach(([f, d, v]) => {
         note(f, 2.1, { type: 'sine', vol: v, delay: delay + d, attack: 0.006, vib: [4.5, 7] });

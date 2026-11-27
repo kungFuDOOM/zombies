@@ -7,7 +7,8 @@
 const FILM = 'assets/film/opener-v2';
 const TYPE = 'video/mp4; codecs="avc1.640028, mp4a.40.2"';
 export const STALL_MS = 8000; // no first frame by then: use the in-engine opener
-// The speakers' colours, as in the in-engine opener (intro.js); Pam is amber, and Dale (only in the movie) is orange.
+// The speakers' colours, as in the in-engine opener (intro.js); amber is the PA. The movie asset predates the
+// White Acre story, so its caption names (PAM, DALE) stay until the film is remade.
 // Anyone else gets the caption colour.
 export const SPEAKERS = { 'PAM (PA)': '#ffd89a', DALE: '#ffa630', BIKER: '#ff7a50', 'MALL COP': '#6aa0ff', SKATER: '#50e890', 'MALL GOTH': '#d070ff' };
 const TEXT = '#f2ecdc';

@@ -57,7 +57,7 @@ test('in the browser: boot -> title; a story run -> movie -> game; WATCH INTRO -
     const noMovie = (page) => page.evaluate(() => !document.querySelector('#movie') && !window.__motd.movie.active);
     const rolling = (page) => page.waitForFunction(() => { const v = document.querySelector('#movie #movie-video'); return v && !v.paused && v.currentTime > 0.5; }, null, { timeout: 90000 });
     const toSelect = async ({ page, reach }) => { await page.waitForTimeout(600); await page.keyboard.press('Enter'); await reach('select'); await page.waitForTimeout(600); };
-    const veteran = { progress: { completed: {}, seenIntro: true, tutorialDone: true, seenRealm: {} }, heroes: {} };
+    const veteran = { progress: { completed: {}, seenIntro: true, seenRealm: {} }, heroes: {} };
 
     // a first launch lands on the title and stays there; the story text still comes before hero select
     const first = await open(null, { humanPlayer: true });
@@ -85,18 +85,18 @@ test('in the browser: boot -> title; a story run -> movie -> game; WATCH INTRO -
     await run.page.keyboard.press('Space');
     await run.reach('play');
     assert.ok(await noMovie(run.page));
-    assert.ok(await run.page.evaluate(() => window.__motd.game.level.hub && !window.__motd.tutorial));
+    assert.ok(await run.page.evaluate(() => window.__motd.game.level.hub));
     assert.deepEqual(run.states, ['title', 'select', 'intro', 'play']);
     await run.ctx.close();
 
-    // left to end, on a run that still owes the orientation: it cuts into the lessons
-    const end = await open({ ...veteran, progress: { ...veteran.progress, tutorialDone: false } });
+    // left to end, on a brand new player's save (no Training, nothing owed): it cuts into the hub
+    const end = await open({ ...veteran, progress: { completed: {}, seenIntro: true, seenRealm: {} } });
     await toSelect(end);
     await end.page.keyboard.press('Enter');
     await rolling(end.page);
     await end.page.evaluate(() => { const v = document.querySelector('#movie-video'); v.currentTime = v.duration - 0.2; });
     await end.reach('play');
-    assert.ok(await end.page.evaluate(() => !!window.__motd.tutorial));
+    assert.ok(await end.page.evaluate(() => window.__motd.game.level.hub));
     assert.deepEqual(end.states, ['title', 'select', 'intro', 'play']);
     await end.ctx.close();
 
@@ -135,16 +135,22 @@ test('in the browser: boot -> title; a story run -> movie -> game; WATCH INTRO -
     assert.ok(!broken.states.slice(1).includes('title'), broken.states.join(' '));
     await broken.ctx.close();
 
-    // TRAINING goes straight to the lessons
-    const training = await open(veteran);
-    await training.page.waitForTimeout(600);
-    await training.page.keyboard.press('KeyT');
-    await training.reach('select');
-    await training.page.waitForTimeout(600);
-    await training.page.keyboard.press('Enter');
-    await training.reach('play');
-    assert.deepEqual(training.states, ['title', 'select', 'play']);
-    await training.ctx.close();
+    // there is no Training: T is just another key on the title, and the run still plays the movie
+    const noTraining = await open(veteran);
+    assert.equal(await noTraining.page.evaluate(async () => {
+      const { titleButtonAt } = await import('/src/hud.js');
+      const ids = new Set();
+      for (let y = 0; y < 640; y += 5) ids.add(titleButtonAt(480, y));
+      return [...ids].filter(Boolean).sort().join(' ');
+    }), 'controls coop intro solo');
+    await noTraining.page.waitForTimeout(600);
+    await noTraining.page.keyboard.press('KeyT');
+    await noTraining.reach('select');
+    await noTraining.page.waitForTimeout(600);
+    await noTraining.page.keyboard.press('Enter');
+    await noTraining.reach('intro');
+    assert.equal(await noTraining.page.evaluate(() => window.__motd.introThen), 'game');
+    await noTraining.ctx.close();
 
     // WATCH INTRO is a rewatch: back to the title
     const watch = await open(veteran);

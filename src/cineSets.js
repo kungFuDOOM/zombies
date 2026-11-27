@@ -246,7 +246,7 @@ export function buildConcourse({ high }) {
     rg.attributes.position.needsUpdate = true;
     H.fountainRing.material.opacity = 0.1 + 0.04 * Math.sin(t * 1.3);
   };
-  /** Pulse the PA speakers' LEDs (Pam is speaking). */
+  /** Pulse the PA speakers' LEDs (the PA is speaking). */
   H.paGlow = (on, t) => { for (const m of H.speakers) m.color.set(on ? '#ffd23a' : '#ff3a2a').multiplyScalar(on ? 1.6 + Math.sin(t * 30) * 0.6 : 0.6); };
   return { group: g, h: H };
 }
@@ -285,7 +285,7 @@ export function drawFeed(c, w, hgt, t, glitch = 0.4) {
   c.fillStyle = 'rgba(0,0,0,0.22)'; for (let y = 0; y < hgt; y += 3) c.fillRect(0, y, w, 1);
   c.font = `bold ${Math.round(hgt * 0.07)}px monospace`; c.fillStyle = '#9dffc8'; c.textAlign = 'left';
   c.fillText('CAM 01  FRONT DOORS', 8, hgt * 0.1);
-  c.fillText('04:59:0' + (Math.floor(t) % 10) + ' AM', 8, hgt - 8);
+  c.fillText('11:55:0' + (Math.floor(t) % 10) + ' PM', 8, hgt - 8);
   if (Math.floor(t * 2) % 2) { c.fillStyle = '#ff3a3a'; c.beginPath(); c.arc(w - 18, hgt * 0.08, 4, 0, Math.PI * 2); c.fill(); }
 }
 
@@ -316,10 +316,10 @@ export function drawEscalatorFeed(c, w, hgt, t) {
   c.fillStyle = 'rgba(0,0,0,0.22)'; for (let y = 0; y < hgt; y += 3) c.fillRect(0, y, w, 1);
   c.font = `bold ${Math.round(hgt * 0.075)}px monospace`; c.fillStyle = '#9dffc8'; c.textAlign = 'left';
   c.fillText('CAM 04  ESCALATOR', 8, hgt * 0.1);
-  c.fillText('05:09:' + String(10 + (Math.floor(t) % 50)) + ' AM', 8, hgt - 6);
+  c.fillText('12:03:' + String(10 + (Math.floor(t) % 50)) + ' AM', 8, hgt - 6);
 }
 
-/** CCTV feed 3 (the Wing 1 ending): the static clears. It is the Mall Cop, eyes glowing cook-yellow, swiping his card. */
+/** CCTV feed 3 (the Wing 1 ending): the static clears. It is the Mall Cop, swiping his card at the door panel. */
 export function drawRevealFeed(c, w, hgt, t, clear = 1) {
   const warm = clear * clear;
   const bg = c.createRadialGradient(w * 0.5, hgt * 0.45, 8, w * 0.5, hgt * 0.5, w * 0.7);
@@ -339,14 +339,6 @@ export function drawRevealFeed(c, w, hgt, t, clear = 1) {
   c.fillStyle = '#0c2030'; c.fillRect(fx - w * 0.11, hgt * 0.2, w * 0.22, hgt * 0.1); c.fillRect(fx - w * 0.13, hgt * 0.285, w * 0.26, hgt * 0.035);
   c.fillStyle = '#e8d870'; c.fillRect(fx - 5, hgt * 0.225, 10, 10);
   c.fillStyle = '#1a140a'; c.fillRect(fx - w * 0.05, hgt * 0.5, w * 0.1, hgt * 0.028); c.fillRect(fx - w * 0.03, hgt * 0.545, w * 0.06, 3);
-  // the eyes: cook-yellow
-  for (const s of [-1, 1]) {
-    const ex = fx + s * w * 0.04, ey = hgt * 0.39;
-    const eg = c.createRadialGradient(ex, ey, 1, ex, ey, 20);
-    eg.addColorStop(0, `rgba(255,250,170,${warm})`); eg.addColorStop(0.3, `rgba(255,190,20,${warm})`); eg.addColorStop(1, 'rgba(255,120,0,0)');
-    c.fillStyle = '#061008'; c.fillRect(ex - 8, ey - 3, 16, 6);
-    c.fillStyle = eg; c.fillRect(ex - 20, ey - 20, 40, 40);
-  }
   // the arm, swiping the card down the reader
   const sw = (t * 0.55) % 1, hy = hgt * (0.34 + 0.2 * Math.min(1, sw * 1.6));
   c.strokeStyle = '#10384a'; c.lineWidth = 18; c.lineCap = 'round'; c.beginPath(); c.moveTo(fx + w * 0.13, hgt * 0.68); c.lineTo(w * 0.72, hy + 8); c.stroke();
@@ -363,7 +355,7 @@ export function drawRevealFeed(c, w, hgt, t, clear = 1) {
   c.fillStyle = 'rgba(0,0,0,0.2)'; for (let y = 0; y < hgt; y += 3) c.fillRect(0, y, w, 1);
   c.font = `bold ${Math.round(hgt * 0.07)}px monospace`; c.fillStyle = '#9dffc8'; c.textAlign = 'left';
   c.fillText('CAM 01  FRONT DOORS', 8, hgt * 0.1);
-  c.fillText('04:59:0' + (Math.floor(t) % 10) + ' AM', 8, hgt - 8);
+  c.fillText('11:55:0' + (Math.floor(t) % 10) + ' PM', 8, hgt - 8);
 }
 
 export function buildOffice({ chair = true } = {}) {

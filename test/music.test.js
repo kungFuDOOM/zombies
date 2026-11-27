@@ -18,7 +18,7 @@ test('menus, the Security Room, cutscenes, the recap and stingers each have a tr
   const picks = {
     title: trackFor({ state: 'title' }), story: trackFor({ state: 'story' }), shop: trackFor({ state: 'shop' }), recap: trackFor({ state: 'recap' }),
     cut_opening: trackFor({ state: 'cutscene', cutscene: 'opening' }), cut_crisis: trackFor({ state: 'cutscene', cutscene: 'crisis' }), cut_boss: trackFor({ state: 'cutscene', cutscene: 'boss' }),
-    hub: trackFor({ ...base, state: 'realm', hub: true }), training: trackFor({ ...base, tutorial: true }),
+    hub: trackFor({ ...base, state: 'realm', hub: true }),
     clear: trackFor({ ...base, state: 'levelclear' }), bossclear: trackFor({ ...base, state: 'levelclear', isBoss: true, levelNum: 2 }), defeat: trackFor({ ...base, state: 'gameover' }),
   };
   for (const [want, got] of Object.entries(picks)) { assert.equal(got, want); assert.ok(TRACKS[got]); }

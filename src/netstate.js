@@ -197,7 +197,6 @@ function cleanUiFields(ui) {
   const ci = ui.ci && typeof ui.ci === 'object' ? ui.ci : null;
   return {
     slots: list(ui.slots, MAX_PLAYERS).map((x) => (x && typeof x === 'object' && own(CLASSES, x.cls) ? { source: cleanSource(x.source), cls: x.cls, ready: !!x.ready } : null)),
-    cd: ui.cd == null ? null : num(ui.cd, 0, 10),
     rp: ui.rp && typeof ui.rp === 'object' ? { realm: int(ui.rp.realm, 0, 5), stage: int(ui.rp.stage, 1, 2) } : null,
     cut: cleanCut(ui.cut),
     shop: list(ui.shop, MAX_PLAYERS).map(cursor),
@@ -213,10 +212,9 @@ function cleanUiFields(ui) {
     prog: {
       completed: flags(p.completed, (k) => /^([1-9]|1[0-2])$/.test(k)),
       seenRealm: flags(p.seenRealm, (k) => /^[0-5]$/.test(k)),
-      seenIntro: !!p.seenIntro, won: !!p.won, tutorialDone: !!p.tutorialDone,
+      seenIntro: !!p.seenIntro, won: !!p.won,
     },
     heroes,
-    tut: Array.isArray(ui.tut) ? [int(ui.tut[0], 0, 7), ui.tut[1] ? 1 : 0] : null,
   };
 }
 

@@ -1,6 +1,6 @@
 # Mall of the Dead
 
-A retro 90s co-op mall zombie arcade game that runs in the browser in 3D, with **Telltale-style timed choices that have real consequences**. It's Black Friday, the doors opened an hour early, and what came through wasn't shopping.
+A retro 90s co-op mall zombie arcade game that runs in the browser in 3D, with **Telltale-style timed choices that have real consequences**. It's Black Friday, 1994. At 12:01 AM, during the Midnight Madness sale at Paragon Crossing in Bakersfield, something comes out of the air vents. Four thousand shoppers drop, then get back up. The full story (spoilers) is in [STORY.md](STORY.md).
 
 It is plain JavaScript with no build step. The libraries are [three.js](https://threejs.org) and, for online co-op, [PeerJS](https://peerjs.com), both included in `vendor/` (MIT licensed). Sounds and music are synthesized. See [`assets/CREDITS.md`](assets/CREDITS.md) for the CC0 3D models.
 

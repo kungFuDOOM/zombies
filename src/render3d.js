@@ -1055,8 +1055,8 @@ export class Renderer3D {
     // the alarm: a red pulse over the whole set (Scene 1)
     this.hemi.color.set(g.alarm > 0 ? '#ff9aa8' : g.theme.light);
     const brownout = Math.sin(t * 2.1) * Math.sin(t * 7.3) > 0.82 ? 0.7 : 1; // the grid sags now and then
-    // play-time mood: a darker, sicker green-grey fluorescent mall; the hub and training stay neon
-    const play = !(g.level.hub || g.level.tutorial);
+    // play-time mood: a darker, sicker green-grey fluorescent mall; the hub stays neon
+    const play = !g.level.hub;
     this.mood = (this.mood ?? (play ? 1 : 0)) + ((play ? 1 : 0) - (this.mood ?? 0)) * 0.1;
     const mood = this.mood, th = g.theme, foodCourt = g.level.kitchen || g.levelNum <= 1;
     if (g.alarm <= 0) this.hemi.color.set(th.light).lerp(this.tmpColor.set('#9fc49a'), 0.35 * mood);

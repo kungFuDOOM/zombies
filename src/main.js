@@ -6,7 +6,6 @@
 import { VIEW_W, VIEW_H, CLASSES, CLASS_ORDER, MAX_PLAYERS, stagePoints, TILE } from './config.js';
 import { Input, attackKeys } from './input.js';
 import { TouchControls } from './touch.js';
-import { Tutorial, tutorialView } from './tutorial.js';
 import { Game } from './game.js';
 import { initAudio, audioReady, stopCine, sfx, toggleMute, toggleVoice, toggleMusic, playMusic, currentMusic, setMusicIntensity, setMusicPaused, say, stopVoice, audioTap, isMuted } from './audio.js';
 import { Host, Guest, showCode } from './net.js';
@@ -88,8 +87,8 @@ const titleOpen = () => state === 'title' && !net && !lobby.isOpen && !titleCont
 const onWatchIntro = (e) => { const p = !offScreen(e) && stagePoint(e); return !!p && titleButtonAt(p.x, p.y) === 'intro'; };
 function watchIntro() { initAudio(); sfx.select(); startIntro({ gate: false }); }
 function playMovie() { initAudio(); movie.play(isMuted()); }
-// Is a story start one press away? (Online guests don't run the game, and TRAINING has no movie.)
-const movieAhead = () => state === 'select' && !wantTraining && !(net && net.role === 'guest');
+// Is a story start one press away? (Online guests don't run the game.)
+const movieAhead = () => state === 'select' && !(net && net.role === 'guest');
 function cardAt(e) {
   const p = !offScreen(e) && stagePoint(e);
   return p && !selectArrowAt(p.x, p.y) && !touchButtonAt(touchButtons(), p.x, p.y) ? selectCardAt(p.x, p.y) : -1;
@@ -141,7 +140,7 @@ function touchButtons() {
       { id: 'no', label: 'KEEP MY GAME', x: VIEW_W / 2 + 20, y: 440, w: 230, h: 52 },
     ];
     case 'gameover': return [bottom('back', 'RETREAT TO THE HUB')];
-    case 'paused': return game && !(net && net.role === 'guest') ? [{ id: 'gfx', label: r3d.qualityLabel().toUpperCase(), x: VIEW_W / 2 - 150, y: VIEW_H - 126, w: 300, h: 46 }, bottom('quit', game.level && game.level.tutorial ? 'SKIP ORIENTATION' : 'SAVE & QUIT TO TITLE')] : [];
+    case 'paused': return game && !(net && net.role === 'guest') ? [{ id: 'gfx', label: r3d.qualityLabel().toUpperCase(), x: VIEW_W / 2 - 150, y: VIEW_H - 126, w: 300, h: 46 }, bottom('quit', 'SAVE & QUIT TO TITLE')] : [];
     default: return [];
   }
 }
@@ -167,11 +166,8 @@ let introThen = 'title';   // where the opener leads: back to the 'title' (WATCH
 let titleGrace = 0;        // ms timestamp: the title ignores presses until then (the press that skipped the intro)
 let titleFade = false;     // the title comes up out of black after the intro
 let slots = [];       // character select: { source, cls, ready }
-let countdown = null;
 let clearInfo = null;
 let toast = null;
-let wantTraining = false; // TRAINING / ORIENTATION picked on the title: run the lessons after hero select
-let tutorial = null;  // the Training Grounds lessons, while they're being played
 let showControls = true; // the key-cap strip along the bottom (H toggles it)
 try { showControls = localStorage.getItem('motd-controls') !== 'off'; } catch { /* storage unavailable */ }
 let magicHint = { t: 20, shown: 0 }; // reminders that flashbangs exist
@@ -209,7 +205,7 @@ function ownHeroes() {
 }
 function maybeOffer() {
   offerPending = false;
-  if (!game || (game.level && game.level.tutorial) || lbPrompt.isOpen) return;
+  if (!game || lbPrompt.isOpen) return;
   const c = stats.globalCandidate(ownHeroes());
   if (!c || c.score <= (offered.get(c.id) || 0)) return;
   offered.set(c.id, c.score);
@@ -231,7 +227,7 @@ function setState(s) {
   // the opener movie buffers while the title and hero select are up (not right after a showing), and is dropped for play
   if (s !== 'intro' && (movie.active || s === 'play')) movie.release();
   else if ((s === 'title' || s === 'select') && state !== 'intro') movie.preload();
-  if (s === 'title') { wantTraining = false; input.split = false; announceRuns(stats.endRuns()); } // a new party starts with one keyboard player
+  if (s === 'title') { input.split = false; announceRuns(stats.endRuns()); } // a new party starts with one keyboard player
   if (s === 'stats' && recordsTab === 3) loadGlobal();
   if (s === 'gameover' || s === 'recap') offerPending = true;
   state = s; stateT = 0;
@@ -373,7 +369,7 @@ function updateIntro(dt) {
 
 // On the title screen almost any key starts (people try A, Enter, Space...), except the
 // ones that do something else there.
-const TITLE_IGNORE = /^(Key[EGMNVXPOLKCTI]|Period|NumpadDecimal|Quote|Tab|Escape|F\d+|Meta|Alt|Control|OS|ContextMenu|CapsLock)/;
+const TITLE_IGNORE = /^(Key[EGMNVXPOLKCI]|Period|NumpadDecimal|Quote|Tab|Escape|F\d+|Meta|Alt|Control|OS|ContextMenu|CapsLock)/;
 
 function updateTitle() {
   if (performance.now() < titleGrace) return;
@@ -397,13 +393,12 @@ function updateTitle() {
   // (it wipes the save) or start the host's game for them.
   const guests = [...input.remote.keys()];
   const anyKey = input.frameGlobal && [...input.frameGlobal].some((k) => !TITLE_IGNORE.test(k));
-  if (!net && (input.key('KeyT') || hit === 'training')) wantTraining = true;
-  const atk = (!net && wantTraining && 'kb') || input.firstPressed('attack', guests) || input.sources().find((id) => !isNet(id) && input.get(id).pressed.start) || (anyKey && 'kb') || (hit === 'solo' && 'kb');
+  const atk = input.firstPressed('attack', guests) || input.sources().find((id) => !isNet(id) && input.get(id).pressed.start) || (anyKey && 'kb') || (hit === 'solo' && 'kb');
   if (input.firstPressed('magic', guests) && hasProgress(save)) { initAudio(); setState('confirm'); return; }
   if (atk) {
     initAudio();
     sfx.join();
-    const begin = () => { slots = [{ source: atk, cls: 'biker', ready: false }]; countdown = null; setState('select'); };
+    const begin = () => { slots = [{ source: atk, cls: 'biker', ready: false }]; setState('select'); };
     if (!save.progress.seenIntro) {
       showStory(STORY.intro, () => { save.progress.seenIntro = true; writeSave(save); begin(); });
     } else begin();
@@ -443,11 +438,11 @@ function cycleClass(s, dir) {
   sfx.select();
 }
 
-function updateSelect(dt) {
+function updateSelect() {
   for (const t of taps) {
     const hit = selectArrowAt(t.x, t.y);
     const s = hit && slots[hit.slot];
-    if (s && !s.ready) { initAudio(); cycleClass(s, hit.dir); countdown = null; }
+    if (s && !s.ready) { initAudio(); cycleClass(s, hit.dir); }
     else if (!hit && touching()) { // touch: tap the middle of a card to join / ready up / un-ready
       const ci = selectCardAt(t.x, t.y);
       if (ci < 0 || tapBtn()) continue;
@@ -456,16 +451,16 @@ function updateSelect(dt) {
       if (!c) {
         if (!usedSources().includes('kb') && !slots.some((q) => q && q.source === 'kb1')) {
           slots[ci] = { source: 'kb', cls: nextFreeClass(slots.filter(Boolean).map((q) => q.cls)), ready: false };
-          sfx.join(); countdown = null;
+          sfx.join();
         }
       } else if (!isNet(c.source)) {
-        c.ready = !c.ready; countdown = null;
+        c.ready = !c.ready;
         if (c.ready) { sfx.join(); say(CLASSES_NAME(c.cls), `pick${ci}`, 500); }
       }
     }
   }
   if (tapBtn() === 'back') {
-    if (slots.some((q) => q && q.ready)) { for (const q of slots) if (q) q.ready = false; countdown = null; }
+    if (slots.some((q) => q && q.ready)) { for (const q of slots) if (q) q.ready = false; }
     else { for (let i = 0; i < slots.length; i++) slots[i] = null; unsplitKeyboard(slots); setState('title'); }
     return;
   }
@@ -474,7 +469,6 @@ function updateSelect(dt) {
     const idx = [0, 1, 2, 3].find((i) => !slots[i]);
     slots[idx] = { source: 'kb2', cls: nextFreeClass(slots.filter(Boolean).map((s) => s.cls)), ready: false };
     sfx.join();
-    countdown = null;
     return;
   }
   const joiner = input.firstPressed('attack', usedSources());
@@ -482,7 +476,6 @@ function updateSelect(dt) {
     const idx = [0, 1, 2, 3].find((i) => !slots[i]);
     slots[idx] = { source: joiner, cls: nextFreeClass(slots.filter(Boolean).map((s) => s.cls)), ready: false };
     sfx.join();
-    countdown = null;
     return;
   }
   for (let i = 0; i < MAX_PLAYERS; i++) {
@@ -494,27 +487,21 @@ function updateSelect(dt) {
       if (dir) cycleClass(s, dir);
       if (inp.pressed.attack) { s.ready = true; sfx.join(); say(CLASSES_NAME(s.cls), `pick${i}`, 500); }
       if (backPressed(s.source)) {
-        slots[i] = null; countdown = null;
+        slots[i] = null;
         unsplitKeyboard(slots);
         if (!slots.some(Boolean)) setState('title');
       }
     } else if (backPressed(s.source)) {
-      s.ready = false; countdown = null;
+      s.ready = false;
     }
   }
-  if (partyReady(slots)) {
-    if (!wantTraining) { startStory(); return; } // the movie, without waiting out the countdown
-    if (countdown == null) countdown = 2;
-    countdown -= dt;
-    if (countdown <= 0) startGame();
-  } else countdown = null;
+  if (partyReady(slots)) startStory(); // the movie, then the game
 }
 
 function CLASSES_NAME(cls) { return CLASSES[cls].name; }
 
 // A story run: the opener movie, then startGame().
 function startStory() {
-  countdown = null;
   startIntro({ then: 'game' });
 }
 
@@ -528,30 +515,11 @@ function startGame() {
   game = new Game();
   game.isCleared = (n) => !!save.progress.completed[n]; // replays score half
   game.story = save.story;
-  // this device's heroes count toward its stats (not online guests', and not the training)
-  game.onStat = (p, key, n, sub) => { if (!isNet(p.source) && game && game.level && !game.level.tutorial) stats.add(p, key, n, sub); };
+  // this device's heroes count toward its stats (not online guests')
+  game.onStat = (p, key, n, sub) => { if (!isNet(p.source) && game && game.level) stats.add(p, key, n, sub); };
   stats.gameStarted(!!net);
   // online guests start with fresh heroes; players here continue their saved ones
   slots.forEach((s, i) => { if (s) game.addPlayer(i, s.source, s.cls, isNet(s.source) ? null : save.heroes[s.cls]); });
-  // first play (or TRAINING on the title): the orientation lessons come before the hub
-  const training = wantTraining || (!save.progress.tutorialDone && !net);
-  wantTraining = false;
-  if (training) startTutorial(); else openMap();
-}
-
-// ---------- the Training Grounds (first-time tutorial) ----------
-
-function startTutorial() {
-  game.startTutorial();
-  tutorial = new Tutorial(game, input.touch);
-  setState('play');
-}
-
-function finishTutorial(skipped = false) {
-  save.progress.tutorialDone = true;
-  tutorial = null;
-  persist();
-  toast = { text: skipped ? 'Orientation skipped' : 'Orientation complete!', t: 2.5 };
   openHub();
 }
 
@@ -565,7 +533,6 @@ function openHub() {
   game.startHub();
   setState('play');
 }
-const openMap = () => openHub();
 
 // "Back" in menus: Esc on the keyboard ('.' for a second keyboard player), B on a gamepad,
 // the flashbang button on the touch screen. (E is that button in play, which made a poor exit key.)
@@ -856,7 +823,6 @@ function dropGuest(id) {
   const i = slots.findIndex((s) => s && s.source === id);
   if (i >= 0) {
     slots[i] = null;
-    countdown = null;
     if (state === 'select' && !slots.some(Boolean)) setState('title');
   }
   if (game) for (const p of game.allPlayers()) if (p.source === id) game.players[p.slot] = undefined;
@@ -870,7 +836,7 @@ async function joinOnline(code) {
     const me = await link.join(code);
     net = { role: 'guest', link, code: code.toUpperCase(), me, reader: new SnapshotReader(Game), ui: {}, sendT: 0, joinedAt: performance.now() };
     Input.me = me;
-    game = null; tutorial = null; story = null; slots = [];
+    game = null; story = null; slots = [];
     toast = { text: 'Connected! Press Attack to join the party.', t: 4, local: true };
   } catch (err) {
     lobby.say(err.message);
@@ -888,7 +854,7 @@ function leaveOnline(reason) {
     for (const id of [...input.remote.keys()]) dropGuest(id);
     if (game) game.fx = null;
   } else {
-    game = null; story = null; tutorial = null; slots = [];
+    game = null; story = null; slots = [];
     setState('title');
   }
   input.remote.clear();
@@ -910,14 +876,13 @@ function hostSend(dt) {
   // this device's own: guests keep seeing the title)
   const shown = state === 'intro' && introThen === 'game' ? 'select' : state === 'stats' || state === 'intro' ? 'title' : state;
   const ui = {
-    slots, cd: countdown, rp: realmPick, shop, ci: clearInfo,
+    slots, rp: realmPick, shop, ci: clearInfo,
     cut: cut && state === 'cutscene' ? cut.view() : null,
     rc: state === 'recap' ? recap(save.story) : null,
     tn: storyToasts.slice(0, 3).map((t) => t.text),
     story: story && state === 'story' ? { lines: story.lines, idx: story.idx, t: story.t } : null,
     toast: toast && !toast.local ? toast.text : null,
     prog: save.progress, heroes: shown === 'select' ? save.heroes : null,
-    tut: tutorial ? [tutorial.idx, tutorial.doneT > 0 ? 1 : 0] : null,
   };
   net.link.send({ t: 's', st: shown, stT: Math.round(stateT * 100) / 100, ui, g: game ? net.writer.game(game) : null, fx });
 }
@@ -938,7 +903,6 @@ function guestMessage(m) {
     if (entered === 'gameover' || entered === 'ending') offerPending = true;
     net.ui = ui;
     slots = ui.slots;
-    countdown = ui.cd;
     realmPick = ui.rp;
     shop = ui.shop;
     clearInfo = ui.ci;
@@ -949,7 +913,7 @@ function guestMessage(m) {
     game = net.reader.apply(m.g, m.fx);
     const mine = game && game.allPlayers().find((p) => p.source === net.me);
     if (mine && !net.counted) { net.counted = true; stats.gameStarted(true); } // our hero joined in
-    if (entered === 'levelclear' && mine && !(game.level && game.level.tutorial)) stats.levelCleared([mine], !!(ui.ci && ui.ci.wasBoss));
+    if (entered === 'levelclear' && mine) stats.levelCleared([mine], !!(ui.ci && ui.ci.wasBoss));
     if (!m.g) for (const ev of cleanEvents(m.fx)) playSound(ev);
   } catch (err) {
     console.error(err);
@@ -1007,7 +971,7 @@ function guestFrame(dt) {
   if (key !== net.lastPkt || net.sendT <= 0) { net.link.send(pkt); net.lastPkt = key; net.sendT = 0.1; }
   if (net.reader.game) net.reader.tick(dt);
   // our hero's stats and leaderboard run, read off the host's game
-  const mine = state === 'play' && game && game.level && !game.level.tutorial && game.allPlayers().find((p) => p.source === net.me);
+  const mine = state === 'play' && game && game.level && game.allPlayers().find((p) => p.source === net.me);
   if (mine) {
     stats.guestTick(mine);
     stats.tick(dt, [mine], game.levelNum, { mode: 'online', n: game.allPlayers().length });
@@ -1068,11 +1032,6 @@ function updatePlay(dt) {
 
   game.update(dt, input);
   if (game.level.hub) { updateHubActions(); return; }
-  if (game.level.tutorial) {
-    if (tutorial) tutorial.update(dt);
-    if (game.exitReached) finishTutorial();
-    return;
-  }
   updateMagicHint(dt);
 
   // Scene 1.5, "The Ticket": halfway to Ray's stall (and always before the crisis, however the party got there)
@@ -1095,7 +1054,7 @@ function updatePlay(dt) {
     writeStory(save.story);
     clearInfo = { level: n, wasBoss: info.isBoss, realm: info.theme.name, name: info.stageName, bonus };
     if (!info.isBoss) { setState('levelclear'); return; }
-    // the Wing 1 ending, "4:59", plays before the recap (progress is already saved)
+    // the Wing 1 ending, "The Work Order", plays before the recap (progress is already saved)
     startCutscene('ending', () => { sfx.stingHit(); setState('recap'); }); // the recap's title lands with a hit
     return;
   }
@@ -1185,7 +1144,7 @@ function currentTrack() {
   const inLevel = !!(game && game.level && ['play', 'paused', 'levelclear', 'gameover', 'realm', 'shop', 'cutscene', 'recap'].includes(state));
   return trackFor({
     state: as, inLevel,
-    hub: inLevel && !!game.level.hub, tutorial: inLevel && !!game.level.tutorial, cutscene: as === 'cutscene' ? (cut ? cut.id : (net && net.ui && net.ui.cut && net.ui.cut.id) || 'opening') : '',
+    hub: inLevel && !!game.level.hub, cutscene: as === 'cutscene' ? (cut ? cut.id : (net && net.ui && net.ui.cut && net.ui.cut.id) || 'opening') : '',
     isBoss: inLevel && !!game.info.isBoss, levelNum: game ? game.levelNum : 0,
   });
 }
@@ -1226,7 +1185,7 @@ function render() {
     drawStory(ctx, story, stateT);
   } else if (state === 'select') {
     r3d.renderShowcase(selectShowcase(slots, stateT), stateT);
-    drawSelect(ctx, stateT, slots, countdown, heroes);
+    drawSelect(ctx, stateT, slots, heroes);
   } else if (state === 'shop') {
     r3d.render(game);
     drawShop(ctx, stateT, game, shop);
@@ -1247,7 +1206,7 @@ function render() {
       shown = { ...view, handoff: k, bar: Math.round(handoffBar(k * D, D)) };
     }
     const fx = drawn ? storyFilm.fxView() : {};
-    fx.drawHud = (layer) => drawGameOverlay(layer, game, r3d, { minimap: showMinimap && !game.level.hub, tutorial: null, controls: false });
+    fx.drawHud = (layer) => drawGameOverlay(layer, game, r3d, { minimap: showMinimap && !game.level.hub, controls: false });
     drawCutscene(ctx, drawn || !shown ? shown : { ...shown, film: null }, stateT, fx);
   } else if (state === 'recap' && game) {
     r3d.render(game);
@@ -1255,10 +1214,7 @@ function render() {
   } else if (game) {
     r3d.render(game);
     drawGameOverlay(ctx, game, r3d, {
-      minimap: showMinimap && !game.level.hub && !game.level.tutorial,
-      tutorial: !game.level.tutorial ? null
-        : tutorial ? tutorial.view(btn, input.lastDevice)
-          : guest && net.ui.tut ? tutorialView(net.ui.tut[0], !!net.ui.tut[1], btn, input.lastDevice) : null,
+      minimap: showMinimap && !game.level.hub,
       controls: showControls && input.lastDevice !== 'touch' && state === 'play',
     });
     if (state === 'paused') {
@@ -1267,8 +1223,8 @@ function render() {
       const tq = touching();
       const lines = [resume];
       if (guest) lines.push('(only the host can quit)');
-      else if (tq) lines.push(game.level.tutorial ? 'Use the button below to skip the orientation' : 'Use the button below to save and quit');
-      else lines.push(game.level.tutorial ? `${quit}: skip the orientation` : `${quit}: save and quit to title`);
+      else if (tq) lines.push('Use the button below to save and quit');
+      else lines.push(`${quit}: save and quit to title`);
       if (!guest && !tq) lines.push(`${input.lastDevice === 'keys' ? 'K' : 'Title'}: SKIP CUTSCENES — ${skipCutscenes ? 'ON (default picks: Mall Cop lockdown, save Ray)' : 'off'}`);
       if (input.lastDevice === 'keys') lines.push('M: mute   N: music   V: announcer   TAB: minimap   X: pixel size   Z: graphics (low/high)');
       drawOverlay(ctx, 'PAUSED', [...lines, `${game.info.stageName} — ${game.theme.name}`]);
@@ -1359,7 +1315,7 @@ function frame(now) {
     case 'stats': updateRecords(); break;
     case 'confirm': updateConfirm(); break;
     case 'story': updateStory(dt); break;
-    case 'select': updateSelect(dt); break;
+    case 'select': updateSelect(); break;
     case 'realm': updateRealmPick(); break;
     case 'shop': updateShop(); break;
     case 'cutscene': updateCutscene(dt); break;
@@ -1371,8 +1327,7 @@ function frame(now) {
       // quit: Q on the keyboard (Esc resumes), B on a gamepad, B on the touch screen
       // (online guests can pause and resume, but only the host's own players can quit)
       else if (input.key('KeyQ') || (tapBtn() === 'quit') || partySources().some((src) => !isNet(src) && (!isKb(src) || input.lastDevice === 'touch') && input.get(src).pressed.magic)) {
-        if (game.level.tutorial) finishTutorial(true);
-        else { persist(); game = null; setState('title'); }
+        persist(); game = null; setState('title');
       } else if (input.key('KeyK')) {
         skipCutscenes = !skipCutscenes;
         toast = { text: skipCutscenes ? 'SKIP CUTSCENES: ON (Scene 1 -> Mall Cop lockdown, Scene 2 -> save Ray)' : 'SKIP CUTSCENES: off', t: 3, local: true };
@@ -1382,7 +1337,7 @@ function frame(now) {
     case 'levelclear': updateLevelClear(); break;
     case 'gameover': updateGameOver(); break;
   }
-  if (state === 'play' && game && game.level && !game.level.tutorial) {
+  if (state === 'play' && game && game.level) {
     const all = game.allPlayers();
     const online = all.some((p) => isNet(p.source));
     stats.tick(dt, all.filter((p) => !isNet(p.source)), game.levelNum, { mode: online ? 'online' : all.length > 1 ? 'coop' : 'solo', n: all.length });
@@ -1403,7 +1358,7 @@ function loop(now) {
 }
 
 // Debug/test hook (used by automated smoke tests).
-window.__motd = { startTutorial, cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate, engine: !!opts.engine }), get introThen() { return introThen; }, get movie() { return movie; }, get intro() { return intro; }, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get tutorial() { return tutorial; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
+window.__motd = { cutscene: debugCutscene, get film() { return storyFilm; }, get cut() { return cut; }, playIntro: (opts = {}) => startIntro({ gate: !!opts.gate, engine: !!opts.engine }), get introThen() { return introThen; }, get movie() { return movie; }, get intro() { return intro; }, lineup: (section = 'all') => startLineup(r3d, section), get music() { return currentMusic(); }, get intensity() { return musicIntensity(); }, get net() { return net; }, get game() { return game; }, get state() { return state; }, get slots() { return slots; }, get r3d() { return r3d; }, get globalBoard() { return globalBoard; } };
 
 // Scale canvas to fit window while keeping aspect ratio.
 function fit() {
